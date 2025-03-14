@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+FROM docker.io/library/ubuntu:jammy
+
+# unminimize
+RUN yes | unminimize
+
+# install sshd and ssh
+RUN apt-get update -y
+
+# copy and run the initialization shell script
+COPY ./init_script.sh /tmp/init_script.sh
+
+# install other utils
+RUN bash /tmp/init_script.sh \
+    && apt-get clean \
+    && rm -rf /var/cache/apt/lists \
+    && rm /tmp/init_script.sh
+
+# make this container run continuously for debugging puroposes
+ENTRYPOINT ["tail", "-f", "/dev/null"]

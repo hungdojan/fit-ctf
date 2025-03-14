@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import subprocess
 import sys
@@ -7,139 +5,96 @@ from logging import Logger
 from pathlib import Path
 from typing import Any
 
-import fit_ctf_utils
-from fit_ctf_utils.container_client.base_container_client import BaseContainerClient
+from fit_ctf_utils.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf_utils.types import HealthCheckDict
 
 
-class PodmanClient(BaseContainerClient):
+class PodmanClient(ContainerClientInterface):
+
+    @classmethod
+    def generate_container_prefix(cls, *names: str) -> str:
+        return f"{'_'.join(names)}_"
 
     @classmethod
     def get_images(cls, contains: str | list[str] | None = None) -> list[str]:
         cmd = ["podman", "images", "--format", '"{{ .Repository }}"']
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-
-        if not contains:
-            # TODO: hazardous
-            return [data.strip('"') for data in proc.stdout.rsplit()]
-        if isinstance(contains, list):
-            out = []
-            for data in proc.stdout.rsplit():
-                data = data.strip('"')
-                for user_prj in contains:
-                    if user_prj not in data:
-                        continue
-                    out.append(data)
-            return out
-        return [data.strip('"') for data in proc.stdout.rsplit() if contains in data]
+        return cls._process_get_commands(cmd, contains)
 
     @classmethod
     def get_networks(cls, contains: str | list[str] | None = None) -> list[str]:
         cmd = ["podman", "network", "ls", "--format", '"{{.Name}}"']
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-
-        if not contains:
-            return [data.strip('"') for data in proc.stdout.rsplit()]
-        if isinstance(contains, list):
-            out = []
-            for data in proc.stdout.rsplit():
-                data = data.strip('"')
-                for user_prj in contains:
-                    if user_prj not in data:
-                        continue
-                    out.append(data)
-            return out
-        return [data.strip('"') for data in proc.stdout.rsplit() if contains in data]
+        return cls._process_get_commands(cmd, contains)
 
     @classmethod
-    def rm_images(cls, logger: Logger, contains: str, to_stdout: bool = False) -> int:
+    def rm_images(
+        cls, logger: Logger, contains: str | list[str], to_stdout: bool = False
+    ) -> int:
         images = cls.get_images(contains)
         if not images:
             return -1
         cmd = ["podman", "rmi"] + images
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
+        cls._process_logging(logger, proc.stdout.decode(), to_stdout)
         return proc.returncode
 
     @classmethod
-    def rm_multiple_images(
-        cls, logger: Logger, image_names: list[str], to_stdout: bool = False
+    def rm_networks(
+        cls, logger: Logger, contains: str | list[str], to_stdout: bool = False
     ) -> int:
-        cmd = ["podman", "rmi"] + image_names
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
-        return proc.returncode
-
-    @classmethod
-    def rm_networks(cls, logger: Logger, contains: str, to_stdout: bool = False) -> int:
         network_names = cls.get_networks(contains)
         if not network_names:
             return -1
         cmd = ["podman", "network", "rm"] + network_names
         proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
-        return proc.returncode
-
-    @classmethod
-    def rm_multiple_networks(
-        cls, logger: Logger, network_names: list[str], to_stdout: bool = False
-    ) -> int:
-        cmd = ["podman", "network", "rm"] + network_names
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
+        cls._process_logging(logger, proc.stdout.decode(), to_stdout)
         return proc.returncode
 
     @classmethod
     def compose_up(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:
-        # TODO: eliminate whitespaces
+        if isinstance(file, Path):
+            file = str(file.resolve())
         cmd = f"podman-compose -f {file} up -d"
         proc = subprocess.run(
             cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
+        cls._process_logging(logger, proc.stdout.decode(), to_stdout)
         return proc.returncode
 
     @classmethod
     def compose_down(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:
-        if len(cls.compose_ps(file)) == 0:
-            return 0
-        # TODO: eliminate whitespaces
-        cmd = f"podman-compose -f {file} down"
-        proc = subprocess.run(
-            cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        res = subprocess.check_output(
+            ["podman-compose", "-f", file, "ps", "-q"], text=True
         )
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
+        if not res.strip():
+            return 0
+        proc = subprocess.run(
+            ["podman-compose", "-f", file, "down"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        cls._process_logging(logger, proc.stdout.decode(), to_stdout)
         return proc.returncode
 
     @classmethod
     def compose_ps(cls, file: str | Path) -> list[str]:
+        if isinstance(file, Path):
+            file = str(file.resolve())
         cmd = ["podman-compose", "-f", file, "ps", "--format", '"{{ .Names }}"']
         proc = subprocess.run(cmd, capture_output=True, text=True)
         return [data.strip('"') for data in proc.stdout.rsplit()]
 
     @classmethod
     def compose_ps_json(cls, file: str | Path) -> list[dict[str, Any]]:
+        if isinstance(file, Path):
+            file = str(file.resolve())
         cmd = ["podman-compose", "-f", file, "ps", "--format", "json"]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         data = json.loads(proc.stdout)
@@ -149,20 +104,21 @@ class PodmanClient(BaseContainerClient):
     def compose_build(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:
+        if isinstance(file, Path):
+            file = str(file.resolve())
         cmd = f"podman-compose -f {file} build"
         proc = subprocess.run(
             cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT
         )
-        message = proc.stdout.decode("utf-8")
-        logger.info(message)
-        if to_stdout:
-            fit_ctf_utils.GLOBAL_LOGGER.info(message)
+        cls._process_logging(logger, proc.stdout.decode(), to_stdout)
         return proc.returncode
 
     @classmethod
     def compose_shell(
         cls, file: str | Path, service: str, command: str
     ) -> subprocess.CompletedProcess:  # pragma: no cover
+        if isinstance(file, Path):
+            file = str(file.resolve())
         cmd = f"podman-compose -f {file} exec {service} {command}"
         return subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
 
@@ -202,6 +158,40 @@ class PodmanClient(BaseContainerClient):
             "--format",
             "json",
             f"--filter=name=^{project_name}",
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        data = json.loads(proc.stdout)
+        return data
+
+    @classmethod
+    def compose_states(
+        cls, file: str | Path
+    ) -> list[HealthCheckDict]:  # pragma: no cover
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = ["podman-compose", "-f", file, "ps", "--format", "json"]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        data = json.loads(proc.stdout)
+        # filtering
+        return [
+            {
+                "name": service["Names"][0],
+                "state": service["State"],
+                "image": service["Image"],
+            }
+            for service in data
+        ]
+
+    @classmethod
+    def project_stats(cls, project_name: str) -> list[dict]:
+        cmd = [
+            "podman",
+            "ps",
+            "-a",
+            "--format",
+            "json",
+            "--filter",
+            f"label=project={project_name}",
         ]
         proc = subprocess.run(cmd, capture_output=True, text=True)
         data = json.loads(proc.stdout)
