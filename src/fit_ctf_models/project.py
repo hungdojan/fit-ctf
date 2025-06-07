@@ -82,13 +82,17 @@ class ProjectManager(ClusterConfigManager[Project]):
         super().__init__(db, db["project"], c_client, paths)
 
     @property
-    def _ue_mgr(self) -> "_ue.UserEnrollmentManager":
+    def ue_mgr(self) -> "_ue.UserEnrollmentManager":
         """Returns a user enrollment manager.
 
         :return: A user enrollment manager initialized in ProjectManager.
         :rtype: _user_enroll.UserEnrollmentManager
         """
-        return _ue.UserEnrollmentManager(self._db, self.c_client, self._paths)
+        if not hasattr(self, "_ue_mgr"):
+            self._ue_mgr = _ue.UserEnrollmentManager(
+                self._db, self.c_client, self._paths
+            )
+        return self._ue_mgr
 
     def get_doc_by_id(self, _id: ObjectId) -> Project | None:
         res = self._coll.find_one({"_id": _id})
@@ -335,7 +339,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         prj = self.get_project(project_or_name)
 
-        lof_user_enrolls = self._ue_mgr.get_docs_raw(
+        lof_user_enrolls = self.ue_mgr.get_docs_raw(
             filter={"project_id.$id": prj.id, "active": True},
             projection={"_id": 0, "container_port": 1, "forwarded_port": 1},
         )
@@ -493,7 +497,7 @@ class ProjectManager(ClusterConfigManager[Project]):
 
         # cancel all services
         self.stop_project_cluster(prj)
-        self._ue_mgr.stop_all_user_clusters(prj)
+        self.ue_mgr.stop_all_user_clusters(prj)
 
         self.c_client.rm_networks(
             get_or_create_logger(prj.name), f"{prj.name}_main_net"
@@ -501,8 +505,8 @@ class ProjectManager(ClusterConfigManager[Project]):
         self.c_client.rm_networks(
             get_or_create_logger(prj.name), f"{prj.name}_admin_net"
         )
-        self._ue_mgr.disable_multiple_enrollments(
-            [(user, prj) for user in self._ue_mgr.get_user_enrollments_for_project(prj)]
+        self.ue_mgr.disable_multiple_enrollments(
+            [(user, prj) for user in self.ue_mgr.get_user_enrollments_for_project(prj)]
         )
 
         prj.active = False
@@ -528,10 +532,10 @@ class ProjectManager(ClusterConfigManager[Project]):
         if path.exists():
             shutil.rmtree(path)
 
-        self._ue_mgr.flush_multiple_enrollments(
+        self.ue_mgr.flush_multiple_enrollments(
             [
                 (user, prj)
-                for user in self._ue_mgr.get_user_enrollments_for_project(prj, True)
+                for user in self.ue_mgr.get_user_enrollments_for_project(prj, True)
             ]
         )
         self.remove_doc_by_id(prj.id)

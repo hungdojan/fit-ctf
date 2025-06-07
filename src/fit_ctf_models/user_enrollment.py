@@ -80,22 +80,28 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         super().__init__(db, db["user_enrollment"], c_client, paths)
 
     @property
-    def _prj_mgr(self) -> "_project.ProjectManager":
+    def prj_mgr(self) -> "_project.ProjectManager":
         """Returns a project manager.
 
         :return: A project manager initialized in UserEnrollmentManager.
         :rtype: _project.ProjectManager
         """
-        return _project.ProjectManager(self._db, self.c_client, self._paths)
+        if not hasattr(self, "_prj_mgr"):
+            self._prj_mgr = _project.ProjectManager(
+                self._db, self.c_client, self._paths
+            )
+        return self._prj_mgr
 
     @property
-    def _user_mgr(self) -> "_user.UserManager":
+    def user_mgr(self) -> "_user.UserManager":
         """Returns a user manager.
 
         :return: A user manager initialized in UserEnrollmentManager.
         :rtype: _user.UserManager
         """
-        return _user.UserManager(self._db, self.c_client, self._paths)
+        if not hasattr(self, "_user_mgr"):
+            self._user_mgr = _user.UserManager(self._db, self.c_client, self._paths)
+        return self.user_mgr
 
     def _get_user_and_project(
         self,
@@ -125,7 +131,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             function.
         :rtype: _user.User
         """
-        return self._user_mgr.get_user(user_or_username)
+        return self.user_mgr.get_user(user_or_username)
 
     def _get_project(
         self, project_or_name: "str | _project.Project"
@@ -138,7 +144,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :return: Found project or passed project object.
         :rtype: _project.Project
         """
-        return self._prj_mgr.get_project(project_or_name)
+        return self.prj_mgr.get_project(project_or_name)
 
     def user_is_enrolled_to_project(
         self, user: "_user.User", project: "_project.Project"
@@ -489,7 +495,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :rtype: list[UserEnrollment]
         """
         # check project existence
-        project = self._prj_mgr.get_project(project_name)
+        project = self.prj_mgr.get_project(project_name)
 
         nof_existing_users = len(self.get_user_enrollments_for_project_raw(project))
         new_users = self.filter_users_not_in_project(project, lof_usernames)
@@ -505,7 +511,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         ]
         available_ports = sorted(list(set(all_ports).difference(set(ports))))
 
-        users = self._user_mgr.get_docs(username={"$in": new_users}, active=True)
+        users = self.user_mgr.get_docs(username={"$in": new_users}, active=True)
         user_enrollments = []
         for i, user in enumerate(users):
             user_enrollments.append(
@@ -753,8 +759,8 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :raises UserExistsException: When the user document is still active.
         """
         try:
-            user = self._user_mgr.get_user(user_or_username, None)
-            project = self._prj_mgr.get_project(project_or_name, None)
+            user = self.user_mgr.get_user(user_or_username, None)
+            project = self.prj_mgr.get_project(project_or_name, None)
         except (UserNotExistsException, ProjectNotExistException):
             return
 
@@ -843,10 +849,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :type project_or_name: str | _project.Project
         :raises ProjectNotExistException: Project data was not found in the database.
         """
-        project = self._prj_mgr.get_project(project_or_name, None)
+        project = self.prj_mgr.get_project(project_or_name, None)
         pairs_user_project = [
             (user, project)
-            for user in self._user_mgr.get_docs(username={"$in": lof_usernames})
+            for user in self.user_mgr.get_docs(username={"$in": lof_usernames})
         ]
         self.disable_multiple_enrollments(pairs_user_project)
         self.flush_multiple_enrollments(pairs_user_project)
@@ -858,7 +864,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :type project_or_name: str | _project.Project
         :raises ProjectNotExistException: Project data was not found in the database.
         """
-        project = self._prj_mgr.get_project(project_or_name, None)
+        project = self.prj_mgr.get_project(project_or_name, None)
         pairs_user_project = [
             (user, project) for user in self.get_user_enrollments_for_project(project)
         ]
@@ -882,7 +888,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
     def delete_all(self):
         """Remove all canceled user enrollments."""
-        for prj in self._prj_mgr.get_docs():
+        for prj in self.prj_mgr.get_docs():
             self.cancel_all_project_enrollments(prj)
 
     # MANAGE CLUSTER

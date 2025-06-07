@@ -66,13 +66,17 @@ class UserManager(BaseManagerInterface[User]):
         super().__init__(db, db["user"], c_client, paths)
 
     @property
-    def _ue_mgr(self) -> "_ue.UserEnrollmentManager":
+    def ue_mgr(self) -> "_ue.UserEnrollmentManager":
         """Returns a user enroll manager.
 
         :return: A user enrollment manager initialized in UserManager.
         :rtype: user_enrollment.UserEnrollmentManager
         """
-        return _ue.UserEnrollmentManager(self._db, self.c_client, self._paths)
+        if not hasattr(self, "_ue_mgr"):
+            self._ue_mgr = _ue.UserEnrollmentManager(
+                self._db, self.c_client, self._paths
+            )
+        return self._ue_mgr
 
     def get_doc_by_id(self, _id: ObjectId) -> User | None:
         res = self._coll.find_one({"_id": _id})
@@ -304,11 +308,11 @@ class UserManager(BaseManagerInterface[User]):
         """
         user = self.get_user(username)
 
-        lof_projects = self._ue_mgr.get_enrolled_projects(user.username)
+        lof_projects = self.ue_mgr.get_enrolled_projects(user.username)
         for project in lof_projects:
-            self._ue_mgr.stop_user_cluster(user, project)
+            self.ue_mgr.stop_user_cluster(user, project)
 
-        self._ue_mgr.cancel_user_from_all_projects(user)
+        self.ue_mgr.cancel_user_from_all_projects(user)
         user.active = False
         self.update_doc(user)
 
@@ -344,12 +348,12 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            self._ue_mgr.stop_all_clusters_of_a_user(user)
+            self.ue_mgr.stop_all_clusters_of_a_user(user)
             pairs.extend(
-                [(user, prj) for prj in self._ue_mgr.get_enrolled_projects(user)]
+                [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user)]
             )
 
-        self._ue_mgr.disable_multiple_enrollments(pairs)
+        self.ue_mgr.disable_multiple_enrollments(pairs)
         self.collection.update_many(
             {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
         )
@@ -368,13 +372,13 @@ class UserManager(BaseManagerInterface[User]):
         pairs = []
         for user in users:
             pairs.extend(
-                [(user, prj) for prj in self._ue_mgr.get_enrolled_projects(user, True)]
+                [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user, True)]
             )
             path = self._paths["users"] / user.username
             if path.exists():
                 shutil.rmtree(path)
 
-        self._ue_mgr.flush_multiple_enrollments(pairs)
+        self.ue_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
     def delete_a_user(self, username: str):
