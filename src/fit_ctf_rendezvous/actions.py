@@ -1,12 +1,12 @@
-import os
 import re
 
-from fit_ctf_utils.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_backend.ctf_manager import CTFManager
-from fit_ctf_utils.exceptions import ProjectNotExistException
-from fit_ctf_models import User, UserManager
+from fit_ctf_models import User
 from fit_ctf_models.project import Project
 from fit_ctf_models.user_enrollment import UserEnrollment
+from fit_ctf_utils.auth.local_auth import LocalAuth
+from fit_ctf_utils.constants import DEFAULT_PASSWORD_LENGTH
+from fit_ctf_utils.exceptions import CTFException
 
 REGEX_IS_LOWER_CASE = re.compile("[a-z]")
 REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
@@ -14,8 +14,8 @@ REGEX_IS_DIGIT = re.compile("[0-9]")
 
 
 class Actions:
-    def __init__(self, host: str):
-        self.ctf_mgr = CTFManager(host, os.getenv("DB_NAME", "ctf-db"))
+    def __init__(self, ctf_mgr: CTFManager):
+        self.ctf_mgr = ctf_mgr
         self._user: User | None = None
 
     @property
@@ -37,7 +37,9 @@ class Actions:
         :return: `True` if given credentials are valid; False otherwise.
         :rtype: bool
         """
-        if not self.ctf_mgr.user_mgr.validate_user_login(username, password):
+        if not LocalAuth(self.ctf_mgr.user_mgr).validate_credentials(
+            username, password
+        ):
             return False
 
         self._user = self.ctf_mgr.user_mgr.get_doc_by_filter(username=username)
@@ -50,7 +52,7 @@ class Actions:
         :return: `True` if the password meet all the password requirements.
         :rtype: bool
         """
-        return UserManager.validate_password_strength(password)
+        return LocalAuth.validate_password_strength(password)
 
     def generate_password(self) -> str:
         """Generate a basic password.
@@ -58,7 +60,7 @@ class Actions:
         :return: New password.
         :rtype: str
         """
-        return UserManager.generate_password(DEFAULT_PASSWORD_LENGTH)
+        return LocalAuth.generate_password(DEFAULT_PASSWORD_LENGTH)
 
     def get_active_projects(self) -> list[Project]:
         """Get a list of enrolled projects.
@@ -84,16 +86,14 @@ class Actions:
             return None
         try:
             project = self.ctf_mgr.prj_mgr.get_project(project_name)
-        except ProjectNotExistException:
+            user_enrollment = self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
+                self.user, project
+            )
+        except CTFException:
+            # TODO: print e
             return None
-        self.ctf_mgr.user_enrollment_mgr.start_user_instance(self.user, project)
-        user_enrollment = self.ctf_mgr.user_enrollment_mgr.get_doc_by_filter(
-            **{
-                "user_id.$id": self.user.id,
-                "project_id.$id": project.id,
-                "active": True,
-            }
-        )
+
+        self.ctf_mgr.user_enrollment_mgr.start_user_cluster(self.user, project)
         return user_enrollment
 
     def stop_user_instance(self, project_name: str):
@@ -107,10 +107,11 @@ class Actions:
 
         try:
             project = self.ctf_mgr.prj_mgr.get_project(project_name)
-        except ProjectNotExistException:
+            self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(self.user, project)
+        except CTFException:
             return
 
-        self.ctf_mgr.user_enrollment_mgr.stop_user_instance(self.user, project)
+        self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(self.user, project)
 
     def change_password(self, password: str):
         """Change user password.
