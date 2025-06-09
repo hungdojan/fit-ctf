@@ -101,7 +101,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         """
         if not hasattr(self, "_user_mgr"):
             self._user_mgr = _user.UserManager(self._db, self.c_client, self._paths)
-        return self.user_mgr
+        return self._user_mgr
 
     def _get_user_and_project(
         self,

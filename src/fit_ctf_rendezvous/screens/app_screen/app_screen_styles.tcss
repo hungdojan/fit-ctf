@@ -1,0 +1,34 @@
+/* CSS for widgets inside the sidebar */
+AppSideBar {
+    border: ascii;
+    align: center middle !important;
+    min-width: 20;
+    max-width: 30;
+    height: auto;
+    width: 30%;
+
+    Rule {
+        color: white;
+        margin: 0;
+        width: 90w;
+    }
+    Button, Button:focus, Button:hover {
+        border: none;
+        width: 100w;
+    }
+    VerticalScroll {
+        align: center middle;
+        padding: 0 2;
+        Rule {
+            width: 100%;
+        }
+    }
+}
+
+/* CSS for widgets inside the content container */
+AppContentContainer {
+    border: blank;
+    align: center middle;
+    background: yellow;
+    color: black;
+}

@@ -1,28 +1,32 @@
-from typing import Type
-
 from textual.app import App
-from textual.driver import Driver
-from textual.types import CSSPathType
 
 from fit_ctf_backend.ctf_manager import CTFManager
+from fit_ctf_rendezvous.core_manager import CoreManager
+from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from fit_ctf_rendezvous.screens.login_screen.login_screen import LoginScreen
 
 
 class RendezvousApp(App):
 
-    TITLE = "Rendezvous"
-    SCREENS = {"LoginScreen": LoginScreen}
+    TITLE = "FIT Rendezvous"
 
-    def __init__(
-        self,
-        ctf_mgr: CTFManager,
-        driver_class: Type[Driver] | None = None,
-        css_path: CSSPathType | None = None,
-        watch_css: bool = False,
-        ansi_color: bool = False,
-    ):
+    def __init__(self, ctf_mgr: CTFManager, **kwargs):
         self.ctf_mgr = ctf_mgr
-        super().__init__(driver_class, css_path, watch_css, ansi_color)
+        self.core_mgr = CoreManager(ctf_mgr)
+        super().__init__(**kwargs)
+
+    def on_login_submit(self) -> None:
+        self.pop_screen()
+        self.push_screen(AppScreen(self.core_mgr, self.on_logout))
+
+    def on_logout(self) -> None:
+        self.pop_screen()
+        self.push_screen(LoginScreen(self.core_mgr, self.on_login_submit))
 
     def on_mount(self) -> None:
-        self.push_screen("LoginScreen")
+        self.push_screen(LoginScreen(self.core_mgr, self.on_login_submit))
+
+    async def _shutdown(self) -> None:
+        # NOTE: workaround
+        # TODO: cleanup
+        return await super()._shutdown()

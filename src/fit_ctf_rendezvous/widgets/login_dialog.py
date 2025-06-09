@@ -1,131 +1,85 @@
 from typing import Callable
 
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Center, Container, Horizontal
 from textual.widget import Widget
-from textual.widgets import Button, Checkbox, Input, Label
+from textual.widgets import Button, Checkbox, Input, Label, Rule
+
+from fit_ctf_rendezvous.exceptions import FitRendezvousException
+from fit_ctf_rendezvous.screens.base_screen import BaseScreen
+from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
-class LoginDialog(Container):
-    DEFAULT_CSS = """
-    LoginDialog {
-        align: center middle;
-        width: auto;
-        max-height: 9;
-        max-width: 36;
-        border: ascii white;
-    }
-
-    #login_title {
-        align: center middle;
-        margin: 0 0 1 0
-    }
-
-    #login_quit_button, #login_submit_button {
-        border: none;
-        min-width: 10;
-    }
-
-    .login_button:focus {
-        border: none;
-    }
-
-    .login_input, .login_input:focus {
-        height: 1;
-        max-width: 20;
-        padding: 0;
-        border: none;
-    }
-    .login_label {
-        height: 1;
-        content-align: center middle;
-        margin: 0 2 0 0
-    }
-    .form-row {
-        margin: 0;
-        padding: 0;
-        align: center middle;
-    }
-    .form-button {
-        align: center middle;
-        margin: 1 0 0 0;
-    }
-    Checkbox, Checkbox:focus {
-        border: none;
-    }
-    """
+class LoginDialog(Container, CoreWidget):
 
     def __init__(
         self,
+        owner_screen: BaseScreen,
         on_submit: Callable[[str, str], None],
         on_cancel: Callable[[], None],
         *children: Widget,
-        name: str | None = None,
-        id: str | None = None,
-        classes: str | None = None,
-        disabled: bool = False,
-        markup: bool = True
+        **kwargs
     ) -> None:
-        super().__init__(
-            *children,
-            name=name,
-            id=id,
-            classes=classes,
-            disabled=disabled,
-            markup=markup
-        )
+        CoreWidget.__init__(self, owner_screen)
+        Container.__init__(self, *children, **kwargs)
+
         self.on_submit = on_submit
         self.on_cancel = on_cancel
 
     def compose(self) -> ComposeResult:
-        # yield Horizontal()
         with Center():
-            yield Label("CTF Login", id="login_title")
-        with Horizontal(classes="form-row"):
-            yield Label("Username", classes="login_label")
+            yield Label("CTF Login")
+        with Center():
+            yield Rule(line_style="ascii")
+        with Horizontal():
+            yield Label("Username")
             yield Input(
                 placeholder="Username",
-                id="login_input_username",
-                classes="login_input",
+                id="login-username-input",
             )
-        with Horizontal(classes="form-row"):
-            yield Label("Password", classes="login_label")
+        with Horizontal():
+            yield Label("Password")
             yield Input(
                 password=True,
                 placeholder="Password",
-                id="login_input_password",
-                classes="login_input",
+                id="login-password-input",
             )
         with Center():
-            yield Checkbox("Show Password", id="login_checkbox")
-        with Horizontal(classes="form-button"):
+            yield Checkbox("Show Password", id="login-checkbox")
+        with Center():
+            yield Label("", id="login-message-label")
+        with Center():
+            yield Rule(line_style="ascii")
+        with Horizontal():
             yield Button(
                 "Quit",
                 variant="error",
-                id="login_quit_button",
-                classes="login_button",
+                id="login-quit-btn",
             )
             yield Button(
                 "Submit",
                 variant="success",
-                id="login_submit_button",
-                classes="login_button",
+                id="login-submit-btn",
             )
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        button_id = event.button.id
+    @on(Button.Pressed, "#login-quit-btn")
+    def quit_btn_handler(self):
+        self.on_cancel()
 
-        if button_id == "login_quit_button":
-            self.on_cancel()
-        elif button_id == "login_submit_button":
-            username_input = self.query_one("#login_input_username", Input)
-            password_input = self.query_one("#login_input_password", Input)
-            username, password = username_input.value, password_input.value
+    @on(Button.Pressed, "#login-submit-btn")
+    def action_submit_btn_handler(self):
+        username_input = self.query_one("#login-username-input", Input)
+        password_input = self.query_one("#login-password-input", Input)
+        username, password = username_input.value, password_input.value
+        try:
             self.on_submit(username, password)
+        except FitRendezvousException as e:
+            label = self.query_one("#login-message-label", Label)
+            label.styles.visibility = "visible"
+            label.update(str(e))
 
-    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
-        checkbox_id = event.checkbox.id
-
-        if checkbox_id == "login_checkbox":
-            input_element = self.query_one("#login_input_password", Input)
-            input_element.password = not event.checkbox.value
+    @on(Checkbox.Changed, "#login-checkbox")
+    def show_password_handler(self, event: Checkbox.Changed) -> None:
+        input_element = self.query_one("#login-input-password", Input)
+        input_element.password = not event.checkbox.value

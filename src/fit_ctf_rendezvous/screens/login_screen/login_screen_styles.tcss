@@ -1,3 +1,44 @@
+/* CSS for the login screen */
 LoginScreen {
     align: center middle;
+}
+
+/* CSS for the login dialog */
+LoginDialog {
+    width: auto;
+    max-height: 10;
+    max-width: 36;
+    border: ascii white;
+
+    Rule {
+        color: white !important;
+        width: 90% !important;
+        margin: 0 !important;
+    }
+
+    Input, Input:focus {
+        max-width: 20;
+        border: none;
+        height: 1;
+    }
+
+    Horizontal {
+        align: center middle;
+
+
+        Button, Button:focus, Button:hover {
+            border: none !important;
+            min-width: 10 !important;
+        }
+    }
+
+}
+
+#login-message-label {
+    visibility: hidden;
+    color: yellow;
+}
+
+#login-checkbox, #login-checkbox:focus {
+    border: none;
 }

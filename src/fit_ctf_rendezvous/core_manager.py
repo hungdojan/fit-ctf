@@ -13,7 +13,7 @@ REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
 REGEX_IS_DIGIT = re.compile("[0-9]")
 
 
-class Actions:
+class CoreManager:
     def __init__(self, ctf_mgr: CTFManager):
         self.ctf_mgr = ctf_mgr
         self._user: User | None = None
