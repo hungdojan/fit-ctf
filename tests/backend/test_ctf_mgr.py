@@ -53,7 +53,7 @@ def test_import_project(empty_data: FixtureData):
     zip_path.unlink()
 
 
-def test_setup_env_from_file(empty_data: FixtureData):
+async def test_setup_env_from_file(empty_data: FixtureData):
     ctf_mgr, _ = empty_data
 
     ctf_mgr.setup_env_from_file(fixture_path() / "project_data.yaml")
@@ -64,8 +64,8 @@ def test_setup_env_from_file(empty_data: FixtureData):
     with pytest.raises(CTFException):
         ctf_mgr.setup_env_from_file(fixture_path() / "user_data.yaml")
 
-    ctf_mgr.prj_mgr.delete_all()
-    ctf_mgr.user_mgr.delete_all()
+    await ctf_mgr.prj_mgr.delete_all()
+    await ctf_mgr.user_mgr.delete_all()
 
     new_users = ctf_mgr.setup_env_from_file(fixture_path() / "connected_data.yaml")
     assert len(ctf_mgr.prj_mgr.get_docs()) == 2

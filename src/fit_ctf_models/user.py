@@ -299,7 +299,7 @@ class UserManager(BaseManagerInterface[User]):
         pipeline = MongoQueries.user_get_users(active)
         return [i for i in self.collection.aggregate(pipeline)]
 
-    def disable_user(self, username: str):
+    async def disable_user(self, username: str):
         """Set user as inactive in the database.
 
         The user data and files will be preserve for future references.
@@ -310,9 +310,9 @@ class UserManager(BaseManagerInterface[User]):
 
         lof_projects = self.ue_mgr.get_enrolled_projects(user.username)
         for project in lof_projects:
-            self.ue_mgr.stop_user_cluster(user, project)
+            await self.ue_mgr.stop_user_cluster(user, project)
 
-        self.ue_mgr.cancel_user_from_all_projects(user)
+        await self.ue_mgr.cancel_user_from_all_projects(user)
         user.active = False
         self.update_doc(user)
 
@@ -337,7 +337,7 @@ class UserManager(BaseManagerInterface[User]):
             shutil.rmtree(path)
         self.remove_doc_by_id(user.id)
 
-    def disable_multiple_users(self, lof_usernames: list[str]):
+    async def disable_multiple_users(self, lof_usernames: list[str]):
         """Disables multiple user documents.
 
         :param lof_usernames: A list of usernames which documents will be disabled.
@@ -348,12 +348,12 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            self.ue_mgr.stop_all_clusters_of_a_user(user)
+            await self.ue_mgr.stop_all_clusters_of_a_user(user)
             pairs.extend(
                 [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user)]
             )
 
-        self.ue_mgr.disable_multiple_enrollments(pairs)
+        await self.ue_mgr.disable_multiple_enrollments(pairs)
         self.collection.update_many(
             {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
         )
@@ -381,28 +381,28 @@ class UserManager(BaseManagerInterface[User]):
         self.ue_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
-    def delete_a_user(self, username: str):
+    async def delete_a_user(self, username: str):
         """Completely remove user from the host machine.
 
         :param username: Account's username.
         :type username: str
         :raises UserNotExistsException: Given user could not be found in the database.
         """
-        self.disable_user(username)
+        await self.disable_user(username)
         self.flush_user(username)
 
-    def delete_users(self, lof_usernames: list[str]):
+    async def delete_users(self, lof_usernames: list[str]):
         """Deletes users from the list.
 
         :param lof_usernames: List of usernames to delete.
         :type lof_usernames: list[str]
         """
 
-        self.disable_multiple_users(lof_usernames)
+        await self.disable_multiple_users(lof_usernames)
         self.flush_multiple_users(lof_usernames)
 
-    def delete_all(self):
+    async def delete_all(self):
         """Remove all users from the host system and clear the database."""
 
         users = [u.username for u in self.get_docs()]
-        self.delete_users(users)
+        await self.delete_users(users)

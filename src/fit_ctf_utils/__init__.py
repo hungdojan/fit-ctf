@@ -1,19 +1,21 @@
+import asyncio
 import logging
 import os
 import sys
 import tempfile
+from asyncio.subprocess import Process
 from pathlib import Path
 from subprocess import call
 
 from termcolor import colored
 
-from fit_ctf_utils.data_parser import YamlParser
 from fit_ctf_utils.container_client.container_client_interface import (
     ContainerClientInterface,
 )
 from fit_ctf_utils.container_client.docker_client import DockerClient
 from fit_ctf_utils.container_client.mock_client import MockClient
 from fit_ctf_utils.container_client.podman_client import PodmanClient
+from fit_ctf_utils.data_parser import YamlParser
 from fit_ctf_utils.exceptions import ConfigurationFileNotEditedException
 
 
@@ -145,6 +147,14 @@ def get_missing_in_sequence(arr: list[int], start_val: int) -> int:
     if index == 0 and arr[index] != start_val:
         return start_val
     return value + 1
+
+
+async def create_async_exec(cmd: list[str]) -> tuple[Process, bytes]:
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+    )
+    stdout, stderr = await proc.communicate()
+    return proc, stdout
 
 
 # global logger writes to STDOUT

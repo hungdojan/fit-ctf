@@ -12,24 +12,26 @@ from fit_ctf_utils.types import HealthCheckDict
 class ContainerClientInterface(ABC):
 
     @classmethod
-    def _process_get_commands(
+    async def _process_get_commands(
         cls, cmd: list[str], contains: str | list[str] | None = None
     ) -> list[str]:
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        _, stdout = await fit_ctf_utils.create_async_exec(cmd)
 
         if not contains:
             # TODO: hazardous
-            return [data.strip('"') for data in proc.stdout.rsplit()]
+            return [data.strip('"') for data in stdout.decode().rsplit()]
         if isinstance(contains, list):
             out = []
-            for data in proc.stdout.rsplit():
+            for data in stdout.decode().rsplit():
                 data = data.strip('"')
                 for user_prj in contains:
                     if user_prj not in data:
                         continue
                     out.append(data)
             return out
-        return [data.strip('"') for data in proc.stdout.rsplit() if contains in data]
+        return [
+            data.strip('"') for data in stdout.decode().rsplit() if contains in data
+        ]
 
     @classmethod
     def _process_logging(cls, logger: Logger, message: str, to_stdout: bool = False):
@@ -44,7 +46,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def get_images(
+    async def get_images(
         cls, contains: str | list[str] | None = None
     ) -> list[str]:  # pragma: no cover
         """Get container images using conatiner engine command.
@@ -58,7 +60,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def get_networks(
+    async def get_networks(
         cls, contains: str | list[str] | None = None
     ) -> list[str]:  # pragma: no cover
         """Get a list of container network names using container engine command.
@@ -72,7 +74,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def rm_images(
+    async def rm_images(
         cls, logger: Logger, contains: str | list[str], to_stdout: bool = False
     ) -> int:  # pragma: no cover
         """Remove container images from the system using container engine command.
@@ -90,7 +92,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def rm_networks(
+    async def rm_networks(
         cls, logger: Logger, contains: str | list[str], to_stdout: bool = False
     ) -> int:  # pragma: no cover
         """Remove container networks from the system using container engine command.
@@ -108,7 +110,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_up(
+    async def compose_up(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:  # pragma: no cover
         """Run compose up for the given file.
@@ -126,7 +128,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_down(
+    async def compose_down(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:  # pragma: no cover
         """Run compose down for the given file.
@@ -144,7 +146,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_ps(cls, file: str | Path) -> list[str]:  # pragma: no cover
+    async def compose_ps(cls, file: str | Path) -> list[str]:  # pragma: no cover
         """Get container states using compose command.
 
         :param file: Path to the compose file.
@@ -156,7 +158,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_ps_json(
+    async def compose_ps_json(
         cls, file: str | Path
     ) -> list[dict[str, Any]]:  # pragma: no cover
         """Get container states in JSON format using compose command.
@@ -170,7 +172,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_build(
+    async def compose_build(
         cls, logger: Logger, file: str | Path, to_stdout: bool = False
     ) -> int:  # pragma: no cover
         """Build container images using `podman-compose` command.
@@ -206,7 +208,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def stats(cls, project_name: str) -> list[dict[str, str]]:  # pragma: no cover
+    async def stats(cls, project_name: str) -> list[dict[str, str]]:  # pragma: no cover
         """Get containers' resource usage using `podman stats` command.
 
         :param project_name: Project name.
@@ -218,7 +220,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def ps(cls, project_name: str) -> list[str]:  # pragma: no cover
+    async def ps(cls, project_name: str) -> list[str]:  # pragma: no cover
         """Get containers' states using `podman ps` command.
 
         :param project_name: Project name.
@@ -230,7 +232,9 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def ps_json(cls, project_name: str) -> list[dict[str, Any]]:  # pragma: no cover
+    async def ps_json(
+        cls, project_name: str
+    ) -> list[dict[str, Any]]:  # pragma: no cover
         """Get containers' states in JSON format using `podman ps` command.
 
         :param project_name: Project name.
@@ -242,7 +246,9 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def ps_csv(cls, project_name: str, output_file: pathlib.Path):  # pragma: no cover
+    async def ps_csv(
+        cls, project_name: str, output_file: pathlib.Path
+    ):  # pragma: no cover
         """Generate CSV file for container states.
 
         :param project_name: Project name.
@@ -254,7 +260,7 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def compose_states(
+    async def compose_states(
         cls, file: str | Path
     ) -> list[HealthCheckDict]:  # pragma: no cover
         """Returns a simple table that shows the state of each service in the cluster.
@@ -268,5 +274,5 @@ class ContainerClientInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def project_stats(cls, project_name: str) -> list[dict]:  # pragma: no cover
+    async def project_stats(cls, project_name: str) -> list[dict]:  # pragma: no cover
         raise NotImplementedError()

@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import re
 from io import StringIO
@@ -32,7 +33,7 @@ def test_list(cli_data: CLIData):
     assert len(rows[1:]) == len(ctf_mgr.prj_mgr.get_docs())
 
     for prj in ctf_mgr.prj_mgr.get_docs():
-        ctf_mgr.prj_mgr.disable_project(prj)
+        asyncio.run(ctf_mgr.prj_mgr.disable_project(prj))
 
     result = cli_runner.invoke(cli, cmd)
     assert re.match("No project found!", result.output)
@@ -45,7 +46,7 @@ def test_list(cli_data: CLIData):
     assert len(rows[1:]) == len(ctf_mgr.prj_mgr.get_docs())
 
     for prj in ctf_mgr.prj_mgr.get_docs():
-        ctf_mgr.prj_mgr.disable_project(prj)
+        asyncio.run(ctf_mgr.prj_mgr.disable_project(prj))
 
 
 def test_get_info(cli_data: CLIData):
@@ -78,7 +79,7 @@ def test_enrolled_users(cli_data: CLIData):
     result = cli_runner.invoke(cli, cmd)
     assert re.search("not exist.$", result.output)
 
-    ctf_mgr.user_mgr.disable_multiple_users(["user2", "user3"])
+    asyncio.run(ctf_mgr.user_mgr.disable_multiple_users(["user2", "user3"]))
 
     cmd = "project enrolled-users -pn prj1 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -118,7 +119,7 @@ def test_used_ports(cli_data: CLIData):
             prj.starting_port_bind + prj.max_nof_users - 1
         )
 
-    ctf_mgr.prj_mgr.delete_all()
+    asyncio.run(ctf_mgr.prj_mgr.delete_all())
 
     cmd = "project reserved-ports -f csv".split()
     result = cli_runner.invoke(cli, cmd)

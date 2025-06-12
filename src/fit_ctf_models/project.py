@@ -360,7 +360,7 @@ class ProjectManager(ClusterConfigManager[Project]):
             f.write("firewall-cmd --zone=public --add-masquerade\n")
         os.chmod(filename, 0o755)
 
-    def start_project_cluster(self, project_or_name: str | Project) -> int:
+    async def start_project_cluster(self, project_or_name: str | Project) -> int:
         """Boot the project server cluster.
 
         :param project_or_name: Project name or the instance.
@@ -369,11 +369,11 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: int
         """
         project = self.get_project(project_or_name)
-        return self.c_client.compose_up(
+        return await self.c_client.compose_up(
             get_or_create_logger(project.name), self.get_compose_file(project)
         )
 
-    def restart_project_cluster(self, project_or_name: str | Project):
+    async def restart_project_cluster(self, project_or_name: str | Project):
         """Restart project server cluster.
 
         :param project_or_name: Project name or the instance.
@@ -382,10 +382,10 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: subprocess.CompletedProcess
         """
         project = self.get_project(project_or_name)
-        self.stop_project_cluster(project)
-        self.start_project_cluster(project)
+        await self.stop_project_cluster(project)
+        await self.start_project_cluster(project)
 
-    def stop_project_cluster(self, project_or_name: str | Project) -> int:
+    async def stop_project_cluster(self, project_or_name: str | Project) -> int:
         """Stop the project server cluster.
 
         :param project_or_name: Project name or the instance.
@@ -394,11 +394,11 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: int
         """
         project = self.get_project(project_or_name)
-        return self.c_client.compose_down(
+        return await self.c_client.compose_down(
             get_or_create_logger(project.name), self.get_compose_file(project)
         )
 
-    def project_is_running(self, project_or_name: str | Project) -> bool:
+    async def project_is_running(self, project_or_name: str | Project) -> bool:
         """Check if the project server is running.
 
         :param project_or_name: Project name or the instance.
@@ -407,9 +407,9 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: bool
         """
         project = self.get_project(project_or_name)
-        return len(self.c_client.compose_ps(self.get_compose_file(project))) > 0
+        return len(await self.c_client.compose_ps(self.get_compose_file(project))) > 0
 
-    def build_project_cluster_images(self, project_or_name: str | Project) -> int:
+    async def build_project_cluster_images(self, project_or_name: str | Project) -> int:
         """Rebuild project images.
 
         :param project_or_name: Project name or the instance.
@@ -418,7 +418,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: int
         """
         project = self.get_project(project_or_name)
-        return self.c_client.compose_build(
+        return await self.c_client.compose_build(
             get_or_create_logger(project.name), self.get_compose_file(project)
         )
 
@@ -451,7 +451,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         self.c_client.compose_shell(self.get_compose_file(project), "admin", "bash")
 
-    def get_resource_usage(
+    async def get_resource_usage(
         self, project_or_name: str | Project
     ) -> list[dict[str, str]]:
         """Get project resource usage using `podman-compose` command.
@@ -463,9 +463,9 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: list[dict[str, str]]
         """
         prj = self.get_project(project_or_name)
-        return self.c_client.stats(prj.name)
+        return await self.c_client.stats(prj.name)
 
-    def get_ps_data(self, project_or_name: str | Project) -> list[str]:
+    async def get_ps_data(self, project_or_name: str | Project) -> list[str]:
         """Get running containers of a project using `podman` command.
 
         :param project_or_name: Project name or the instance.
@@ -475,17 +475,19 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: list[str]
         """
         prj = self.get_project(project_or_name)
-        return self.c_client.ps(prj.name)
+        return await self.c_client.ps(prj.name)
 
-    def get_all_services_info(self, project_or_name: str | Project) -> list[dict]:
+    async def get_all_services_info(self, project_or_name: str | Project) -> list[dict]:
         project = self.get_project(project_or_name)
-        return self.c_client.project_stats(project.name)
+        return await self.c_client.project_stats(project.name)
 
-    def health_check(self, project_or_name: str | Project) -> list[HealthCheckDict]:
+    async def health_check(
+        self, project_or_name: str | Project
+    ) -> list[HealthCheckDict]:
         prj = self.get_project(project_or_name)
-        return self.c_client.compose_states(self.get_compose_file(prj))
+        return await self.c_client.compose_states(self.get_compose_file(prj))
 
-    def disable_project(self, project_or_name: str | Project):
+    async def disable_project(self, project_or_name: str | Project):
         """Set a project object to inactive.
 
         Stops all the clusters and set the object to `active=False`.
@@ -496,16 +498,16 @@ class ProjectManager(ClusterConfigManager[Project]):
         prj = self.get_project(project_or_name)
 
         # cancel all services
-        self.stop_project_cluster(prj)
-        self.ue_mgr.stop_all_user_clusters(prj)
+        await self.stop_project_cluster(prj)
+        await self.ue_mgr.stop_all_user_clusters(prj)
 
-        self.c_client.rm_networks(
+        await self.c_client.rm_networks(
             get_or_create_logger(prj.name), f"{prj.name}_main_net"
         )
-        self.c_client.rm_networks(
+        await self.c_client.rm_networks(
             get_or_create_logger(prj.name), f"{prj.name}_admin_net"
         )
-        self.ue_mgr.disable_multiple_enrollments(
+        await self.ue_mgr.disable_multiple_enrollments(
             [(user, prj) for user in self.ue_mgr.get_user_enrollments_for_project(prj)]
         )
 
@@ -540,7 +542,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         )
         self.remove_doc_by_id(prj.id)
 
-    def delete_project(self, project_or_name: str | Project):
+    async def delete_project(self, project_or_name: str | Project):
         """Delete a project.
 
         :param project_or_name: Project name or the instance.
@@ -553,7 +555,7 @@ class ProjectManager(ClusterConfigManager[Project]):
             # TODO: log that project does not exist
             return
 
-        self.disable_project(prj)
+        await self.disable_project(prj)
         self.flush_project(prj)
 
     def get_projects_raw(self, include_inactive: bool = False) -> list[RawProjectDict]:
@@ -576,8 +578,8 @@ class ProjectManager(ClusterConfigManager[Project]):
         pipeline = MongoQueries.project_get_projects_raw(include_inactive)
         return [i for i in self.collection.aggregate(pipeline)]
 
-    def delete_all(self):
+    async def delete_all(self):
         """Remove all projects from the host system and clear database."""
         projects = self.get_docs()
         for prj in projects:
-            self.delete_project(prj)
+            await self.delete_project(prj)
