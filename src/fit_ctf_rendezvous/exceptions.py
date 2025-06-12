@@ -8,3 +8,7 @@ class IncorrectCredentials(FitRendezvousException):
 
 class UserNotLoggedIn(FitRendezvousException):
     pass
+
+
+class CannotChangePassword(FitRendezvousException):
+    pass

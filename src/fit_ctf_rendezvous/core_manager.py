@@ -1,9 +1,12 @@
 import re
+from typing import Any, Callable
 
 from fit_ctf_backend.ctf_manager import CTFManager
 from fit_ctf_models import User
 from fit_ctf_models.project import Project
 from fit_ctf_models.user_enrollment import UserEnrollment
+from fit_ctf_rendezvous.exceptions import CannotChangePassword
+from fit_ctf_utils.auth.auth_interface import AuthInterface
 from fit_ctf_utils.auth.local_auth import LocalAuth
 from fit_ctf_utils.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_utils.exceptions import CTFException
@@ -13,13 +16,17 @@ REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
 REGEX_IS_DIGIT = re.compile("[0-9]")
 
 
-class CoreManager:
-    def __init__(self, ctf_mgr: CTFManager):
-        self.ctf_mgr = ctf_mgr
-        self._user: User | None = None
+class _VariableRegistry:
+    _active_user: User | None = None
+    _selected_project: Project | None = None
+
+    _callbacks: dict[str, dict[str, Callable[[Any | None], None]]] = {
+        "active_user": {},
+        "selected_project": {},
+    }
 
     @property
-    def user(self) -> User | None:
+    def active_user(self) -> User | None:
         """Get signed user.
 
         :return: User object if user is signed; `None` otherwise.
@@ -27,7 +34,43 @@ class CoreManager:
         """
         return self._user
 
-    def check_login(self, username: str, password: str) -> bool:
+    @active_user.setter
+    def active_user(self, value: User | None):
+        for _, _callback in self._callbacks["active_user"].items():
+            _callback(value)
+        self._user = value
+
+    @property
+    def selected_project(self) -> Project | None:
+        return self._selected_project
+
+    @selected_project.setter
+    def selected_project(self, value: Project | None):
+        for _, callback in self._callbacks["selected_project"].items():
+            callback(value)
+        self._selected_project = value
+
+    def register_hook(
+        self, variable_name: str, name: str, callback: Callable[[Any | None], None]
+    ):
+        self._callbacks[variable_name][name] = callback
+
+    def unregister_hook(self, variable_name: str, name: str):
+        self._callbacks[variable_name].pop(name)
+
+    def unregister_from_all(self, name: str):
+        for callbacks in self._callbacks.values():
+            callbacks.pop(name)
+
+
+class CoreManager(_VariableRegistry):
+
+    def __init__(self, ctf_mgr: CTFManager, auth_client: AuthInterface | None = None):
+        self.ctf_mgr = ctf_mgr
+        # TODO: config
+        self.auth_client = auth_client if auth_client else LocalAuth(ctf_mgr.user_mgr)
+
+    def validate_login(self, username: str, password: str) -> bool:
         """Validate user's login attempt.
 
         :param username: Given username.
@@ -37,9 +80,7 @@ class CoreManager:
         :return: `True` if given credentials are valid; False otherwise.
         :rtype: bool
         """
-        if not LocalAuth(self.ctf_mgr.user_mgr).validate_credentials(
-            username, password
-        ):
+        if not self.auth_client.validate_credentials(username, password):
             return False
 
         self._user = self.ctf_mgr.user_mgr.get_doc_by_filter(username=username)
@@ -52,7 +93,7 @@ class CoreManager:
         :return: `True` if the password meet all the password requirements.
         :rtype: bool
         """
-        return LocalAuth.validate_password_strength(password)
+        return AuthInterface.validate_password_strength(password)
 
     def generate_password(self) -> str:
         """Generate a basic password.
@@ -60,58 +101,7 @@ class CoreManager:
         :return: New password.
         :rtype: str
         """
-        return LocalAuth.generate_password(DEFAULT_PASSWORD_LENGTH)
-
-    def get_active_projects(self) -> list[Project]:
-        """Get a list of enrolled projects.
-
-        :return: A list of enrolled projects for the given user.
-        :rtype: list[Project]
-        """
-        if not self.user:
-            return []
-        return self.ctf_mgr.user_enrollment_mgr.get_enrolled_projects(
-            self.user.username
-        )
-
-    def start_user_instance(self, project_name: str) -> UserEnrollment | None:
-        """Start user login nodes.
-
-        :param project_name: Project name.
-        :type project_name: str
-        :return: Found user enrollment object; `None` otherwise.
-        :rtype: UserEnrollment | None
-        """
-        if not self.user:
-            return None
-        try:
-            project = self.ctf_mgr.prj_mgr.get_project(project_name)
-            user_enrollment = self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
-                self.user, project
-            )
-        except CTFException:
-            # TODO: print e
-            return None
-
-        self.ctf_mgr.user_enrollment_mgr.start_user_cluster(self.user, project)
-        return user_enrollment
-
-    def stop_user_instance(self, project_name: str):
-        """Stop user login nodes.
-
-        :param project_name: Project name.
-        :type project_name: str
-        """
-        if not self.user:
-            return
-
-        try:
-            project = self.ctf_mgr.prj_mgr.get_project(project_name)
-            self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(self.user, project)
-        except CTFException:
-            return
-
-        self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(self.user, project)
+        return AuthInterface.generate_password(DEFAULT_PASSWORD_LENGTH)
 
     def change_password(self, password: str):
         """Change user password.
@@ -121,4 +111,74 @@ class CoreManager:
         """
         if not self._user:
             return
+        if not self.auth_client.local_login:
+            raise CannotChangePassword(
+                "The Auth client does not support password update."
+            )
         self.ctf_mgr.user_mgr.change_password(self._user.username, password)
+
+    def get_active_projects(self) -> list[Project]:
+        """Get a list of enrolled projects.
+
+        :return: A list of enrolled projects for the given user.
+        :rtype: list[Project]
+        """
+        if not self.active_user:
+            return []
+        return self.ctf_mgr.user_enrollment_mgr.get_enrolled_projects(
+            self.active_user.username
+        )
+
+    async def start_user_instance(self) -> UserEnrollment | None:
+        """Start user login nodes.
+
+        :param project_name: Project name.
+        :type project_name: str
+        :return: Found user enrollment object; `None` otherwise.
+        :rtype: UserEnrollment | None
+        """
+        if not self.active_user or not self.selected_project:
+            return None
+        try:
+            user_enrollment = self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
+                self.active_user, self.selected_project
+            )
+        except CTFException:
+            # TODO: print e
+            return None
+
+        self.ctf_mgr.user_enrollment_mgr.start_user_cluster(
+            self.active_user, self.selected_project
+        )
+        return user_enrollment
+
+    async def stop_user_instance(self):
+        """Stop user login nodes.
+
+        :param project_name: Project name.
+        :type project_name: str
+        """
+        if not self.active_user or not self.selected_project:
+            return
+
+        try:
+            self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
+                self.active_user, self.selected_project
+            )
+        except CTFException:
+            return
+
+        self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(
+            self.active_user, self.selected_project
+        )
+
+    def instance_is_running(self) -> bool:
+        if not self.active_user or not self.selected_project:
+            return False
+        return self.ctf_mgr.user_enrollment_mgr.user_cluster_is_running(
+            self.active_user, self.selected_project
+        )
+
+    def cleanup(self):
+        # TODO: implement shutting down running instances of the user
+        pass

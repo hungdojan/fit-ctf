@@ -1,54 +1,69 @@
 from typing import Callable
 
 from textual.app import ComposeResult
-from textual.containers import HorizontalGroup
-from textual.widgets import Button
+from textual.containers import Container, HorizontalGroup
 
-from fit_ctf_rendezvous.core_manager import CoreManager
+import fit_ctf_rendezvous.rendezvous_app as r_app
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
-from fit_ctf_rendezvous.widgets.app_content_container import AppContentContainer
-from fit_ctf_rendezvous.widgets.app_sidebar import AppSideBar
+from fit_ctf_rendezvous.widgets import (
+    AppSideBar,
+    HelpAboutPage,
+    ProjectInfoPage,
+    ProjectSelector,
+    SettingsPage,
+    ShowConsolePage,
+    SubmitSecretPage,
+    UploadKeyPage,
+    WelcomePage,
+)
 
 
 class AppScreen(BaseScreen):
     CSS_PATH = "app_screen_styles.tcss"
 
     def __init__(
-        self, core_mgr: CoreManager, on_exit: Callable[[], None], **kwargs
+        self, base_app: "r_app.RendezvousApp", on_exit: Callable[[], None], **kwargs
     ) -> None:
-        super().__init__(core_mgr, **kwargs)
+        super().__init__(base_app, **kwargs)
         self.on_exit = on_exit
-        self.app_content_container = AppContentContainer(
-            self, id="app-content-container"
+        self.side_bar = AppSideBar(
+            self, on_page_select=self.page_selector_handler, id="app-side-bar"
         )
+        self.pages = {
+            "home": WelcomePage(self, id="welcome-page"),
+            "select-project": ProjectSelector(
+                self,
+                id="project-selector",
+            ),
+            "project-info": ProjectInfoPage(self, id="project-info-page"),
+            "submit-secret": SubmitSecretPage(self, id="submit-secret-page"),
+            "show-console": ShowConsolePage(self, id="show-console-page"),
+            "upload-key": UploadKeyPage(self, id="upload-key-page"),
+            "help-about": HelpAboutPage(self, id="help-about-page"),
+            "settings": SettingsPage(self, id="settings-page"),
+        }
+        self.page_state = "home"
+        self.curr_content_widget = self.pages[self.page_state]
 
-    def logout_handler(self) -> None:
-        # TODO: logout
-        self.on_exit()
+    @property
+    def horizontal_group(self) -> Container:
+        return self.query_one("#content-container", Container)
 
-    def home_handler(self) -> None:
-        self.app_content_container.label_content = "home"
-
-    def upload_key_handler(self) -> None:
-        self.app_content_container.remove_children()
-        self.app_content_container.mount(Button("test"))
-
-    def settings_handler(self) -> None:
-        self.app_content_container.label_content = "settings"
-
-    def about_help_handler(self) -> None:
-        self.app_content_container.label_content = "about & help"
+    def page_selector_handler(self, page_name: str) -> None:
+        self.curr_content_widget.remove()
+        if page_name == "logout":
+            self.core_mgr.active_user = None
+            self.core_mgr.selected_project = None
+            self.on_exit()
+        elif page_name in self.pages.keys():
+            self.page_state = page_name
+            self.horizontal_group.mount(self.pages[self.page_state])
+            self.curr_content_widget = self.pages[self.page_state]
 
     def compose(self) -> ComposeResult:
         with HorizontalGroup():
-            yield AppSideBar(
-                self,
-                on_home=self.home_handler,
-                on_upload_key=self.upload_key_handler,
-                on_settings=self.settings_handler,
-                on_about_help=self.about_help_handler,
-                on_logout=self.logout_handler,
-            )
-            yield self.app_content_container
+            yield self.side_bar
+            with Container(id="content-container"):
+                yield self.curr_content_widget
         for i in super().compose():
             yield i

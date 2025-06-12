@@ -7,6 +7,13 @@ import string
 
 class AuthInterface(ABC):
 
+    def __init__(self, local_login: bool) -> None:
+        self._local_login = local_login
+
+    @property
+    def local_login(self) -> bool:
+        return self._local_login
+
     @staticmethod
     def generate_password(len: int) -> str:
         """Generate a random password.

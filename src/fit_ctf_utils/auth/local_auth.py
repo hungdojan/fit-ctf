@@ -6,6 +6,7 @@ from fit_ctf_utils.auth.auth_interface import AuthInterface
 class LocalAuth(AuthInterface):
 
     def __init__(self, user_mgr: "user.UserManager"):
+        super().__init__(True)
         self._user_mgr = user_mgr
 
     def validate_credentials(self, username: str, password: str) -> bool:

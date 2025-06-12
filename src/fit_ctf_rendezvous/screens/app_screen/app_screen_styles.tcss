@@ -1,12 +1,32 @@
 /* CSS for widgets inside the sidebar */
+AppScreen {
+    /* CSS for widgets inside the content container */
+    #content-container {
+        border: none;
+        align: center middle;
+    }
+    Container {
+        border: ascii white;
+        border-title-align: right;
+    }
+}
+
+ShowConsolePage {
+    border: none !important;
+}
+
 AppSideBar {
-    border: ascii;
+    border: ascii white;
     align: center middle !important;
     min-width: 20;
     max-width: 30;
     height: auto;
     width: 30%;
 
+    Label {
+        width: 100%;
+        text-align: center;
+    }
     Rule {
         color: white;
         margin: 0;
@@ -25,10 +45,39 @@ AppSideBar {
     }
 }
 
-/* CSS for widgets inside the content container */
-AppContentContainer {
-    border: blank;
-    align: center middle;
-    background: yellow;
-    color: black;
+ProjectSelector {
+    Grid {
+        grid-size: 3;
+        align: center middle;
+        border: none;
+        min-height: 10;
+        Button {
+            border: blank;
+        }
+    }
+    Rule {
+        color: white;
+        margin: 0;
+        padding: 0;
+    }
+    #select-btn-deselect {
+        width: 100%;
+    }
+}
+
+ProjectInfoPage {
+    Container {
+        border: none !important;
+    }
+    Markdown {
+        height: 100%;
+    }
+    Rule {
+        margin: 0;
+        padding: 0;
+        color: white;
+    }
+    #projectinfo-toggle-instance-btn {
+        width: 100%;
+    }
 }

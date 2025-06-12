@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 
 from fit_ctf_backend.ctf_manager import CTFManager
+from fit_ctf_rendezvous.core_manager import CoreManager
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 from fit_ctf_utils.constants import get_db_info, get_paths
 from fit_ctf_utils.types import PathDict
@@ -18,9 +19,10 @@ def main():
     )
 
     ctf_mgr = CTFManager(db_host, db_name, paths)
+    core_mgr = CoreManager(ctf_mgr)
 
     # start frontend
-    app = RendezvousApp(ctf_mgr)
+    app = RendezvousApp(core_mgr)
     app.run()
 
 

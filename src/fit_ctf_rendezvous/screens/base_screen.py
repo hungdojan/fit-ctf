@@ -2,18 +2,19 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import Header
 
+import fit_ctf_rendezvous.rendezvous_app as r_app
 from fit_ctf_rendezvous.core_manager import CoreManager
 
 
 class BaseScreen(Screen):
 
-    def __init__(self, core_mgr: CoreManager, **kwargs) -> None:
+    def __init__(self, base_app: "r_app.RendezvousApp", **kwargs) -> None:
         super().__init__(**kwargs)
-        self._core_mgr = core_mgr
+        self._base_app = base_app
 
     @property
     def core_mgr(self) -> CoreManager:
-        return self._core_mgr
+        return self._base_app.core_mgr
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
