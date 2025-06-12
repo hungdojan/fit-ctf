@@ -1,3 +1,4 @@
+import asyncio
 import click
 
 from fit_ctf_backend.cli.utils import format_option, module_name_option
@@ -98,7 +99,7 @@ def remove(ctx: click.Context, module_name: str):
     """
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     try:
-        ctf_mgr.module_mgr.remove_module(module_name)
+        asyncio.run(ctf_mgr.module_mgr.remove_module(module_name))
     except (ModuleNotExistsException, ModuleInUseException) as e:
         click.echo(e)
         exit(1)

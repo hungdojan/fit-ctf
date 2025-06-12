@@ -1,3 +1,4 @@
+import asyncio
 import click
 
 from fit_ctf_backend.cli.utils import (
@@ -48,7 +49,7 @@ def start_cluster(ctx: click.Context):
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     user = ctx.parent.obj["user"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.user_enrollment_mgr.start_user_cluster(user, project)
+    asyncio.run(ctf_mgr.user_enrollment_mgr.start_user_cluster(user, project))
 
 
 @user_cluster.command(name="stop")
@@ -58,7 +59,7 @@ def stop_cluster(ctx: click.Context):
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     user = ctx.parent.obj["user"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.user_enrollment_mgr.stop_user_cluster(user, project)
+    asyncio.run(ctf_mgr.user_enrollment_mgr.stop_user_cluster(user, project))
 
 
 @user_cluster.command(name="health-check")
@@ -72,7 +73,9 @@ def health_check(ctx: click.Context, format: str):
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     user = ctx.parent.obj["user"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    cluster_data = ctf_mgr.user_enrollment_mgr.user_cluster_health_check(user, project)
+    cluster_data = asyncio.run(
+        ctf_mgr.user_enrollment_mgr.user_cluster_health_check(user, project)
+    )
 
     header = ["Name", "Image", "State"]
     values = [
@@ -93,7 +96,7 @@ def restart_cluster(ctx: click.Context):
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     user = ctx.parent.obj["user"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.user_enrollment_mgr.restart_user_cluster(user, project)
+    asyncio.run(ctf_mgr.user_enrollment_mgr.restart_user_cluster(user, project))
 
 
 @user_cluster.command(name="is-running")
@@ -127,7 +130,7 @@ def build_images(ctx: click.Context):
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     user = ctx.parent.obj["user"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.user_enrollment_mgr.build_user_cluster_images(user, project)
+    asyncio.run(ctf_mgr.user_enrollment_mgr.build_user_cluster_images(user, project))
 
 
 @user_cluster.group(name="services")

@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 
 import click
@@ -206,4 +207,4 @@ def change_password(ctx: click.Context, username: str, password: str):
 def delete_user(ctx: click.Context, usernames: list[str]):
     """Remove user from the database."""
     user_mgr: UserManager = ctx.parent.obj["ctf_mgr"].user_mgr  # pyright: ignore
-    user_mgr.delete_users(usernames)
+    asyncio.run(user_mgr.delete_users(usernames))

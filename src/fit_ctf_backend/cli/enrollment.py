@@ -1,3 +1,4 @@
+import asyncio
 import pathlib
 
 import click
@@ -77,7 +78,9 @@ def cancel_from_project(ctx: click.Context, username: str, project_name: str):
     """Remove user from the project."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     try:
-        ctf_mgr.user_enrollment_mgr.cancel_user_enrollment(username, project_name)
+        asyncio.run(
+            ctf_mgr.user_enrollment_mgr.cancel_user_enrollment(username, project_name)
+        )
     except CTFException as e:
         click.echo(e)
         exit(1)
@@ -104,7 +107,11 @@ def cancel_multiple_enrollment(
         with open(input_file, "r") as f:
             usernames = [line.strip() for line in f]
 
-        ctf_mgr.user_enrollment_mgr.cancel_multiple_enrollments(usernames, project_name)
+        asyncio.run(
+            ctf_mgr.user_enrollment_mgr.cancel_multiple_enrollments(
+                usernames, project_name
+            )
+        )
     except FileNotFoundError:
         click.echo(f"File `{str(input_file.resolve())}` does not exist.")
     except PermissionError:
@@ -118,7 +125,7 @@ def cancel_user(ctx: click.Context, username: str):
     """Cancel user from all the enrolled projects."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     try:
-        ctf_mgr.user_enrollment_mgr.cancel_user_from_all_projects(username)
+        asyncio.run(ctf_mgr.user_enrollment_mgr.cancel_user_from_all_projects(username))
     except CTFException as e:
         click.echo(e)
         exit(1)
@@ -131,7 +138,9 @@ def cancel_project(ctx: click.Context, project_name: str):
     """Cancel all users that are enrolled to the given project."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     try:
-        ctf_mgr.user_enrollment_mgr.cancel_all_project_enrollments(project_name)
+        asyncio.run(
+            ctf_mgr.user_enrollment_mgr.cancel_all_project_enrollments(project_name)
+        )
     except CTFException as e:
         click.echo(e)
         exit(1)

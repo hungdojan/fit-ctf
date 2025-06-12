@@ -101,7 +101,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         """
         if not hasattr(self, "_user_mgr"):
             self._user_mgr = _user.UserManager(self._db, self.c_client, self._paths)
-        return self.user_mgr
+        return self._user_mgr
 
     def _get_user_and_project(
         self,
@@ -673,7 +673,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
     # CANCEL USER ENROLLMENTS
 
-    def disable_enrollment(
+    async def disable_enrollment(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -703,15 +703,15 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                 f"User `{user.username}` is not enrolled to the project `{project.name}`"
             )
 
-        self.stop_user_cluster(user, project)
-        self.c_client.rm_networks(
+        await self.stop_user_cluster(user, project)
+        await self.c_client.rm_networks(
             get_or_create_logger(project.name), f"{project.name}_{user.username}_"
         )
 
         user_enrollment.active = False
         self.update_doc(user_enrollment)
 
-    def disable_multiple_enrollments(
+    async def disable_multiple_enrollments(
         self, user_project_pairs: list[tuple["_user.User", "_project.Project"]]
     ):
         """Set multiple user enrollment documents inactive.
@@ -730,11 +730,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                 **{"user_id.$id": user.id, "project_id.$id": project.id, "active": True}
             )
             if ue:
-                self.c_client.compose_down(
+                await self.c_client.compose_down(
                     get_or_create_logger(project.name),
                     self.get_compose_file(user, project),
                 )
-                self.c_client.rm_networks(
+                await self.c_client.rm_networks(
                     get_or_create_logger(project.name),
                     f"{project.name}_{user.username}_",
                 )
@@ -819,7 +819,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         self.remove_docs_by_id([data["_id"] for data in query_res])
 
-    def cancel_user_enrollment(
+    async def cancel_user_enrollment(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -835,10 +835,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :raises UserNotEnrolledToProjectException: User is not enrolled to the given
         project.
         """
-        self.disable_enrollment(user_or_username, project_or_name)
+        await self.disable_enrollment(user_or_username, project_or_name)
         self.flush_enrollment(user_or_username, project_or_name)
 
-    def cancel_multiple_enrollments(
+    async def cancel_multiple_enrollments(
         self, lof_usernames: list[str], project_or_name: "str | _project.Project"
     ):
         """Cancel multiple enrollment to a selected project.
@@ -854,10 +854,12 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             (user, project)
             for user in self.user_mgr.get_docs(username={"$in": lof_usernames})
         ]
-        self.disable_multiple_enrollments(pairs_user_project)
+        await self.disable_multiple_enrollments(pairs_user_project)
         self.flush_multiple_enrollments(pairs_user_project)
 
-    def cancel_all_project_enrollments(self, project_or_name: "str | _project.Project"):
+    async def cancel_all_project_enrollments(
+        self, project_or_name: "str | _project.Project"
+    ):
         """Remove all user enrollments for the given project.
 
         :param project_or_name: Project name or `Project` object.
@@ -868,10 +870,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         pairs_user_project = [
             (user, project) for user in self.get_user_enrollments_for_project(project)
         ]
-        self.disable_multiple_enrollments(pairs_user_project)
+        await self.disable_multiple_enrollments(pairs_user_project)
         self.flush_multiple_enrollments(pairs_user_project)
 
-    def cancel_user_from_all_projects(self, user_or_username: "str | _user.User"):
+    async def cancel_user_from_all_projects(self, user_or_username: "str | _user.User"):
         """Remove user from all enrolled projects.
 
         :param user_or_username: User username or `User` object.
@@ -883,17 +885,17 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         pairs_user_project = [
             (user, project) for project in self.get_enrolled_projects(user)
         ]
-        self.disable_multiple_enrollments(pairs_user_project)
+        await self.disable_multiple_enrollments(pairs_user_project)
         self.flush_multiple_enrollments(pairs_user_project)
 
-    def delete_all(self):
+    async def delete_all(self):
         """Remove all canceled user enrollments."""
         for prj in self.prj_mgr.get_docs():
-            self.cancel_all_project_enrollments(prj)
+            await self.cancel_all_project_enrollments(prj)
 
     # MANAGE CLUSTER
 
-    def start_user_cluster(
+    async def start_user_cluster(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -918,11 +920,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
 
-        return self.c_client.compose_up(
+        return await self.c_client.compose_up(
             get_or_create_logger(project.name), compose_file
         )
 
-    def stop_user_cluster(
+    async def stop_user_cluster(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -947,11 +949,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
 
-        return self.c_client.compose_down(
+        return await self.c_client.compose_down(
             get_or_create_logger(project.name), compose_file
         )
 
-    def user_cluster_is_running(
+    async def user_cluster_is_running(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -975,9 +977,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
-        return len(self.c_client.compose_ps(compose_file)) > 0
+        return len(await self.c_client.compose_ps(compose_file)) > 0
 
-    def restart_user_cluster(
+    async def restart_user_cluster(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -998,10 +1000,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             _ = self.get_user_enrollment(user, project)
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
-        self.stop_user_cluster(user, project)
-        self.start_user_cluster(user, project)
+        await self.stop_user_cluster(user, project)
+        await self.start_user_cluster(user, project)
 
-    def build_user_cluster_images(
+    async def build_user_cluster_images(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -1025,11 +1027,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
-        return self.c_client.compose_build(
+        return await self.c_client.compose_build(
             get_or_create_logger(project.name), compose_file
         )
 
-    def user_cluster_health_check(
+    async def user_cluster_health_check(
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
@@ -1039,9 +1041,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             _ = self.get_user_enrollment(user, project)
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
-        return self.c_client.compose_states(self.get_compose_file(user, project))
+        return await self.c_client.compose_states(self.get_compose_file(user, project))
 
-    def stop_multiple_user_clusters(
+    async def stop_multiple_user_clusters(
         self, users: list[_user.User], project: "_project.Project"
     ):
         """Stop multiple user clusters.
@@ -1060,9 +1062,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                 pass
 
         for cfile in compose_files:
-            self.c_client.compose_down(get_or_create_logger(project.name), cfile)
+            await self.c_client.compose_down(get_or_create_logger(project.name), cfile)
 
-    def stop_all_user_clusters(self, project: "_project.Project"):
+    async def stop_all_user_clusters(self, project: "_project.Project"):
         """Stop all user clusters in the project.
 
         :param project: A project object.
@@ -1072,9 +1074,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         compose_files = [self.get_compose_file(user, project) for user in lof_users]
         for cfile in compose_files:
-            self.c_client.compose_down(get_or_create_logger(project.name), cfile)
+            await self.c_client.compose_down(get_or_create_logger(project.name), cfile)
 
-    def stop_all_clusters_of_a_user(self, user: "_user.User"):
+    async def stop_all_clusters_of_a_user(self, user: "_user.User"):
         """Stop all running clusters of a user.
 
         :param project: A project object.
@@ -1084,4 +1086,4 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         compose_files = [self.get_compose_file(user, prj) for prj in lof_projects]
         for cfile in compose_files:
-            self.c_client.compose_down(get_or_create_logger(__name__), cfile)
+            await self.c_client.compose_down(get_or_create_logger(__name__), cfile)

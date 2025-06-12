@@ -92,7 +92,7 @@ def test_get_reserved_ports(
         )
 
 
-def test_disable_and_flush_project(connected_data: FixtureData):
+async def test_disable_and_flush_project(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     prj_mgr = ctf_mgr.prj_mgr
     prjs = prj_mgr.get_docs()
@@ -110,7 +110,7 @@ def test_disable_and_flush_project(connected_data: FixtureData):
         ctf_mgr.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
     )
 
-    prj_mgr.disable_project(deleted_prj)
+    await prj_mgr.disable_project(deleted_prj)
 
     assert not prj_mgr.get_project(deleted_prj.name, active=None).active
     new_enrollment_count = len(
@@ -127,7 +127,7 @@ def test_disable_and_flush_project(connected_data: FixtureData):
     assert not (ctf_mgr._paths["projects"] / deleted_prj.name).exists()
 
 
-def test_delete_project(
+async def test_delete_project(
     project_data: FixtureData,
 ):
     ctf_mgr, _ = project_data
@@ -138,9 +138,9 @@ def test_delete_project(
     assert (ctf_mgr._paths["projects"] / deleted_prj.name).is_dir()
 
     # does nothing
-    prj_mgr.delete_project("non_existing_project")
+    await prj_mgr.delete_project("non_existing_project")
 
-    prj_mgr.delete_project(deleted_prj.name)
+    await prj_mgr.delete_project(deleted_prj.name)
 
     assert not (ctf_mgr._paths["projects"] / deleted_prj.name).is_dir()
     assert len(prj_mgr.get_docs()) == 1

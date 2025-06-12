@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import re
 from io import StringIO
@@ -80,6 +81,7 @@ def test_cli_remove_module(cli_data: CLIData):
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
+    # NOTE: a new module is created in the previous tests
     assert len(rows[1:]) == 3
 
     cmd = "module rm -mn other-module".split()
@@ -92,7 +94,7 @@ def test_cli_remove_module(cli_data: CLIData):
     assert result.exit_code == 1
     assert re.search("still used by some services.$", result.output)
 
-    ctf_mgr.prj_mgr.delete_all()
+    asyncio.run(ctf_mgr.prj_mgr.delete_all())
 
     cmd = "module rm -mn base".split()
     result = cli_runner.invoke(cli, cmd)
