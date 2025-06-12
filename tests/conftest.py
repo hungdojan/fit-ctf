@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 
@@ -36,9 +37,9 @@ def empty_data(
 
     def teardown():
         # teardown ctf_mgr
-        ctf_mgr.prj_mgr.delete_all()
-        ctf_mgr.user_mgr.delete_all()
-        ctf_mgr.user_enrollment_mgr.delete_all()
+        asyncio.run(ctf_mgr.prj_mgr.delete_all())
+        asyncio.run(ctf_mgr.user_mgr.delete_all())
+        asyncio.run(ctf_mgr.user_enrollment_mgr.delete_all())
 
     # get data
     db_host, db_name = get_db_info()

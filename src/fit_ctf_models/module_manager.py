@@ -69,7 +69,7 @@ class ModuleManager:
             module_count[mc["_id"]] += mc["count"]
         return module_count
 
-    def remove_module(self, module_name: str):
+    async def remove_module(self, module_name: str):
         """Remove module from the host."""
         module_path = self.get_path(module_name)
         module_count = self.reference_count(None)
@@ -77,5 +77,5 @@ class ModuleManager:
             raise ModuleInUseException(
                 f"Module `{module_name}` is still used by some services."
             )
-        self.c_client.rm_images(log_print, module_name, True)
+        await self.c_client.rm_images(log_print, module_name, True)
         rmtree(module_path)

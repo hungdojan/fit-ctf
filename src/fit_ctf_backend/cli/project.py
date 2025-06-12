@@ -1,3 +1,4 @@
+import asyncio
 import click
 
 from fit_ctf_backend.cli.utils import format_option, project_option
@@ -213,7 +214,7 @@ def resources_usage(ctx: click.Context, project_name: str):
     """Display the resource usage of a given project."""
     prj_mgr: ProjectManager = ctx.parent.obj["ctf_mgr"].prj_mgr  # pyright: ignore
     try:
-        prj_mgr.get_resource_usage(project_name)
+        asyncio.run(prj_mgr.get_resource_usage(project_name))
     except CTFException as e:
         click.echo(e)
 
@@ -224,7 +225,7 @@ def resources_usage(ctx: click.Context, project_name: str):
 def delete_project(ctx: click.Context, project_name: str):
     """Delete an existing project."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
-    ctf_mgr.prj_mgr.delete_project(project_name)
+    asyncio.run(ctf_mgr.prj_mgr.delete_project(project_name))
     click.echo(f"Project `{project_name}` deleted successfully.")
 
 
@@ -237,7 +238,7 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
 
     When tabulate format is used, the status column is colored."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
-    services_info = ctf_mgr.prj_mgr.get_all_services_info(project_name)
+    services_info = asyncio.run(ctf_mgr.prj_mgr.get_all_services_info(project_name))
     data_buffer = []
     for info in services_info:
         data_buffer.append(

@@ -1,3 +1,4 @@
+import asyncio
 import click
 
 from fit_ctf_backend.cli.utils import (
@@ -40,7 +41,7 @@ def start_cluster(ctx: click.Context):
     """Start project cluster."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.prj_mgr.start_project_cluster(project)
+    asyncio.run(ctf_mgr.prj_mgr.start_project_cluster(project))
 
 
 @project_cluster.command(name="stop")
@@ -49,7 +50,7 @@ def stop_cluster(ctx: click.Context):
     """Stop project cluster."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.prj_mgr.stop_project_cluster(project)
+    asyncio.run(ctf_mgr.prj_mgr.stop_project_cluster(project))
 
 
 @project_cluster.command(name="health-check")
@@ -62,7 +63,7 @@ def health_check(ctx: click.Context, format: str):
     """
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    cluster_data = ctf_mgr.prj_mgr.health_check(project)
+    cluster_data = asyncio.run(ctf_mgr.prj_mgr.health_check(project))
 
     header = ["Name", "Image", "State"]
     values = [
@@ -91,7 +92,7 @@ def restart_cluster(ctx: click.Context):
     """Restart project cluster."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.prj_mgr.restart_project_cluster(project)
+    asyncio.run(ctf_mgr.prj_mgr.restart_project_cluster(project))
 
 
 @project_cluster.command(name="is-running")
@@ -122,7 +123,7 @@ def build_images(ctx: click.Context):
     This step is usually done after compiling the YAML file."""
     ctf_mgr: CTFManager = ctx.parent.obj["ctf_mgr"]  # pyright: ignore
     project = ctx.parent.obj["project"]  # pyright: ignore
-    ctf_mgr.prj_mgr.build_project_cluster_images(project)
+    asyncio.run(ctf_mgr.prj_mgr.build_project_cluster_images(project))
 
 
 @project_cluster.group(name="services")

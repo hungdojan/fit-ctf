@@ -168,7 +168,7 @@ def test_enroll_multiple_users_to_project(
     assert set([u.user_id.id for u in ucs]).difference(set([u.id for u in new_users]))
 
 
-def test_get_enrollments_info(connected_data: FixtureData):
+async def test_get_enrollments_info(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -199,12 +199,12 @@ def test_get_enrollments_info(connected_data: FixtureData):
         and len(ue_mgr.get_enrolled_projects_raw(user2)) == 2
     )
 
-    prj_mgr.disable_project(prj1)
+    await prj_mgr.disable_project(prj1)
     all_prjs = ue_mgr.get_all_enrolled_projects_raw(user2)
     assert len(all_prjs) == 2 and len([p for p in all_prjs if p["active"]]) == 1
 
 
-def test_disable_enrollment(connected_data: FixtureData):
+async def test_disable_enrollment(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -215,15 +215,15 @@ def test_disable_enrollment(connected_data: FixtureData):
     prj1 = prj_mgr.get_project("prj1")
 
     with pytest.raises(UserNotEnrolledToProjectException):
-        ue_mgr.disable_enrollment(user1, prj1)
+        await ue_mgr.disable_enrollment(user1, prj1)
 
-    ue_mgr.disable_enrollment(user2, prj1)
+    await ue_mgr.disable_enrollment(user2, prj1)
     with pytest.raises(UserNotEnrolledToProjectException):
         ue_mgr.get_user_enrollment(user2, prj1)
     assert len(ue_mgr.get_user_enrollments_for_project(prj1)) == 1
 
 
-def test_disable_multiple_enrollments(connected_data: FixtureData):
+async def test_disable_multiple_enrollments(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -236,16 +236,18 @@ def test_disable_multiple_enrollments(connected_data: FixtureData):
     prj2 = prj_mgr.get_project("prj2")
 
     with pytest.raises(UserNotEnrolledToProjectException):
-        ue_mgr.disable_enrollment(user1, prj1)
+        await ue_mgr.disable_enrollment(user1, prj1)
 
     assert len(ue_mgr.get_docs(active=True)) == 4
-    ue_mgr.disable_multiple_enrollments([(user2, prj1), (user2, prj2), (user3, prj1)])
+    await ue_mgr.disable_multiple_enrollments(
+        [(user2, prj1), (user2, prj2), (user3, prj1)]
+    )
 
     assert len(ue_mgr.get_docs()) == 4
     assert len(ue_mgr.get_docs(active=True)) == 1
 
 
-def test_flush_enrollment(connected_data: FixtureData):
+async def test_flush_enrollment(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -265,7 +267,7 @@ def test_flush_enrollment(connected_data: FixtureData):
         / f"{user2.username}_compose.yaml"
     )
     assert path.exists()
-    ue_mgr.disable_enrollment(user2, prj1)
+    await ue_mgr.disable_enrollment(user2, prj1)
     assert path.exists()
     ue_mgr.flush_enrollment(user2, prj1)
     assert not ue_mgr.get_doc_by_filter(
@@ -274,7 +276,7 @@ def test_flush_enrollment(connected_data: FixtureData):
     assert not path.exists()
 
 
-def test_flush_multiple_enrollments(connected_data: FixtureData):
+async def test_flush_multiple_enrollments(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -297,7 +299,7 @@ def test_flush_multiple_enrollments(connected_data: FixtureData):
         len([f for f in (ctf_mgr._paths["projects"] / prj1.name / "users").iterdir()])
         == 2
     )
-    ue_mgr.disable_multiple_enrollments(pairs)
+    await ue_mgr.disable_multiple_enrollments(pairs)
     ue_mgr.flush_multiple_enrollments(pairs)
     assert len(ue_mgr.get_docs()) == 1
     assert not len(
@@ -305,7 +307,7 @@ def test_flush_multiple_enrollments(connected_data: FixtureData):
     )
 
 
-def test_cancel_user_enrollment(connected_data: FixtureData):
+async def test_cancel_user_enrollment(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
@@ -324,7 +326,7 @@ def test_cancel_user_enrollment(connected_data: FixtureData):
     assert filepath.exists()
     assert len(ue_mgr.get_user_enrollments_for_project(prj2)) == 2
 
-    ue_mgr.cancel_user_enrollment(user1, prj2)
+    await ue_mgr.cancel_user_enrollment(user1, prj2)
     assert not ue_mgr.get_doc_by_filter(
         **{"user_id.$id": user1.id, "project_id.$id": prj2.id}
     )
@@ -332,43 +334,43 @@ def test_cancel_user_enrollment(connected_data: FixtureData):
     assert len(ue_mgr.get_user_enrollments_for_project(prj2)) == 1
 
 
-def test_cancel_multiple_enrollments(connected_data: FixtureData):
+async def test_cancel_multiple_enrollments(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
 
     prj1 = prj_mgr.get_project("prj1")
     assert len(ue_mgr.get_user_enrollments_for_project(prj1)) == 2
-    ue_mgr.cancel_multiple_enrollments([f"user{i+1}" for i in range(3)], prj1)
+    await ue_mgr.cancel_multiple_enrollments([f"user{i+1}" for i in range(3)], prj1)
     assert len(ue_mgr.get_user_enrollments_for_project(prj1)) == 0
 
 
-def test_cancel_all_project_enrollments(connected_data: FixtureData):
+async def test_cancel_all_project_enrollments(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     prj_mgr = ctf_mgr.prj_mgr
 
     prj1 = prj_mgr.get_project("prj1")
     assert len(ue_mgr.get_user_enrollments_for_project(prj1)) == 2
-    ue_mgr.cancel_all_project_enrollments(prj1)
+    await ue_mgr.cancel_all_project_enrollments(prj1)
     assert len(ue_mgr.get_user_enrollments_for_project(prj1)) == 0
 
 
-def test_cancel_user_from_all_projects(connected_data: FixtureData):
+async def test_cancel_user_from_all_projects(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
     user_mgr = ctf_mgr.user_mgr
 
     user2 = user_mgr.get_user("user2")
     assert len(ue_mgr.get_enrolled_projects(user2)) == 2
-    ue_mgr.cancel_user_from_all_projects(user2)
+    await ue_mgr.cancel_user_from_all_projects(user2)
     assert len(ue_mgr.get_enrolled_projects(user2)) == 0
 
 
-def test_delete_all(connected_data: FixtureData):
+async def test_delete_all(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
     ue_mgr = ctf_mgr.user_enrollment_mgr
 
     assert len(ue_mgr.get_docs()) == 4
-    ue_mgr.delete_all()
+    await ue_mgr.delete_all()
     assert not ue_mgr.get_docs()

@@ -56,6 +56,7 @@ isort = "^6.0.0"
 flake8-pyproject = "^1.2.3"
 pre-commit = "^4.1.0"
 textual-dev = "^1.7.0"
+pytest-asyncio = "^1.0.0"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -66,6 +67,7 @@ env = [
     "ENABLE_CONTAINER_CLIENT_TESTING=0"
 ]
 addopts = "-vs"
+asyncio_mode = "auto"
 
 [tool.coverage.html]
 directory = "tests/reports/htmlcov"

@@ -63,7 +63,7 @@ def test_get_user_raw(user_data: FixtureData):
     assert user["active"]
 
 
-def test_disable_user(connected_data: FixtureData):
+async def test_disable_user(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
@@ -71,7 +71,7 @@ def test_disable_user(connected_data: FixtureData):
         len(ctf_mgr.user_enrollment_mgr.get_user_enrollments_for_project("prj2")) == 2
     )
 
-    ctf_mgr.user_mgr.disable_user("user1")
+    await ctf_mgr.user_mgr.disable_user("user1")
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
     assert len(ctf_mgr.user_mgr.get_users_info(True)) == 2
     assert (
@@ -79,14 +79,14 @@ def test_disable_user(connected_data: FixtureData):
     )
 
 
-def test_flush_user(connected_data: FixtureData):
+async def test_flush_user(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
     with pytest.raises(UserExistsException):
         ctf_mgr.user_mgr.flush_user("user1")
 
-    ctf_mgr.user_mgr.disable_user("user1")
+    await ctf_mgr.user_mgr.disable_user("user1")
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
     assert (ctf_mgr._paths["users"] / "user1").is_dir()
 
@@ -95,25 +95,25 @@ def test_flush_user(connected_data: FixtureData):
     assert not (ctf_mgr._paths["users"] / "user1").is_dir()
 
 
-def test_delete_user(connected_data: FixtureData):
+async def test_delete_user(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
     assert (ctf_mgr._paths["users"] / "user1").is_dir()
 
-    ctf_mgr.user_mgr.delete_a_user("user1")
+    await ctf_mgr.user_mgr.delete_a_user("user1")
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 2
     assert not (ctf_mgr._paths["users"] / "user1").is_dir()
 
 
-def test_delete_multiple_users(connected_data: FixtureData):
+async def test_delete_multiple_users(connected_data: FixtureData):
     ctf_mgr, _ = connected_data
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 3
     assert len(list(ctf_mgr._paths["users"].iterdir())) == 3
 
-    ctf_mgr.user_mgr.delete_users(["user1", "user2", "user4"])
+    await ctf_mgr.user_mgr.delete_users(["user1", "user2", "user4"])
 
     assert len(ctf_mgr.user_mgr.get_docs()) == 1
     assert len(list(ctf_mgr._paths["users"].iterdir())) == 1
