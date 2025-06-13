@@ -29,6 +29,7 @@ class AppSideBar(Container, CoreWidget):
         self.owner_screen.core_mgr.register_hook(
             "selected_project", __class__.__name__, self.selected_project_hook
         )
+        self.label = Label(self._label_text(), id="label-project-name")
 
     def _label_text(self) -> str:
         return (
@@ -44,7 +45,7 @@ class AppSideBar(Container, CoreWidget):
         with Center():
             yield Rule(line_style="ascii")
         with VerticalScroll():
-            yield Label(self._label_text(), id="label-project-name")
+            yield self.label
             yield Button(
                 "Project Info",
                 id="sidebar-project-info-btn",
@@ -74,6 +75,20 @@ class AppSideBar(Container, CoreWidget):
 
         yield Button("Logout", variant="error", id="sidebar-logout-btn")
 
+    def on_mount(self) -> None:
+        self.set_interval(3, self.update_instance_status)
+
+    async def update_instance_status(self) -> None:
+        if self.selected_project is None:
+            self.label.styles.background = "black"
+            self.label.styles.color = "white"
+        elif await self.core_mgr.instance_is_running():
+            self.label.styles.background = "green"
+            self.label.styles.color = "white"
+        else:
+            self.label.styles.background = "yellow"
+            self.label.styles.color = "black"
+
     @on(Button.Pressed)
     def page_button_select(self, event: Button.Pressed):
         button_id = event.button.id
@@ -91,7 +106,7 @@ class AppSideBar(Container, CoreWidget):
 
         for button in self.query(".sidebar-active-btn").results(Button):
             button.disabled = new_project is None
-        self.query_one("#label-project-name", Label).update(self._label_text())
+        self.label.update(self._label_text())
 
     def selected_project_hook(self, prj: Project | None):
         self.selected_project = prj

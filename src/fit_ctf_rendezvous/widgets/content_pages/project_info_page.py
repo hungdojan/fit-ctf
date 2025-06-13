@@ -42,7 +42,7 @@ class ProjectInfoPage(Container, CoreWidget):
     @on(Button.Pressed, "#projectinfo-toggle-instance-btn")
     async def toggle_instance(self):
         # TODO: make it more efficient
-        if not self.core_mgr.instance_is_running():
+        if not await self.core_mgr.instance_is_running():
             self.notify("Instance is booting...", severity="warning", timeout=3)
             self.run_worker(
                 self.core_mgr.start_user_instance(),

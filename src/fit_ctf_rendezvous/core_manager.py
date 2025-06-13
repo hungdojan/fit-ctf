@@ -32,13 +32,13 @@ class _VariableRegistry:
         :return: User object if user is signed; `None` otherwise.
         :rtype: User | None
         """
-        return self._user
+        return self._active_user
 
     @active_user.setter
     def active_user(self, value: User | None):
         for _, _callback in self._callbacks["active_user"].items():
             _callback(value)
-        self._user = value
+        self._active_user = value
 
     @property
     def selected_project(self) -> Project | None:
@@ -83,7 +83,7 @@ class CoreManager(_VariableRegistry):
         if not self.auth_client.validate_credentials(username, password):
             return False
 
-        self._user = self.ctf_mgr.user_mgr.get_doc_by_filter(username=username)
+        self._active_user = self.ctf_mgr.user_mgr.get_doc_by_filter(username=username)
         return True
 
     @staticmethod
@@ -109,13 +109,13 @@ class CoreManager(_VariableRegistry):
         :param password: New password.
         :type password: str
         """
-        if not self._user:
+        if not self._active_user:
             return
         if not self.auth_client.local_login:
             raise CannotChangePassword(
                 "The Auth client does not support password update."
             )
-        self.ctf_mgr.user_mgr.change_password(self._user.username, password)
+        self.ctf_mgr.user_mgr.change_password(self._active_user.username, password)
 
     def get_active_projects(self) -> list[Project]:
         """Get a list of enrolled projects.
@@ -147,7 +147,7 @@ class CoreManager(_VariableRegistry):
             # TODO: print e
             return None
 
-        self.ctf_mgr.user_enrollment_mgr.start_user_cluster(
+        await self.ctf_mgr.user_enrollment_mgr.start_user_cluster(
             self.active_user, self.selected_project
         )
         return user_enrollment
@@ -168,14 +168,14 @@ class CoreManager(_VariableRegistry):
         except CTFException:
             return
 
-        self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(
+        await self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(
             self.active_user, self.selected_project
         )
 
-    def instance_is_running(self) -> bool:
+    async def instance_is_running(self) -> bool:
         if not self.active_user or not self.selected_project:
             return False
-        return self.ctf_mgr.user_enrollment_mgr.user_cluster_is_running(
+        return await self.ctf_mgr.user_enrollment_mgr.user_cluster_is_running(
             self.active_user, self.selected_project
         )
 
