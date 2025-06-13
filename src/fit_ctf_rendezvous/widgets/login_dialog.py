@@ -37,8 +37,6 @@ class LoginDialog(Container, CoreWidget):
             yield Input(
                 placeholder="Username",
                 id="login-username-input",
-                # FIX: remove
-                value="user1",
             )
         with Horizontal():
             yield Label("Password")
@@ -46,8 +44,6 @@ class LoginDialog(Container, CoreWidget):
                 password=True,
                 placeholder="Password",
                 id="login-password-input",
-                # FIX: remove
-                value="BlackUnicorn12",
             )
         with Center():
             yield Checkbox("Show Password", id="login-checkbox")
