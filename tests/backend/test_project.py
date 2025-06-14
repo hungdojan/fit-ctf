@@ -3,7 +3,7 @@ import re
 import pytest
 
 from fit_ctf_models.project import ProjectManager
-from fit_ctf_utils.exceptions import (
+from fit_ctf_components.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
     ProjectNotExistException,
@@ -14,8 +14,8 @@ from tests import FixtureData
 
 def test_create_project(empty_data: FixtureData):
     """Create a project."""
-    ctf_mgr, _ = empty_data
-    prj_mgr = ctf_mgr.prj_mgr
+    ctf_app, _ = empty_data
+    prj_mgr = ctf_app.prj_mgr
 
     data = {
         "name": "demo_project1",
@@ -23,13 +23,13 @@ def test_create_project(empty_data: FixtureData):
         "starting_port_bind": -1,
         "description": "",
     }
-    assert not (ctf_mgr._paths["projects"] / data["name"]).is_dir()
+    assert not (ctf_app._paths["projects"] / data["name"]).is_dir()
     project = prj_mgr.init_project(**data)
 
     assert project
-    assert (ctf_mgr._paths["projects"] / data["name"]).is_dir()
-    assert (ctf_mgr._paths["projects"] / data["name"] / "users").is_dir()
-    assert (ctf_mgr._paths["projects"] / data["name"] / "logs").is_dir()
+    assert (ctf_app._paths["projects"] / data["name"]).is_dir()
+    assert (ctf_app._paths["projects"] / data["name"] / "users").is_dir()
+    assert (ctf_app._paths["projects"] / data["name"] / "logs").is_dir()
     assert len(list(project.services.keys())) > 0
 
 
@@ -37,9 +37,9 @@ def test_creating_project_errors(
     empty_data: FixtureData,
 ):
     """Test errors during project initializations."""
-    ctf_mgr, _ = empty_data
+    ctf_app, _ = empty_data
 
-    prj_mgr = ctf_mgr.prj_mgr
+    prj_mgr = ctf_app.prj_mgr
 
     invalid_names = ["-dash-symbols", "UpperCaseName", "space in the name"]
     for name in invalid_names:
@@ -59,11 +59,11 @@ def test_creating_project_errors(
 
 
 def test_get_projects(project_data: FixtureData):
-    ctf_mgr, _ = project_data
-    prj_mgr = ctf_mgr.prj_mgr
-    prjs = ctf_mgr.prj_mgr.get_docs()
+    ctf_app, _ = project_data
+    prj_mgr = ctf_app.prj_mgr
+    prjs = ctf_app.prj_mgr.get_docs()
 
-    assert len(list(ctf_mgr._paths["projects"].iterdir())) == len(prjs)
+    assert len(list(ctf_app._paths["projects"].iterdir())) == len(prjs)
 
     projects = prj_mgr.get_projects_raw()
     assert len(projects) == len(prjs)
@@ -80,8 +80,8 @@ def test_get_projects(project_data: FixtureData):
 def test_get_reserved_ports(
     project_data: FixtureData,
 ):
-    ctf_mgr, _ = project_data
-    prj_mgr = ctf_mgr.prj_mgr
+    ctf_app, _ = project_data
+    prj_mgr = ctf_app.prj_mgr
 
     reserved_ports = prj_mgr.get_reserved_ports()
     for data in reserved_ports:
@@ -93,12 +93,12 @@ def test_get_reserved_ports(
 
 
 async def test_disable_and_flush_project(connected_data: FixtureData):
-    ctf_mgr, _ = connected_data
-    prj_mgr = ctf_mgr.prj_mgr
+    ctf_app, _ = connected_data
+    prj_mgr = ctf_app.prj_mgr
     prjs = prj_mgr.get_docs()
 
     deleted_prj = prjs.pop(0)
-    enrolled_users = ctf_mgr.user_enrollment_mgr.get_user_enrollments_for_project(
+    enrolled_users = ctf_app.user_enrollment_mgr.get_user_enrollments_for_project(
         deleted_prj
     )
 
@@ -107,42 +107,42 @@ async def test_disable_and_flush_project(connected_data: FixtureData):
 
     assert len(enrolled_users) == 2
     enrolled_count = len(
-        ctf_mgr.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
+        ctf_app.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
     )
 
     await prj_mgr.disable_project(deleted_prj)
 
     assert not prj_mgr.get_project(deleted_prj.name, active=None).active
     new_enrollment_count = len(
-        ctf_mgr.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
+        ctf_app.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
     )
 
     assert new_enrollment_count < enrolled_count
-    assert (ctf_mgr._paths["projects"] / deleted_prj.name).is_dir()
+    assert (ctf_app._paths["projects"] / deleted_prj.name).is_dir()
 
     prj_mgr.flush_project(deleted_prj)
     with pytest.raises(ProjectNotExistException):
         prj_mgr.get_project(deleted_prj.name)
 
-    assert not (ctf_mgr._paths["projects"] / deleted_prj.name).exists()
+    assert not (ctf_app._paths["projects"] / deleted_prj.name).exists()
 
 
 async def test_delete_project(
     project_data: FixtureData,
 ):
-    ctf_mgr, _ = project_data
-    prj_mgr = ctf_mgr.prj_mgr
+    ctf_app, _ = project_data
+    prj_mgr = ctf_app.prj_mgr
     prjs = prj_mgr.get_docs()
 
     deleted_prj = prjs.pop(0)
-    assert (ctf_mgr._paths["projects"] / deleted_prj.name).is_dir()
+    assert (ctf_app._paths["projects"] / deleted_prj.name).is_dir()
 
     # does nothing
     await prj_mgr.delete_project("non_existing_project")
 
     await prj_mgr.delete_project(deleted_prj.name)
 
-    assert not (ctf_mgr._paths["projects"] / deleted_prj.name).is_dir()
+    assert not (ctf_app._paths["projects"] / deleted_prj.name).is_dir()
     assert len(prj_mgr.get_docs()) == 1
 
     assert not prj_mgr.get_doc_by_id(deleted_prj.id)
@@ -151,8 +151,8 @@ async def test_delete_project(
 def test_generate_port_forwarding_script(
     connected_data: FixtureData,
 ):
-    ctf_mgr, tmp_path = connected_data
-    prj_mgr = ctf_mgr.prj_mgr
+    ctf_app, tmp_path = connected_data
+    prj_mgr = ctf_app.prj_mgr
     prjs = prj_mgr.get_docs()
 
     script_path = (tmp_path / "script.sh").resolve()
@@ -166,7 +166,7 @@ def test_generate_port_forwarding_script(
         assert lines.pop(0) == "#!/usr/bin/env bash"
         assert not lines.pop(0)
         for _ in range(
-            len(ctf_mgr.user_enrollment_mgr.get_user_enrollments_for_project(prjs[0]))
+            len(ctf_app.user_enrollment_mgr.get_user_enrollments_for_project(prjs[0]))
         ):
             assert re.match(
                 r"firewall-cmd\s+--zone=public\s+"

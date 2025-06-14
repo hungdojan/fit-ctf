@@ -1,4 +1,3 @@
-import logging
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
@@ -7,12 +6,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-from fit_ctf_utils.container_client.container_client_interface import (
+import fit_ctf.ctf_base
+from fit_ctf_components.base import BaseComponent
+from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
-from fit_ctf_utils.types import PathDict
-
-log = logging.getLogger()
+from fit_ctf_components.types import PathDict
 
 
 class Base(ABC, BaseModel):
@@ -41,14 +40,14 @@ class Base(ABC, BaseModel):
 T = TypeVar("T", bound=Base)
 
 
-class BaseManagerInterface(ABC, Generic[T]):
+class BaseManagerInterface(ABC, Generic[T], BaseComponent):
     """A base manager class that all CTF managers derive from."""
 
     def __init__(
         self,
+        ctf_base: "fit_ctf.ctf_base.CTFBase",
         db: Database,
         coll: Collection,
-        c_client: type[ContainerClientInterface],
         paths: PathDict,
     ):
         """Constructor method.
@@ -57,14 +56,12 @@ class BaseManagerInterface(ABC, Generic[T]):
         :type db: Database
         :param coll: MongoDB collection object.
         :type coll: Collection
-        :param c_client: A container client class for calling container engine API.
-        :type c_client: type[ContainerClientInterface]
         :param path: A path to a directory where contents of <T> are stored.
         :type path: pathlib.Path
         """
+        BaseComponent.__init__(self, ctf_base)
         self._db = db
         self._coll = coll
-        self.c_client = c_client
         self._paths = paths
 
     @property
@@ -75,6 +72,10 @@ class BaseManagerInterface(ABC, Generic[T]):
         :rtype: Collection
         """
         return self._coll
+
+    @property
+    def c_client(self) -> ContainerClientInterface:
+        return self.ctf_base.c_client
 
     @abstractmethod
     def get_doc_by_id(self, _id: ObjectId) -> T | None:  # pragma: no cover
@@ -161,7 +162,7 @@ class BaseManagerInterface(ABC, Generic[T]):
         :type doc: T
         """
         dict_obj = doc.model_dump()
-        log.info(f"Inserting {dict_obj}")
+        self.ctf_base.logger.debug(f"Inserting {dict_obj}")
         self._coll.insert_one(dict_obj)
 
     def update_doc(self, doc: T):
@@ -171,7 +172,7 @@ class BaseManagerInterface(ABC, Generic[T]):
         :type doc: T
         """
         dict_obj = doc.model_dump()
-        log.info(f"Updating {dict_obj}")
+        self.ctf_base.logger.debug(f"Updating {dict_obj}")
         self._coll.replace_one({"_id": doc.id}, dict_obj)
 
     def remove_doc_by_id(self, _id: ObjectId) -> bool:
@@ -183,7 +184,7 @@ class BaseManagerInterface(ABC, Generic[T]):
         :return: `True` if a document was found and successfully deleted.
         :rtype: bool
         """
-        log.info(f"Deleting document `{_id}`")
+        self.ctf_base.logger.debug(f"Deleting document `{_id}`")
         res = self._coll.delete_one({"_id": _id})
         return res.deleted_count > 0
 
@@ -193,7 +194,7 @@ class BaseManagerInterface(ABC, Generic[T]):
         :return: `True` if a document was found and successfully deleted.
         :rtype: bool
         """
-        log.info(f"Deleting document using filter {filter}")
+        self.ctf_base.logger.debug(f"Deleting document using filter {filter}")
         res = self._coll.delete_one(filter=filter)
         return res.deleted_count > 0
 

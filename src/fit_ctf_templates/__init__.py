@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from fit_ctf_templates.template_registry import template_registry
 
 from jinja2 import Environment, FileSystemLoader, Template
 
@@ -31,4 +32,5 @@ __all__ = [
     "TEMPLATE_DIRNAME",
     "JINJA_TEMPLATE_DIRPATHS",
     "get_template",
+    "template_registry",
 ]

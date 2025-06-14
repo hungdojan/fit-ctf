@@ -1,0 +1,199 @@
+import json
+import pathlib
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import fit_ctf_components.container_client.container_client_interface as c_client
+import fit_ctf_components.utils
+from fit_ctf_components.types import HealthCheckDict
+
+
+class DockerClient(c_client.ContainerClientInterface):
+
+    def generate_container_prefix(self, *names: str) -> str:
+        return f"{'_'.join(names)}-"
+
+    async def get_images(self, contains: str | list[str] | None = None) -> list[str]:
+        cmd = ["docker", "images", "--format", '"{{ .Repository }}"']
+        return await self._process_get_commands(cmd, contains)
+
+    async def get_networks(self, contains: str | list[str] | None = None) -> list[str]:
+        cmd = ["docker", "network", "ls", "--format", '"{{ .Name }}"']
+        return await self._process_get_commands(cmd, contains)
+
+    async def rm_images(
+        self, logger_name: str, contains: str | list[str], to_stdout: bool = False
+    ) -> int:
+        images = await self.get_images(contains)
+        if not images:
+            return -1
+        cmd = ["docker", "rmi"] + images
+        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        self._process_logging(
+            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        )
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def rm_networks(
+        self, logger_name: str, contains: str | list[str], to_stdout: bool = False
+    ) -> int:
+        network_names = await self.get_networks(contains)
+        if not network_names:
+            return -1
+        cmd = ["docker", "network", "rm"] + network_names
+        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        self._process_logging(
+            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        )
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def compose_up(
+        self, logger_name: str, file: str | Path, to_stdout: bool = False
+    ) -> int:
+        # TODO: eliminate whitespaces
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = f"docker compose -f {file} up -d"
+        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
+        self._process_logging(
+            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        )
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def compose_down(
+        self, logger_name: str, file: str | Path, to_stdout: bool = False
+    ) -> int:
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        res = subprocess.check_output(
+            ["docker compose", "-f", file, "ps", "-q"], text=True
+        )
+        if not res.strip():
+            return 0
+        proc, stdout = await fit_ctf_components.utils.create_async_exec(
+            ["docker compose", "-f", file, "down"]
+        )
+        self._process_logging(
+            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        )
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def compose_ps(self, file: str | Path) -> list[str]:
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = ["docker", "compose", "-f", file, "ps", "--format", '"{{ .Names }}"']
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        return [data.strip('"') for data in stdout.decode().rsplit()]
+
+    async def compose_ps_json(self, file: str | Path) -> list[dict[str, Any]]:
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = ["docker", "compose", "-f", file, "ps", "--format", "json"]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        data = json.loads(stdout)
+        return data
+
+    async def compose_build(
+        self, logger_name: str, file: str | Path, to_stdout: bool = False
+    ) -> int:
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = f"docker compose -f {file} build"
+        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
+        self._process_logging(
+            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        )
+        return proc.returncode if proc.returncode is not None else 255
+
+    def compose_shell(
+        self, file: str | Path, service: str, command: str
+    ) -> subprocess.CompletedProcess:  # pragma: no cover
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = f"docker compose -f {file} exec {service} {command}"
+        return subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
+
+    async def stats(self, project_name: str) -> list[dict[str, str]]:
+        cmd = [
+            "docker",
+            "stats",
+            "--no-stream",
+            "--format",
+            # "table {{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.UpTime}}",
+            "json",
+        ]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        data = json.loads(stdout)
+        return [d for d in data if d["name"].startswith(project_name)]
+
+    async def ps(self, project_name: str) -> list[str]:
+        cmd = [
+            "docker",
+            "ps",
+            "-a",
+            "--format",
+            "table {{.Names}} {{.Networks}} {{.Ports}} {{.State}} {{.CreatedHuman}}",
+            f"--filter=name=^{project_name}",
+        ]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        return [data.strip('"') for data in stdout.decode().rsplit("\n") if data]
+
+    async def ps_json(self, project_name: str) -> list[dict[str, Any]]:
+        cmd = [
+            "docker",
+            "ps",
+            "-a",
+            "--format",
+            "json",
+            f"--filter=name=^{project_name}",
+        ]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        data = json.loads(stdout)
+        return data
+
+    async def ps_csv(self, project_name: str, output_file: pathlib.Path):
+        cmd = [
+            "docker",
+            "ps",
+            "-a",
+            "--no-truc" "--format",
+            'table "{{.Names}}","{{.Networks}}","{{.Ports}}","{{.State}}","{{.CreatedHuman}}"',
+            f"--filter=name=^{project_name}",
+        ]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        # TODO: print to file
+        print([data.strip('"') for data in stdout.decode().rsplit("\n") if data])
+
+    async def compose_states(
+        self, file: str | Path
+    ) -> list[HealthCheckDict]:  # pragma: no cover
+        if isinstance(file, Path):
+            file = str(file.resolve())
+        cmd = ["docker", "compose", "-f", file, "ps", "--format", "json"]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        data = json.loads(stdout)
+        # filtering
+        return [
+            {
+                "name": service["Names"][0],
+                "state": service["State"],
+                "image": service["Image"],
+            }
+            for service in data
+        ]
+
+    async def project_stats(self, project_name: str) -> list[dict]:
+        cmd = [
+            "docker",
+            "ps",
+            "-a",
+            "--format",
+            "json",
+            "--filter",
+            f"label=project={project_name}",
+        ]
+        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        data = json.loads(stdout)
+        return data

@@ -1,32 +1,43 @@
 import pathlib
 from shutil import copytree, rmtree
 
-from pymongo.database import Database
-
-from fit_ctf_models.project import ProjectManager
-from fit_ctf_models.user_enrollment import UserEnrollmentManager
-from fit_ctf_templates import TEMPLATE_DIRNAME
-from fit_ctf_utils import log_print
-from fit_ctf_utils.container_client.container_client_interface import (
+import fit_ctf.ctf_base as ctf_base
+import fit_ctf_models.project as prj
+import fit_ctf_models.user_enrollment as user_enroll
+from fit_ctf_components.base import BaseComponent
+from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
-from fit_ctf_utils.exceptions import (
+from fit_ctf_components.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,
 )
-from fit_ctf_utils.types import PathDict
+from fit_ctf_components.types import PathDict
+from fit_ctf_templates import TEMPLATE_DIRNAME
 
 
-class ModuleManager:
+class ModuleManager(BaseComponent):
 
     def __init__(
-        self, db: Database, c_client: type[ContainerClientInterface], paths: PathDict
+        self,
+        ctf_base: "ctf_base.CTFBase",
+        paths: PathDict,
     ):
+        super().__init__(ctf_base)
         self._paths = paths
-        self._ue_mgr = UserEnrollmentManager(db, c_client, paths)
-        self._prj_mgr = ProjectManager(db, c_client, paths)
-        self.c_client = c_client
+
+    @property
+    def prj_mgr(self) -> "prj.ProjectManager":
+        return self.ctf_base.prj_mgr
+
+    @property
+    def ue_mgr(self) -> "user_enroll.UserEnrollmentManager":
+        return self.ctf_base.user_enrollment_mgr
+
+    @property
+    def c_client(self) -> ContainerClientInterface:
+        return self.ctf_base.c_client
 
     def create_module(self, module_name: str):
         """Create a template module.
@@ -62,9 +73,9 @@ class ModuleManager:
         """Get the number of occurences of each active module in services."""
         module_count = {
             item["_id"]: item["count"]
-            for item in self._ue_mgr.get_modules_count(project_name)
+            for item in self.ue_mgr.get_modules_count(project_name)
         }
-        for mc in self._prj_mgr.get_modules_count(project_name):
+        for mc in self.prj_mgr.get_modules_count(project_name):
             module_count.setdefault(mc["_id"], 0)
             module_count[mc["_id"]] += mc["count"]
         return module_count
@@ -77,5 +88,5 @@ class ModuleManager:
             raise ModuleInUseException(
                 f"Module `{module_name}` is still used by some services."
             )
-        await self.c_client.rm_images(log_print, module_name, True)
+        await self.c_client.rm_images(__name__, module_name, True)
         rmtree(module_path)
