@@ -25,7 +25,7 @@ def test_client(client: str):
 # import yaml
 # from _pytest.fixtures import FixtureRequest
 #
-# from fit_ctf_backend.ctf_manager import CTFManager
+# from fit_ctf_backend.ctf_manager import CTFApp
 # from fit_ctf_utils.exceptions import UserNotEnrolledToProjectException
 # from fit_ctf_models.project import Project
 # from fit_ctf_utils.container_client.podman_client import PodmanClient
@@ -40,19 +40,19 @@ def test_client(client: str):
 #     request: FixtureRequest,
 #     tmp_path_factory: pytest.TempPathFactory,
 # ) -> FixtureData:
-#     """Init CTFManager.
+#     """Init CTFApp.
 #
-#     :return: A CTFManager object, a path to the temporary directory,
+#     :return: A CTFApp object, a path to the temporary directory,
 #     list of projects and users.
 #     :rtype: Iterator[FixtureData]
 #     """
 #     os.environ["CONTAINER_CLIENT"] = "podman"
 #
 #     def teardown():
-#         # teardown ctf_mgr
-#         ctf_mgr.user_mgr.delete_all()
-#         ctf_mgr.prj_mgr.delete_all()
-#         ctf_mgr.user_enrollment_mgr.delete_all()
+#         # teardown ctf_app
+#         ctf_app.user_mgr.delete_all()
+#         ctf_app.prj_mgr.delete_all()
+#         ctf_app.user_enrollment_mgr.delete_all()
 #
 #     # get data
 #     db_host = os.getenv("DB_HOST")
@@ -63,25 +63,25 @@ def test_client(client: str):
 #
 #     # init testing env and clear database (just in case)
 #     try:
-#         ctf_mgr = CTFManager(db_host, db_name)
+#         ctf_app = CTFApp(db_host, db_name)
 #     except pymongo.errors.ServerSelectionTimeoutError:
 #         pytest.exit("DB is probably not running")
 #
-#     ctf_mgr.prj_mgr.remove_docs_by_filter()
-#     ctf_mgr.user_mgr.remove_docs_by_filter()
-#     ctf_mgr.user_enrollment_mgr.remove_docs_by_filter()
+#     ctf_app.prj_mgr.remove_docs_by_filter()
+#     ctf_app.user_mgr.remove_docs_by_filter()
+#     ctf_app.user_enrollment_mgr.remove_docs_by_filter()
 #
 #     # make a shadow dir
 #     (tmp_path_factory.getbasetemp() / "shadow").mkdir()
 #     request.addfinalizer(teardown)
-#     return ctf_mgr, tmp_path_factory.getbasetemp(), [], []
+#     return ctf_app, tmp_path_factory.getbasetemp(), [], []
 #
 #
 # @pytest.fixture(scope="module")
 # def init_podman_data(
 #     empty_podman_data: FixtureData,
 # ) -> FixtureData:
-#     """Yield a CTFManager with 2 projects, 3 users, and destination directory.
+#     """Yield a CTFApp with 2 projects, 3 users, and destination directory.
 #
 #     The manager contains following objects:
 #         Projects [enrolled] [modules]:
@@ -92,15 +92,15 @@ def test_client(client: str):
 #             - user2 - [prj1, prj2]  [prj2_module1, prj2_module2, prj1_module1]
 #             - user3 - [prj1]        [prj1_module1, prj1_module2]
 #
-#     :return: A CTFManager object, a path to the temporary directory,
+#     :return: A CTFApp object, a path to the temporary directory,
 #     list of projects and users.
 #     :rtype: Iterator[FixtureData]
 #     """
 #     # init testing env
-#     ctf_mgr, tmp_path, prjs, usrs = empty_podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_mgr = ctf_mgr.user_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, tmp_path, prjs, usrs = empty_podman_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_mgr = ctf_app.user_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     def add_data():
 #         usrs = [
@@ -165,7 +165,7 @@ def test_client(client: str):
 #     prjs = prj_mgr.get_docs()
 #
 #     # yield data
-#     return ctf_mgr, tmp_path, prjs, usrs
+#     return ctf_app, tmp_path, prjs, usrs
 #
 #
 # @pytest.fixture(scope="module")
@@ -173,10 +173,10 @@ def test_client(client: str):
 #     init_podman_data: FixtureData,
 # ) -> FixtureData:
 #     # init testing env
-#     ctf_mgr, tmp_path, _, _ = init_podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_mgr = ctf_mgr.user_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, tmp_path, _, _ = init_podman_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_mgr = ctf_app.user_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     for prj in prj_mgr.get_docs():
 #         prj_mgr.compile_project(prj)
@@ -186,14 +186,14 @@ def test_client(client: str):
 #             user_enrollment_mgr.build_user_instance(usr, prj)
 #
 #     # yield data
-#     return ctf_mgr, tmp_path, prj_mgr.get_docs(), user_mgr.get_docs()
+#     return ctf_app, tmp_path, prj_mgr.get_docs(), user_mgr.get_docs()
 #
 #
 # @pytest.fixture(scope="function")
 # def podman_data(
 #     init_podman_data: FixtureData,
 # ) -> Iterator[FixtureData]:
-#     """Yield a CTFManager with 2 projects, 3 users, and destination directory.
+#     """Yield a CTFApp with 2 projects, 3 users, and destination directory.
 #
 #     All images are build.
 #
@@ -206,14 +206,14 @@ def test_client(client: str):
 #             - user2 - [prj1, prj2]  [prj2_module1, prj2_module2, prj1_module1]
 #             - user3 - [prj1]        [prj1_module1, prj1_module2]
 #
-#     :return: A CTFManager object, a path to the temporary directory,
+#     :return: A CTFApp object, a path to the temporary directory,
 #     list of projects and users.
 #     :rtype: Iterator[FixtureData]
 #     """
 #     # init testing env
-#     ctf_mgr, tmp_path, prjs, usrs = init_podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, tmp_path, prjs, usrs = init_podman_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     def teardown():
 #         for prj in prj_mgr.get_docs():
@@ -224,7 +224,7 @@ def test_client(client: str):
 #                     user_enrollment_mgr.stop_user_instance(usr, prj)
 #
 #     # yield data
-#     yield ctf_mgr, tmp_path, prjs, usrs
+#     yield ctf_app, tmp_path, prjs, usrs
 #     teardown()
 #
 #
@@ -232,7 +232,7 @@ def test_client(client: str):
 # def podman_updated_data(
 #     build_podman_data: FixtureData,
 # ) -> Iterator[FixtureData]:
-#     """Yield a CTFManager with 2 projects, 3 users, and destination directory.
+#     """Yield a CTFApp with 2 projects, 3 users, and destination directory.
 #
 #     The manager contains following objects:
 #         Projects [enrolled] [modules]:
@@ -243,14 +243,14 @@ def test_client(client: str):
 #             - user2 - [prj1, prj2]  [prj2_module1, prj2_module2, prj1_module1]
 #             - user3 - [prj1]        [prj1_module1, prj1_module2]
 #
-#     :return: A CTFManager object, a path to the temporary directory,
+#     :return: A CTFApp object, a path to the temporary directory,
 #     list of projects and users.
 #     :rtype: Iterator[FixtureData]
 #     """
 #     # init testing env
-#     ctf_mgr, tmp_path, prjs, usrs = build_podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, tmp_path, prjs, usrs = build_podman_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     def teardown():
 #         for prj in prj_mgr.get_docs():
@@ -261,7 +261,7 @@ def test_client(client: str):
 #                     user_enrollment_mgr.stop_user_instance(usr, prj)
 #
 #     # yield data
-#     yield ctf_mgr, tmp_path, prjs, usrs
+#     yield ctf_app, tmp_path, prjs, usrs
 #     teardown()
 #
 #
@@ -269,9 +269,9 @@ def test_client(client: str):
 #
 #
 # def test_podman_basic(podman_data: FixtureData):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #     for p in prjs:
 #         assert not prj_mgr.project_is_running(p)
 #         users = prj_mgr.get_active_users_for_project(p)
@@ -281,8 +281,8 @@ def test_client(client: str):
 #
 #
 # def test_start_project(podman_data: FixtureData):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #     assert not prj_mgr.project_is_running(prjs[0])
 #
 #     prj_mgr.start_project(prjs[0])
@@ -292,8 +292,8 @@ def test_client(client: str):
 # def test_restart_project(
 #     podman_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #     assert not prj_mgr.project_is_running(prjs[0])
 #
 #     prj_mgr.restart_project(prjs[0])
@@ -304,8 +304,8 @@ def test_client(client: str):
 #
 #
 # def test_stop_project(podman_data: FixtureData):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #     assert not prj_mgr.project_is_running(prjs[0])
 #
 #     prj_mgr.start_project(prjs[0])
@@ -318,8 +318,8 @@ def test_client(client: str):
 # def test_compile_and_build_project(
 #     podman_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #
 #     with open(prjs[0].compose_filepath, "r") as f:
 #         data = yaml.safe_load(f)
@@ -346,8 +346,8 @@ def test_client(client: str):
 # def test_get_resource_usage(
 #     podman_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #
 #     assert not prj_mgr.get_resource_usage(prjs[0])
 #
@@ -357,8 +357,8 @@ def test_client(client: str):
 #
 #
 # def test_project_ps(podman_data: FixtureData):
-#     ctf_mgr, _, prjs, _ = podman_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_data
+#     prj_mgr = ctf_app.prj_mgr
 #
 #     data = prj_mgr.get_ps_data(prjs[0])
 #     assert not data[1:]
@@ -386,9 +386,9 @@ def test_client(client: str):
 #
 #         return nodes + sum(user_modules.values())
 #
-#     ctf_mgr, _, prjs, _ = podman_updated_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, _ = podman_updated_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     total_images = 0
 #     for prj in prjs:
@@ -406,9 +406,9 @@ def test_client(client: str):
 #         # project's network + a private network each user has
 #         return 1 + len(prj_mgr.get_active_users_for_project(prj))
 #
-#     ctf_mgr, _, prjs, _ = podman_updated_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, _ = podman_updated_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     total_networks = 0
 #     for prj in prjs:
@@ -425,8 +425,8 @@ def test_client(client: str):
 # def test_compose_ps_json(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_updated_data
-#     prj_mgr = ctf_mgr.prj_mgr
+#     ctf_app, _, prjs, _ = podman_updated_data
+#     prj_mgr = ctf_app.prj_mgr
 #
 #     prj_mgr.start_project(prjs[0])
 #     json_data = PodmanClient.compose_ps_json(str(prjs[0].compose_filepath))
@@ -438,8 +438,8 @@ def test_client(client: str):
 # def test_start_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, usrs = podman_updated_data
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
@@ -470,8 +470,8 @@ def test_client(client: str):
 # def test_user_instance_is_running(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, usrs = podman_updated_data
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
@@ -485,8 +485,8 @@ def test_client(client: str):
 # def test_stop_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, usrs = podman_updated_data
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
@@ -503,8 +503,8 @@ def test_client(client: str):
 # def test_restart_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, usrs = podman_updated_data
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
@@ -518,8 +518,8 @@ def test_client(client: str):
 # def test_build_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, usrs = podman_updated_data
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
 #         user_enrollment_mgr.build_user_instance(usrs[0], prjs[0])
@@ -528,9 +528,9 @@ def test_client(client: str):
 # def test_delete_project_while_on(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_updated_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, _ = podman_updated_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not prj_mgr.project_is_running(prjs[1])
 #
@@ -550,9 +550,9 @@ def test_client(client: str):
 # def test_cancel_multiple_enrollments(
 #     podman_updated_data: FixtureData,
 # ):
-#     ctf_mgr, _, prjs, _ = podman_updated_data
-#     prj_mgr = ctf_mgr.prj_mgr
-#     user_enrollment_mgr = ctf_mgr.user_enrollment_mgr
+#     ctf_app, _, prjs, _ = podman_updated_data
+#     prj_mgr = ctf_app.prj_mgr
+#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
 #
 #     assert not prj_mgr.project_is_running(prjs[0])
 #

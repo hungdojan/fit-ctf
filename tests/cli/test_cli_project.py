@@ -3,37 +3,37 @@ import csv
 import re
 from io import StringIO
 
-from fit_ctf_backend.cli import cli
-from fit_ctf_utils.data_parser.yaml_parser import YamlParser
+from fit_ctf.cli import cli
+from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from tests import CLIData
 
 
 def test_create(cli_data: CLIData):
-    ctf_mgr, _, cli_runner = cli_data
-    assert len(ctf_mgr.prj_mgr.get_docs()) == 2
+    ctf_app, _, cli_runner = cli_data
+    assert len(ctf_app.prj_mgr.get_docs()) == 2
 
     cmd = ["project", "create", "-pn", "new_prj", "-mu", 10, "-p", 10100]
     result = cli_runner.invoke(cli, cmd)
 
     assert result.exit_code == 0
-    assert len(ctf_mgr.prj_mgr.get_docs()) == 3
-    assert ctf_mgr.prj_mgr.get_project("new_prj")
+    assert len(ctf_app.prj_mgr.get_docs()) == 3
+    assert ctf_app.prj_mgr.get_project("new_prj")
 
     result = cli_runner.invoke(cli, cmd)
     assert result.exit_code == 1
 
 
 def test_list(cli_data: CLIData):
-    ctf_mgr, _, cli_runner = cli_data
+    ctf_app, _, cli_runner = cli_data
     cmd = "project ls -f csv".split()
     result = cli_runner.invoke(cli, cmd)
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
-    assert len(rows[1:]) == len(ctf_mgr.prj_mgr.get_docs())
+    assert len(rows[1:]) == len(ctf_app.prj_mgr.get_docs())
 
-    for prj in ctf_mgr.prj_mgr.get_docs():
-        asyncio.run(ctf_mgr.prj_mgr.disable_project(prj))
+    for prj in ctf_app.prj_mgr.get_docs():
+        asyncio.run(ctf_app.prj_mgr.disable_project(prj))
 
     result = cli_runner.invoke(cli, cmd)
     assert re.match("No project found!", result.output)
@@ -43,10 +43,10 @@ def test_list(cli_data: CLIData):
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
-    assert len(rows[1:]) == len(ctf_mgr.prj_mgr.get_docs())
+    assert len(rows[1:]) == len(ctf_app.prj_mgr.get_docs())
 
-    for prj in ctf_mgr.prj_mgr.get_docs():
-        asyncio.run(ctf_mgr.prj_mgr.disable_project(prj))
+    for prj in ctf_app.prj_mgr.get_docs():
+        asyncio.run(ctf_app.prj_mgr.disable_project(prj))
 
 
 def test_get_info(cli_data: CLIData):
@@ -65,21 +65,21 @@ def test_get_info(cli_data: CLIData):
 
 
 def test_enrolled_users(cli_data: CLIData):
-    ctf_mgr, _, cli_runner = cli_data
+    ctf_app, _, cli_runner = cli_data
     cmd = "project enrolled-users -pn prj1 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
     assert len(rows[1:]) == len(
-        ctf_mgr.user_enrollment_mgr.get_user_enrollments_for_project("prj1")
+        ctf_app.user_enrollment_mgr.get_user_enrollments_for_project("prj1")
     )
 
     cmd = "project enrolled-users -pn prj10 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
     assert re.search("not exist.$", result.output)
 
-    asyncio.run(ctf_mgr.user_mgr.disable_multiple_users(["user2", "user3"]))
+    asyncio.run(ctf_app.user_mgr.disable_multiple_users(["user2", "user3"]))
 
     cmd = "project enrolled-users -pn prj1 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -104,7 +104,7 @@ def test_firewall_rules(cli_data: CLIData):
 
 
 def test_used_ports(cli_data: CLIData):
-    ctf_mgr, _, cli_runner = cli_data
+    ctf_app, _, cli_runner = cli_data
     cmd = "project reserved-ports -f csv".split()
     result = cli_runner.invoke(cli, cmd)
 
@@ -113,13 +113,13 @@ def test_used_ports(cli_data: CLIData):
     header = rows[0]
     values = rows[1:]
     for row in values:
-        prj = ctf_mgr.prj_mgr.get_project(row[header.index("Name")])
+        prj = ctf_app.prj_mgr.get_project(row[header.index("Name")])
         assert row[header.index("Min Port")] == str(prj.starting_port_bind)
         assert row[header.index("Max Port")] == str(
             prj.starting_port_bind + prj.max_nof_users - 1
         )
 
-    asyncio.run(ctf_mgr.prj_mgr.delete_all())
+    asyncio.run(ctf_app.prj_mgr.delete_all())
 
     cmd = "project reserved-ports -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -127,13 +127,13 @@ def test_used_ports(cli_data: CLIData):
 
 
 def test_delete(cli_data: CLIData):
-    ctf_mgr, _, cli_runner = cli_data
-    assert len(ctf_mgr.prj_mgr.get_docs()) == 2
-    assert (ctf_mgr._paths["projects"] / "prj1").is_dir()
+    ctf_app, _, cli_runner = cli_data
+    assert len(ctf_app.prj_mgr.get_docs()) == 2
+    assert (ctf_app._paths["projects"] / "prj1").is_dir()
 
     cmd = "project delete -pn prj1".split()
     result = cli_runner.invoke(cli, cmd)
 
     assert re.search("deleted successfully.$", result.output)
-    assert len(ctf_mgr.prj_mgr.get_docs()) == 1
-    assert not (ctf_mgr._paths["projects"] / "prj1").is_dir()
+    assert len(ctf_app.prj_mgr.get_docs()) == 1
+    assert not (ctf_app._paths["projects"] / "prj1").is_dir()

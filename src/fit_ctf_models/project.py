@@ -6,30 +6,27 @@ from pathlib import Path
 from bson import ObjectId
 from pymongo.database import Database
 
+import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
-from fit_ctf_templates import (
-    JINJA_TEMPLATE_DIRPATHS,
-    get_template,
-)
-from fit_ctf_utils import get_or_create_logger
-from fit_ctf_utils.constants import DEFAULT_STARTING_PORT
-from fit_ctf_utils.container_client.container_client_interface import (
-    ContainerClientInterface,
-)
-from fit_ctf_utils.exceptions import (
+from fit_ctf_components.constants import DEFAULT_STARTING_PORT
+from fit_ctf_components.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
     ProjectNotExistException,
     SSHPortOutOfRangeException,
 )
-from fit_ctf_utils.mongo_queries import MongoQueries
-from fit_ctf_utils.types import (
+from fit_ctf_components.types import (
     HealthCheckDict,
     ModuleCountDict,
     PathDict,
     ProjectPortListingDict,
     RawProjectDict,
+)
+from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_templates import (
+    JINJA_TEMPLATE_DIRPATHS,
+    get_template,
 )
 
 
@@ -68,18 +65,19 @@ class ProjectManager(ClusterConfigManager[Project]):
     """A manager class that handles operations with `Project` objects."""
 
     def __init__(
-        self, db: Database, c_client: type[ContainerClientInterface], paths: PathDict
+        self,
+        ctf_base: "ctf_base.CTFBase",
+        db: Database,
+        paths: PathDict,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param c_client: A container client class for calling container engine API.
-        :type c_client: type[ContainerClientInterface]
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(db, db["project"], c_client, paths)
+        super().__init__(ctf_base, db, db["project"], paths)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -88,11 +86,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :return: A user enrollment manager initialized in ProjectManager.
         :rtype: _user_enroll.UserEnrollmentManager
         """
-        if not hasattr(self, "_ue_mgr"):
-            self._ue_mgr = _ue.UserEnrollmentManager(
-                self._db, self.c_client, self._paths
-            )
-        return self._ue_mgr
+        return self.ctf_base.user_enrollment_mgr
 
     def get_doc_by_id(self, _id: ObjectId) -> Project | None:
         res = self._coll.find_one({"_id": _id})
@@ -370,7 +364,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         project = self.get_project(project_or_name)
         return await self.c_client.compose_up(
-            get_or_create_logger(project.name), self.get_compose_file(project)
+            project.name, self.get_compose_file(project)
         )
 
     async def restart_project_cluster(self, project_or_name: str | Project):
@@ -395,7 +389,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         project = self.get_project(project_or_name)
         return await self.c_client.compose_down(
-            get_or_create_logger(project.name), self.get_compose_file(project)
+            project.name, self.get_compose_file(project)
         )
 
     async def project_is_running(self, project_or_name: str | Project) -> bool:
@@ -419,7 +413,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         project = self.get_project(project_or_name)
         return await self.c_client.compose_build(
-            get_or_create_logger(project.name), self.get_compose_file(project)
+            project.name, self.get_compose_file(project)
         )
 
     def compile_compose_file(self, project: Project):
@@ -501,12 +495,8 @@ class ProjectManager(ClusterConfigManager[Project]):
         await self.stop_project_cluster(prj)
         await self.ue_mgr.stop_all_user_clusters(prj)
 
-        await self.c_client.rm_networks(
-            get_or_create_logger(prj.name), f"{prj.name}_main_net"
-        )
-        await self.c_client.rm_networks(
-            get_or_create_logger(prj.name), f"{prj.name}_admin_net"
-        )
+        await self.c_client.rm_networks(prj.name, f"{prj.name}_main_net")
+        await self.c_client.rm_networks(prj.name, f"{prj.name}_admin_net")
         await self.ue_mgr.disable_multiple_enrollments(
             [(user, prj) for user in self.ue_mgr.get_user_enrollments_for_project(prj)]
         )

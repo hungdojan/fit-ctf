@@ -1,28 +1,22 @@
-import logging
 import shutil
 
 from bson import ObjectId
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
+import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
-from fit_ctf_models.base import Base, BaseManagerInterface
-from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
-from fit_ctf_utils.auth.auth_interface import AuthInterface
-from fit_ctf_utils.auth.local_auth import LocalAuth
-from fit_ctf_utils.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_utils.container_client.container_client_interface import (
-    ContainerClientInterface,
-)
-from fit_ctf_utils.exceptions import (
+from fit_ctf_components.auth.auth_interface import AuthInterface
+from fit_ctf_components.auth.local_auth import LocalAuth
+from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
+from fit_ctf_components.exceptions import (
     UserExistsException,
     UserNotExistsException,
 )
-from fit_ctf_utils.mongo_queries import MongoQueries
-from fit_ctf_utils.types import NewUserDict, PathDict, UserInfoDict, UserRole
-
-log = logging.getLogger()
-log.disabled = False
+from fit_ctf_components.types import NewUserDict, PathDict, UserInfoDict, UserRole
+from fit_ctf_models.base import Base, BaseManagerInterface
+from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
 
 class User(Base):
@@ -52,18 +46,19 @@ class UserManager(BaseManagerInterface[User]):
     """A manager class that handles operations with `User` objects."""
 
     def __init__(
-        self, db: Database, c_client: type[ContainerClientInterface], paths: PathDict
+        self,
+        ctf_base: "ctf_base.CTFBase",
+        db: Database,
+        paths: PathDict,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param c_client: A container client class for calling container engine API.
-        :type c_client: type[ContainerClientInterface]
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(db, db["user"], c_client, paths)
+        super().__init__(ctf_base, db, db["user"], paths)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -72,11 +67,7 @@ class UserManager(BaseManagerInterface[User]):
         :return: A user enrollment manager initialized in UserManager.
         :rtype: user_enrollment.UserEnrollmentManager
         """
-        if not hasattr(self, "_ue_mgr"):
-            self._ue_mgr = _ue.UserEnrollmentManager(
-                self._db, self.c_client, self._paths
-            )
-        return self._ue_mgr
+        return self.ctf_base.user_enrollment_mgr
 
     def get_doc_by_id(self, _id: ObjectId) -> User | None:
         res = self._coll.find_one({"_id": _id})
@@ -185,7 +176,7 @@ class UserManager(BaseManagerInterface[User]):
         shadow_path = self._paths["users"] / user.username / "shadow"
 
         # calculate and update hash for shadow
-        log.info(f"Updating `{shadow_path.resolve()}`")
+        self.ctf_base.logger.debug(f"Updating `{shadow_path.resolve()}`")
         self._generate_shadow(user.username, password, str(shadow_path.resolve()))
 
         # calculate hash to store to the database
@@ -230,7 +221,7 @@ class UserManager(BaseManagerInterface[User]):
         (root_dir / "home").mkdir(parents=True, mode=0o777)
 
         # generate shadow from file
-        log.info(f"Generating `{str(shadow_file.resolve())}`")
+        self.ctf_base.logger.debug(f"Generating `{str(shadow_file.resolve())}`")
         self._generate_shadow(username, password, str(shadow_file.resolve()))
 
         user = self.create_and_insert_doc(
@@ -293,7 +284,7 @@ class UserManager(BaseManagerInterface[User]):
         :param active: Fetch documents with the given active value. If set to None,
             the function fetches both active and inactive documents. Defaults to True.
         :type active: bool | None
-        :return: A list of users with aditional information.
+        :return: A list of users with additional information.
         :rtype: list[UserInfoDict]
         """
         pipeline = MongoQueries.user_get_users(active)

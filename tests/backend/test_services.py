@@ -2,37 +2,40 @@ from typing import TypeAlias
 
 import pytest
 
-from fit_ctf_backend.ctf_manager import CTFManager
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
-from fit_ctf_utils.exceptions import ServiceExistException, ServiceNotExistException
+from fit_ctf_components.exceptions import (
+    ServiceExistException,
+    ServiceNotExistException,
+)
 from tests import FixtureData
 
-ServiceManagers: TypeAlias = tuple[ClusterConfigManager, CTFManager, str]
+ServiceManagers: TypeAlias = tuple[ClusterConfigManager, CTFApp, str]
 
 
 @pytest.fixture(params=["project", "user"])
 def service_mgrs(
     request: pytest.FixtureRequest, connected_data: FixtureData
 ) -> ServiceManagers:
-    ctf_mgr, _ = connected_data
+    ctf_app, _ = connected_data
     if request.param == "project":
-        mgr = ctf_mgr.prj_mgr
+        mgr = ctf_app.prj_mgr
     else:
-        mgr = ctf_mgr.user_enrollment_mgr
+        mgr = ctf_app.user_enrollment_mgr
 
-    return mgr, ctf_mgr, request.param
+    return mgr, ctf_app, request.param
 
 
 def test_base_services(service_mgrs: ServiceManagers):
-    mgr, ctf_mgr, param = service_mgrs
+    mgr, ctf_app, param = service_mgrs
     if param == "project":
-        for prj in ctf_mgr.prj_mgr.get_docs():
+        for prj in ctf_app.prj_mgr.get_docs():
             services = mgr.list_services(prj)
             assert len(services.keys()) == 1
             assert services.get("admin")
             assert services["admin"].module_name == "base"
     elif param == "user":
-        for user_enroll in ctf_mgr.user_enrollment_mgr.get_docs():
+        for user_enroll in ctf_app.user_enrollment_mgr.get_docs():
             services = mgr.list_services(user_enroll)
             assert len(services.keys()) == 1
             assert services.get("login")
