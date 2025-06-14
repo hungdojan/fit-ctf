@@ -6,11 +6,11 @@ authors = ["Hung Do <hungdojan@gmail.com>"]
 readme = "README.md"
 repository = "https://github.com/hungdojan/FIT_CTF"
 packages = [
-    { include = "fit_ctf_backend", from = "src" },
-    { include = "fit_ctf_rendezvous", from = "src" },
+    { include = "fit_ctf", from = "src" },
+    { include = "fit_ctf_components", from = "src" },
     { include = "fit_ctf_models", from = "src" },
-    { include = "fit_ctf_templates", from = "src"},
-    { include = "fit_ctf_utils", from = "src" }
+    { include = "fit_ctf_rendezvous", from = "src" },
+    { include = "fit_ctf_templates", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -63,7 +63,7 @@ env = [
     "CONTAINER_CLIENT=mock",
     "DB_CONNECTION_TIMEOUT=5",
     "DB_NAME=test-ctf-db",
-    "ENABLE_CONTAINER_CLIENT_TESTING=0"
+    "ENABLE_CONTAINER_CLIENT_TESTING=0",
 ]
 addopts = "-vs"
 asyncio_mode = "auto"
@@ -75,20 +75,16 @@ directory = "tests/reports/htmlcov"
 omit = [
     "tests/*",
     "/tmp/*",
-    "src/fit_ctf_utils/*.py",
-    "src/fit_ctf_utils/container_client/*",
+    "src/fit_ctf_components/*.py",
+    "src/fit_ctf_components/container_client/*",
     "**/__init__.py",
 ]
 command_line = "-m pytest -vv"
 
 [tool.flake8]
 max-line-length = 100
-extend-exclude = [
-    ".venv", "docs"
-]
-per-file-ignores = [
-    "**/__init__.py:F4"
-]
+extend-exclude = [".venv", "docs"]
+per-file-ignores = ["**/__init__.py:F4"]
 extend-ignore = ["E226", "E266", "W503"]
 
 [tool.isort]
@@ -99,5 +95,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-fit-ctf = "fit_ctf_backend.__main__:main"
-ctf-rendezvous = "fit_ctf_rendezvous.__main__:main"
+fit-ctf = "fit_ctf.__main__:main"
+fit-rendezvous = "fit_ctf_rendezvous.__main__:main"

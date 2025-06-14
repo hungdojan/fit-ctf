@@ -4,10 +4,10 @@ from typing import TypeAlias
 
 from click.testing import CliRunner
 
-import fit_ctf_backend.ctf_manager as ctf_mgr
+import fit_ctf.ctf_app as ctf_app
 
-FixtureData: TypeAlias = tuple["ctf_mgr.CTFManager", pathlib.Path]
-CLIData: TypeAlias = tuple["ctf_mgr.CTFManager", pathlib.Path, CliRunner]
+FixtureData: TypeAlias = tuple["ctf_app.CTFApp", pathlib.Path]
+CLIData: TypeAlias = tuple["ctf_app.CTFApp", pathlib.Path, CliRunner]
 
 
 def fixture_path() -> pathlib.Path:

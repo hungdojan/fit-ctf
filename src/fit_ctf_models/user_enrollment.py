@@ -5,15 +5,10 @@ from bson import DBRef, ObjectId
 from pydantic import Field
 from pymongo.database import Database
 
+import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
-from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
-from fit_ctf_utils import get_missing_in_sequence, get_or_create_logger
-from fit_ctf_utils.container_client.container_client_interface import (
-    ContainerClientInterface,
-)
-from fit_ctf_utils.exceptions import (
+from fit_ctf_components.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,
@@ -23,13 +18,16 @@ from fit_ctf_utils.exceptions import (
     UserNotEnrolledToProjectException,
     UserNotExistsException,
 )
-from fit_ctf_utils.mongo_queries import MongoQueries
-from fit_ctf_utils.types import (
+from fit_ctf_components.types import (
     HealthCheckDict,
     ModuleCountDict,
     PathDict,
     RawEnrolledProjectsDict,
 )
+from fit_ctf_components.utils import get_missing_in_sequence
+from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
 log = logging.getLogger()
 
@@ -66,18 +64,19 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
     """A manager class that handles operations with `UserEnrollment` objects."""
 
     def __init__(
-        self, db: Database, c_client: type[ContainerClientInterface], paths: PathDict
+        self,
+        ctf_base: "ctf_base.CTFBase",
+        db: Database,
+        paths: PathDict,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param c_client: A container client class for calling container engine API.
-        :type c_client: type[ContainerClientInterface]
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(db, db["user_enrollment"], c_client, paths)
+        super().__init__(ctf_base, db, db["user_enrollment"], paths)
 
     @property
     def prj_mgr(self) -> "_project.ProjectManager":
@@ -86,11 +85,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :return: A project manager initialized in UserEnrollmentManager.
         :rtype: _project.ProjectManager
         """
-        if not hasattr(self, "_prj_mgr"):
-            self._prj_mgr = _project.ProjectManager(
-                self._db, self.c_client, self._paths
-            )
-        return self._prj_mgr
+        return self.ctf_base.prj_mgr
 
     @property
     def user_mgr(self) -> "_user.UserManager":
@@ -99,9 +94,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :return: A user manager initialized in UserEnrollmentManager.
         :rtype: _user.UserManager
         """
-        if not hasattr(self, "_user_mgr"):
-            self._user_mgr = _user.UserManager(self._db, self.c_client, self._paths)
-        return self._user_mgr
+        return self.ctf_base.user_mgr
 
     def _get_user_and_project(
         self,
@@ -270,7 +263,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                     user=user.model_dump(),
                     user_enrollment=ue.model_dump(),
                     module_dir=self._paths["modules"],
-                    container_name_prefix=user.username,
+                    container_name_prefix=f"{user.username}_{project.name}",
                 )
             )
 
@@ -705,7 +698,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         await self.stop_user_cluster(user, project)
         await self.c_client.rm_networks(
-            get_or_create_logger(project.name), f"{project.name}_{user.username}_"
+            project.name, f"{project.name}_{user.username}_"
         )
 
         user_enrollment.active = False
@@ -731,11 +724,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             )
             if ue:
                 await self.c_client.compose_down(
-                    get_or_create_logger(project.name),
+                    project.name,
                     self.get_compose_file(user, project),
                 )
                 await self.c_client.rm_networks(
-                    get_or_create_logger(project.name),
+                    project.name,
                     f"{project.name}_{user.username}_",
                 )
                 ue_ids.append(ue.id)
@@ -920,9 +913,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
 
-        return await self.c_client.compose_up(
-            get_or_create_logger(project.name), compose_file
-        )
+        return await self.c_client.compose_up(project.name, compose_file)
 
     async def stop_user_cluster(
         self,
@@ -949,9 +940,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
 
-        return await self.c_client.compose_down(
-            get_or_create_logger(project.name), compose_file
-        )
+        return await self.c_client.compose_down(project.name, compose_file)
 
     async def user_cluster_is_running(
         self,
@@ -1027,9 +1016,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
-        return await self.c_client.compose_build(
-            get_or_create_logger(project.name), compose_file
-        )
+        return await self.c_client.compose_build(project.name, compose_file)
 
     async def user_cluster_health_check(
         self,
@@ -1062,7 +1049,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                 pass
 
         for cfile in compose_files:
-            await self.c_client.compose_down(get_or_create_logger(project.name), cfile)
+            await self.c_client.compose_down(project.name, cfile)
 
     async def stop_all_user_clusters(self, project: "_project.Project"):
         """Stop all user clusters in the project.
@@ -1074,7 +1061,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         compose_files = [self.get_compose_file(user, project) for user in lof_users]
         for cfile in compose_files:
-            await self.c_client.compose_down(get_or_create_logger(project.name), cfile)
+            await self.c_client.compose_down(project.name, cfile)
 
     async def stop_all_clusters_of_a_user(self, user: "_user.User"):
         """Stop all running clusters of a user.
@@ -1086,4 +1073,4 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
 
         compose_files = [self.get_compose_file(user, prj) for prj in lof_projects]
         for cfile in compose_files:
-            await self.c_client.compose_down(get_or_create_logger(__name__), cfile)
+            await self.c_client.compose_down(__name__, cfile)

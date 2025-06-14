@@ -2,11 +2,11 @@ from tests import FixtureData
 
 
 def test_empty(empty_data: FixtureData):
-    ctf_mgr, _ = empty_data
-    assert ctf_mgr
-    assert len(ctf_mgr.prj_mgr.get_docs()) == 0
-    assert len(ctf_mgr.user_mgr.get_docs()) == 0
-    assert len(ctf_mgr.user_enrollment_mgr.get_docs()) == 0
+    ctf_app, _ = empty_data
+    assert ctf_app
+    assert len(ctf_app.prj_mgr.get_docs()) == 0
+    assert len(ctf_app.user_mgr.get_docs()) == 0
+    assert len(ctf_app.user_enrollment_mgr.get_docs()) == 0
 
 
 def test_file_structure(empty_data: FixtureData):
