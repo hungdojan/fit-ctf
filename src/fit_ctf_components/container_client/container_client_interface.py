@@ -1,3 +1,4 @@
+from asyncio.subprocess import Process
 import pathlib
 import subprocess
 from abc import ABC, abstractmethod
@@ -36,10 +37,15 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
             data.strip('"') for data in stdout.decode().rsplit() if contains in data
         ]
 
-    def _process_logging(self, message: str, logger_name: str, to_stdout: bool = False):
-        self.ctf_base.logger.info(message, logger_name=logger_name)
-        if to_stdout:
-            self.ctf_base.logger.print(message)
+    async def _process_logging(
+        self, proc: Process, logger_name: str, to_stdout: bool = False
+    ):
+        if proc.stdout:
+            async for line in proc.stdout:
+                message = line.decode()
+                self.ctf_base.logger.info(message, logger_name=logger_name)
+                if to_stdout:
+                    self.ctf_base.logger.print(message)
 
     @abstractmethod
     def generate_container_prefix(self, *names: str) -> str:
