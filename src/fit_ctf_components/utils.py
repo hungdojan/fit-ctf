@@ -1,70 +1,16 @@
 import asyncio
 
-# import logging
 import os
 
-# import sys
 import tempfile
 from asyncio.subprocess import Process
 
-# from pathlib import Path
 from subprocess import call
 
 from termcolor import colored
 
 from fit_ctf_components.data_parser import YamlParser
 from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
-
-# logger_format = "[%(asctime)s] - %(levelname)s: %(message)s"
-#
-#
-# def get_or_create_logger(
-#     logger_name: str,
-#     is_file: bool = True,
-#     format: str | None = None,
-#     level=logging.INFO,
-# ) -> logging.Logger:
-#     """Get an existing or create a new logger.
-#
-#     :param logger_name: Identification name of the logger.
-#     :type logger_name: str
-#     :param is_file: This flag is only meant to be used if the logger does not exist.
-#         If set to `True` the new logger will write to a file; otherwise to STDOUT,
-#         defaults to True.
-#     :type is_file: bool, optional
-#     :return: Found or a new logger.
-#     :rtype: logging.Logger
-#     """
-#
-#     def setup_logger(
-#         name: str,
-#         handler: logging.Handler,
-#         level=logging.INFO,
-#         format: str | None = None,
-#     ) -> logging.Logger:
-#         if format is None:
-#             handler.setFormatter(logging.Formatter(logger_format))
-#         else:
-#             handler.setFormatter(logging.Formatter(format))
-#
-#         logger = logging.getLogger(name)
-#         logger.setLevel(level)
-#         logger.addHandler(handler)
-#
-#         return logger
-#
-#     # logger not defined
-#     if logger_name not in logging.Logger.manager.loggerDict.keys():
-#         # create handler based on the `is_file` condition
-#         handler = (
-#             logging.FileHandler(
-#                 Path(os.getenv("LOG_DEST", "./")) / f"{logger_name}.log"
-#             )
-#             if is_file
-#             else logging.StreamHandler(sys.stdout)
-#         )
-#         return setup_logger(logger_name, handler, level, format)
-#     return logging.getLogger(logger_name)
 
 
 # NOTE: source link of the code: https://stackoverflow.com/a/6309753
@@ -130,10 +76,5 @@ async def create_async_exec(cmd: list[str]) -> tuple[Process, bytes]:
     proc = await asyncio.create_subprocess_exec(
         *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
     )
-    stdout, stderr = await proc.communicate()
+    stdout, _ = await proc.communicate()
     return proc, stdout
-
-
-# global logger writes to STDOUT
-# log = get_or_create_logger(__name__, False)
-# log_print = get_or_create_logger(f"{__name__}_print", False, "")
