@@ -1,3 +1,4 @@
+import asyncio
 import json
 import pathlib
 import subprocess
@@ -6,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 import fit_ctf_components.container_client.container_client_interface as c_client
-import fit_ctf_components.utils
 from fit_ctf_components.types import HealthCheckDict
 
 
@@ -30,10 +30,11 @@ class DockerClient(c_client.ContainerClientInterface):
         if not images:
             return -1
         cmd = ["docker", "rmi"] + images
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def rm_networks(
@@ -43,10 +44,11 @@ class DockerClient(c_client.ContainerClientInterface):
         if not network_names:
             return -1
         cmd = ["docker", "network", "rm"] + network_names
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_up(
@@ -56,10 +58,13 @@ class DockerClient(c_client.ContainerClientInterface):
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = f"docker compose -f {file} up -d"
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_down(
@@ -72,26 +77,34 @@ class DockerClient(c_client.ContainerClientInterface):
         )
         if not res.strip():
             return 0
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(
-            ["docker compose", "-f", file, "down"]
+        proc = await asyncio.create_subprocess_exec(
+            *["docker compose", "-f", file, "down"],
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
-        )
+
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_ps(self, file: str | Path) -> list[str]:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["docker", "compose", "-f", file, "ps", "--format", '"{{ .Names }}"']
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         return [data.strip('"') for data in stdout.decode().rsplit()]
 
     async def compose_ps_json(self, file: str | Path) -> list[dict[str, Any]]:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["docker", "compose", "-f", file, "ps", "--format", "json"]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data
 
@@ -101,10 +114,13 @@ class DockerClient(c_client.ContainerClientInterface):
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = f"docker compose -f {file} build"
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     def compose_shell(
@@ -124,7 +140,10 @@ class DockerClient(c_client.ContainerClientInterface):
             # "table {{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.UpTime}}",
             "json",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return [d for d in data if d["name"].startswith(project_name)]
 
@@ -137,7 +156,10 @@ class DockerClient(c_client.ContainerClientInterface):
             "table {{.Names}} {{.Networks}} {{.Ports}} {{.State}} {{.CreatedHuman}}",
             f"--filter=name=^{project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         return [data.strip('"') for data in stdout.decode().rsplit("\n") if data]
 
     async def ps_json(self, project_name: str) -> list[dict[str, Any]]:
@@ -149,7 +171,10 @@ class DockerClient(c_client.ContainerClientInterface):
             "json",
             f"--filter=name=^{project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data
 
@@ -162,7 +187,10 @@ class DockerClient(c_client.ContainerClientInterface):
             'table "{{.Names}}","{{.Networks}}","{{.Ports}}","{{.State}}","{{.CreatedHuman}}"',
             f"--filter=name=^{project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         # TODO: print to file
         print([data.strip('"') for data in stdout.decode().rsplit("\n") if data])
 
@@ -172,7 +200,10 @@ class DockerClient(c_client.ContainerClientInterface):
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["docker", "compose", "-f", file, "ps", "--format", "json"]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         # filtering
         return [
@@ -194,6 +225,9 @@ class DockerClient(c_client.ContainerClientInterface):
             "--filter",
             f"label=project={project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data

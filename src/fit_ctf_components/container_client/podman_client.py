@@ -1,3 +1,4 @@
+import asyncio
 import json
 import subprocess
 import sys
@@ -5,7 +6,6 @@ from pathlib import Path
 from typing import Any
 
 import fit_ctf_components.container_client.container_client_interface as c_client
-import fit_ctf_components.utils
 from fit_ctf_components.types import HealthCheckDict
 
 
@@ -29,10 +29,11 @@ class PodmanClient(c_client.ContainerClientInterface):
         if not images:
             return -1
         cmd = ["podman", "rmi"] + images
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def rm_networks(
@@ -42,10 +43,10 @@ class PodmanClient(c_client.ContainerClientInterface):
         if not network_names:
             return -1
         cmd = ["podman", "network", "rm"] + network_names
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_up(
@@ -54,10 +55,14 @@ class PodmanClient(c_client.ContainerClientInterface):
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = f"podman-compose -f {file} up -d"
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_down(
@@ -65,31 +70,39 @@ class PodmanClient(c_client.ContainerClientInterface):
     ) -> int:
         if isinstance(file, Path):
             file = str(file.resolve())
-        _, stdout = await fit_ctf_components.utils.create_async_exec(
-            ["podman-compose", "-f", file, "ps", "-q"]
+        cmd = ["podman-compose", "-f", file, "ps", "-q"]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        stdout, _ = await proc.communicate()
         if not stdout.decode().strip():
             return 0
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(
-            ["podman-compose", "-f", file, "down"],
+        cmd = ["podman-compose", "-f", file, "down"]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
-        )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     async def compose_ps(self, file: str | Path) -> list[str]:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["podman-compose", "-f", file, "ps", "--format", '"{{ .Names }}"']
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         return [data.strip('"') for data in stdout.decode().rsplit()]
 
     async def compose_ps_json(self, file: str | Path) -> list[dict[str, Any]]:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["podman-compose", "-f", file, "ps", "--format", "json"]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data
 
@@ -99,10 +112,13 @@ class PodmanClient(c_client.ContainerClientInterface):
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = f"podman-compose -f {file} build"
-        proc, stdout = await fit_ctf_components.utils.create_async_exec(cmd.split())
-        self._process_logging(
-            stdout.decode(), logger_name=logger_name, to_stdout=to_stdout
+        proc = await asyncio.create_subprocess_exec(
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
         return proc.returncode if proc.returncode is not None else 255
 
     def compose_shell(
@@ -122,7 +138,10 @@ class PodmanClient(c_client.ContainerClientInterface):
             # "table {{.Name}} {{.CPUPerc}} {{.MemUsage}} {{.UpTime}}",
             "json",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return [d for d in data if d["name"].startswith(project_name)]
 
@@ -135,7 +154,10 @@ class PodmanClient(c_client.ContainerClientInterface):
             "table {{.Names}} {{.Networks}} {{.Ports}} {{.State}} {{.CreatedHuman}}",
             f"--filter=name=^{project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         return [data.strip('"') for data in stdout.decode().rsplit("\n") if data]
 
     async def ps_json(self, project_name: str) -> list[dict[str, Any]]:
@@ -147,7 +169,10 @@ class PodmanClient(c_client.ContainerClientInterface):
             "json",
             f"--filter=name=^{project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data
 
@@ -160,9 +185,11 @@ class PodmanClient(c_client.ContainerClientInterface):
     ) -> list[HealthCheckDict]:  # pragma: no cover
         if isinstance(file, Path):
             file = str(file.resolve())
-        _, stdout = await fit_ctf_components.utils.create_async_exec(
-            ["podman-compose", "-f", file, "ps", "--format", "json"]
+        cmd = ["podman-compose", "-f", file, "ps", "--format", "json"]
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         # filtering
         return [
@@ -184,6 +211,9 @@ class PodmanClient(c_client.ContainerClientInterface):
             "--filter",
             f"label=project={project_name}",
         ]
-        _, stdout = await fit_ctf_components.utils.create_async_exec(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+        stdout, _ = await proc.communicate()
         data = json.loads(stdout)
         return data
