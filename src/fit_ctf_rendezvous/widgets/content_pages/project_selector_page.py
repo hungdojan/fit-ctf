@@ -43,5 +43,5 @@ class ProjectSelector(Container, CoreWidget):
             self.owner_screen.core_mgr.selected_project = None
         else:
             self.owner_screen.core_mgr.selected_project = (
-                self.core_mgr.ctf_mgr.prj_mgr.get_project(cmd)
+                self.core_mgr.ctf_base.prj_mgr.get_project(cmd)
             )

@@ -81,5 +81,5 @@ class LoginDialog(Container, CoreWidget):
 
     @on(Checkbox.Changed, "#login-checkbox")
     def show_password_handler(self, event: Checkbox.Changed) -> None:
-        input_element = self.query_one("#login-input-password", Input)
+        input_element = self.query_one("#login-password-input", Input)
         input_element.password = not event.checkbox.value
