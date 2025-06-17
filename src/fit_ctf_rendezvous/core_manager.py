@@ -1,15 +1,15 @@
 import re
 from typing import Any, Callable
 
-from fit_ctf_backend.ctf_manager import CTFManager
-from fit_ctf_models import User
+from fit_ctf.ctf_base import CTFBase
+from fit_ctf_components.auth.auth_interface import AuthInterface
+from fit_ctf_components.auth.local_auth import LocalAuth
+from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
+from fit_ctf_components.exceptions import CTFException
 from fit_ctf_models.project import Project
+from fit_ctf_models.user import User
 from fit_ctf_models.user_enrollment import UserEnrollment
 from fit_ctf_rendezvous.exceptions import CannotChangePassword
-from fit_ctf_utils.auth.auth_interface import AuthInterface
-from fit_ctf_utils.auth.local_auth import LocalAuth
-from fit_ctf_utils.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_utils.exceptions import CTFException
 
 REGEX_IS_LOWER_CASE = re.compile("[a-z]")
 REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
@@ -65,10 +65,14 @@ class _VariableRegistry:
 
 class CoreManager(_VariableRegistry):
 
-    def __init__(self, ctf_mgr: CTFManager, auth_client: AuthInterface | None = None):
-        self.ctf_mgr = ctf_mgr
+    def __init__(self, ctf_base: CTFBase, auth_client: AuthInterface | None = None):
+        self._ctf_base = ctf_base
         # TODO: config
-        self.auth_client = auth_client if auth_client else LocalAuth(ctf_mgr.user_mgr)
+        self.auth_client = auth_client if auth_client else LocalAuth(ctf_base.user_mgr)
+
+    @property
+    def ctf_base(self) -> CTFBase:
+        return self._ctf_base
 
     def validate_login(self, username: str, password: str) -> bool:
         """Validate user's login attempt.
@@ -83,7 +87,7 @@ class CoreManager(_VariableRegistry):
         if not self.auth_client.validate_credentials(username, password):
             return False
 
-        self._active_user = self.ctf_mgr.user_mgr.get_doc_by_filter(username=username)
+        self._active_user = self.ctf_base.user_mgr.get_doc_by_filter(username=username)
         return True
 
     @staticmethod
@@ -115,7 +119,7 @@ class CoreManager(_VariableRegistry):
             raise CannotChangePassword(
                 "The Auth client does not support password update."
             )
-        self.ctf_mgr.user_mgr.change_password(self._active_user.username, password)
+        self.ctf_base.user_mgr.change_password(self._active_user.username, password)
 
     def get_active_projects(self) -> list[Project]:
         """Get a list of enrolled projects.
@@ -125,7 +129,7 @@ class CoreManager(_VariableRegistry):
         """
         if not self.active_user:
             return []
-        return self.ctf_mgr.user_enrollment_mgr.get_enrolled_projects(
+        return self.ctf_base.user_enrollment_mgr.get_enrolled_projects(
             self.active_user.username
         )
 
@@ -140,14 +144,14 @@ class CoreManager(_VariableRegistry):
         if not self.active_user or not self.selected_project:
             return None
         try:
-            user_enrollment = self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
+            user_enrollment = self.ctf_base.user_enrollment_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
         except CTFException:
             # TODO: print e
             return None
 
-        await self.ctf_mgr.user_enrollment_mgr.start_user_cluster(
+        await self.ctf_base.user_enrollment_mgr.start_user_cluster(
             self.active_user, self.selected_project
         )
         return user_enrollment
@@ -162,20 +166,20 @@ class CoreManager(_VariableRegistry):
             return
 
         try:
-            self.ctf_mgr.user_enrollment_mgr.get_user_enrollment(
+            self.ctf_base.user_enrollment_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
         except CTFException:
             return
 
-        await self.ctf_mgr.user_enrollment_mgr.stop_user_cluster(
+        await self.ctf_base.user_enrollment_mgr.stop_user_cluster(
             self.active_user, self.selected_project
         )
 
     async def instance_is_running(self) -> bool:
         if not self.active_user or not self.selected_project:
             return False
-        return await self.ctf_mgr.user_enrollment_mgr.user_cluster_is_running(
+        return await self.ctf_base.user_enrollment_mgr.user_cluster_is_running(
             self.active_user, self.selected_project
         )
 

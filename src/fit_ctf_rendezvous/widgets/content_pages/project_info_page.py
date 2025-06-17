@@ -5,6 +5,7 @@ from textual.widget import Widget
 from textual.widgets import Button, DataTable, Markdown, Rule, TabbedContent, TabPane
 from textual.worker import Worker, WorkerState
 
+from fit_ctf_rendezvous.components.rendezvous_logger import RendezvousLogger
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
@@ -19,8 +20,7 @@ class ProjectInfoPage(Container, CoreWidget):
     def compose(self) -> ComposeResult:
         with TabbedContent():
             with TabPane("Manage instance"):
-                with VerticalScroll():
-                    yield Markdown("test1")
+                yield RendezvousLogger(self.owner_screen.core_mgr.ctf_base)
                 yield Rule(line_style="ascii")
                 yield Button(
                     "Start/Stop Instance", id="projectinfo-toggle-instance-btn"
