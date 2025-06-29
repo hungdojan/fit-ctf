@@ -95,14 +95,12 @@ class CTFApp(CTFBase):
         data = {}
         data["project"] = {k: v for k, v in project.model_dump().items() if k != "_id"}
 
-        users = self.user_enrollment_mgr.get_user_enrollments_for_project(project, True)
+        users = self.ue_mgr.get_user_enrollments_for_project(project, True)
         data["users"] = [
             {k: v for k, v in u.model_dump().items() if k != "_id"} for u in users
         ]
         pipeline = MongoQueries.export_user_enrollments(project)
-        data["enrollments"] = list(
-            self.user_enrollment_mgr.collection.aggregate(pipeline)
-        )
+        data["enrollments"] = list(self.ue_mgr.collection.aggregate(pipeline))
 
         module_count = self.module_mgr.reference_count(project.name)
         data["modules"] = [k for k, v in module_count.items() if v > 0]
@@ -209,12 +207,10 @@ class CTFApp(CTFBase):
         for enrollment in data["enrollments"]:
             user = enrollment["user"]
             project = enrollment["project"]
-            user_enroll = self.user_enrollment_mgr.enroll_user_to_project(user, project)
-            self.user_enrollment_mgr.remove_service(user_enroll, "login")
+            user_enroll = self.ue_mgr.enroll_user_to_project(user, project)
+            self.ue_mgr.remove_service(user_enroll, "login")
             for name, service in enrollment["services"].items():
-                self.user_enrollment_mgr.register_service(
-                    user_enroll, name, Service(**service)
-                )
+                self.ue_mgr.register_service(user_enroll, name, Service(**service))
 
     def import_project(self, input_file: Path):
         """Import the project data from the zip file.
@@ -321,7 +317,7 @@ class CTFApp(CTFBase):
         if data.get("enrollments"):
             for enroll in data["enrollments"]:
                 try:
-                    self.user_enrollment_mgr.enroll_user_to_project(
+                    self.ue_mgr.enroll_user_to_project(
                         enroll["user"], enroll["project"]
                     )
                 except CTFException as e:

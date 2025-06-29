@@ -98,24 +98,18 @@ async def test_disable_and_flush_project(connected_data: FixtureData):
     prjs = prj_mgr.get_docs()
 
     deleted_prj = prjs.pop(0)
-    enrolled_users = ctf_app.user_enrollment_mgr.get_user_enrollments_for_project(
-        deleted_prj
-    )
+    enrolled_users = ctf_app.ue_mgr.get_user_enrollments_for_project(deleted_prj)
 
     with pytest.raises(ProjectExistsException):
         prj_mgr.flush_project(deleted_prj)
 
     assert len(enrolled_users) == 2
-    enrolled_count = len(
-        ctf_app.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
-    )
+    enrolled_count = len(ctf_app.ue_mgr.get_enrolled_projects(enrolled_users[0]))
 
     await prj_mgr.disable_project(deleted_prj)
 
     assert not prj_mgr.get_project(deleted_prj.name, active=None).active
-    new_enrollment_count = len(
-        ctf_app.user_enrollment_mgr.get_enrolled_projects(enrolled_users[0])
-    )
+    new_enrollment_count = len(ctf_app.ue_mgr.get_enrolled_projects(enrolled_users[0]))
 
     assert new_enrollment_count < enrolled_count
     assert (ctf_app._paths["projects"] / deleted_prj.name).is_dir()
@@ -165,9 +159,7 @@ def test_generate_port_forwarding_script(
         lines = [line.rstrip() for line in f]
         assert lines.pop(0) == "#!/usr/bin/env bash"
         assert not lines.pop(0)
-        for _ in range(
-            len(ctf_app.user_enrollment_mgr.get_user_enrollments_for_project(prjs[0]))
-        ):
+        for _ in range(len(ctf_app.ue_mgr.get_user_enrollments_for_project(prjs[0]))):
             assert re.match(
                 r"firewall-cmd\s+--zone=public\s+"
                 r"--add-forward-port="

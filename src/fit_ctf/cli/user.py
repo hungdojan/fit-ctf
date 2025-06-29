@@ -169,7 +169,7 @@ def get_user_info(ctx: click.Context, username: str):
 def enrolled_projects(ctx: click.Context, username: str, format: str, all: bool):
     """Get a list of projects that a user is enrolled to."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     try:
         lof_prj = ue_mgr.get_enrolled_projects_raw(username, all)
     except CTFException as e:

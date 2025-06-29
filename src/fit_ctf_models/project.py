@@ -86,7 +86,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :return: A user enrollment manager initialized in ProjectManager.
         :rtype: _user_enroll.UserEnrollmentManager
         """
-        return self.ctf_base.user_enrollment_mgr
+        return self.ctf_base.ue_mgr
 
     def get_doc_by_id(self, _id: ObjectId) -> Project | None:
         res = self._coll.find_one({"_id": _id})

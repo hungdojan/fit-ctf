@@ -64,7 +64,7 @@ class CTFBase:
         return self._managers["user"]
 
     @property
-    def user_enrollment_mgr(self) -> "user_enroll.UserEnrollmentManager":
+    def ue_mgr(self) -> "user_enroll.UserEnrollmentManager":
         """Returns a user enrollment manager.
 
         :return: A user enrollment manager initialized in CTFApp.

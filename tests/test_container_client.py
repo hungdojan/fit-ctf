@@ -52,7 +52,7 @@ def test_client(client: str):
 #         # teardown ctf_app
 #         ctf_app.user_mgr.delete_all()
 #         ctf_app.prj_mgr.delete_all()
-#         ctf_app.user_enrollment_mgr.delete_all()
+#         ctf_app.ue_mgr.delete_all()
 #
 #     # get data
 #     db_host = os.getenv("DB_HOST")
@@ -69,7 +69,7 @@ def test_client(client: str):
 #
 #     ctf_app.prj_mgr.remove_docs_by_filter()
 #     ctf_app.user_mgr.remove_docs_by_filter()
-#     ctf_app.user_enrollment_mgr.remove_docs_by_filter()
+#     ctf_app.ue_mgr.remove_docs_by_filter()
 #
 #     # make a shadow dir
 #     (tmp_path_factory.getbasetemp() / "shadow").mkdir()
@@ -100,7 +100,7 @@ def test_client(client: str):
 #     ctf_app, tmp_path, prjs, usrs = empty_podman_data
 #     prj_mgr = ctf_app.prj_mgr
 #     user_mgr = ctf_app.user_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     def add_data():
 #         usrs = [
@@ -120,10 +120,10 @@ def test_client(client: str):
 #         return prjs, usrs
 #
 #     def connect_data():
-#         user_enrollment_mgr.enroll_multiple_users_to_project(
+#         ue_mgr.enroll_multiple_users_to_project(
 #             [u.username for u in usrs[1:]], prjs[0].name
 #         )
-#         user_enrollment_mgr.enroll_multiple_users_to_project(
+#         ue_mgr.enroll_multiple_users_to_project(
 #             [u.username for u in usrs[:-1]], prjs[1].name
 #         )
 #
@@ -136,23 +136,23 @@ def test_client(client: str):
 #         usrs = user_mgr.get_docs()
 #         prjs = prj_mgr.get_docs()
 #
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[0], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
 #         )
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
 #         )
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module2")
 #         )
 #
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[1], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
 #         )
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
 #         )
-#         user_enrollment_mgr.add_module(
+#         ue_mgr.add_module(
 #             usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module2")
 #         )
 #
@@ -176,14 +176,14 @@ def test_client(client: str):
 #     ctf_app, tmp_path, _, _ = init_podman_data
 #     prj_mgr = ctf_app.prj_mgr
 #     user_mgr = ctf_app.user_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     for prj in prj_mgr.get_docs():
 #         prj_mgr.compile_project(prj)
 #         prj_mgr.build_project(prj)
 #         for usr in prj_mgr.get_active_users_for_project(prj):
-#             user_enrollment_mgr.compile_compose(usr, prj)
-#             user_enrollment_mgr.build_user_instance(usr, prj)
+#             ue_mgr.compile_compose(usr, prj)
+#             ue_mgr.build_user_instance(usr, prj)
 #
 #     # yield data
 #     return ctf_app, tmp_path, prj_mgr.get_docs(), user_mgr.get_docs()
@@ -213,15 +213,15 @@ def test_client(client: str):
 #     # init testing env
 #     ctf_app, tmp_path, prjs, usrs = init_podman_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     def teardown():
 #         for prj in prj_mgr.get_docs():
 #             if prj_mgr.project_is_running(prj):
 #                 prj_mgr.stop_project(prj)
 #             for usr in prj_mgr.get_active_users_for_project(prj):
-#                 if user_enrollment_mgr.user_instance_is_running(usr, prj):
-#                     user_enrollment_mgr.stop_user_instance(usr, prj)
+#                 if ue_mgr.user_instance_is_running(usr, prj):
+#                     ue_mgr.stop_user_instance(usr, prj)
 #
 #     # yield data
 #     yield ctf_app, tmp_path, prjs, usrs
@@ -250,15 +250,15 @@ def test_client(client: str):
 #     # init testing env
 #     ctf_app, tmp_path, prjs, usrs = build_podman_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     def teardown():
 #         for prj in prj_mgr.get_docs():
 #             if prj_mgr.project_is_running(prj):
 #                 prj_mgr.stop_project(prj)
 #             for usr in prj_mgr.get_active_users_for_project(prj):
-#                 if user_enrollment_mgr.user_instance_is_running(usr, prj):
-#                     user_enrollment_mgr.stop_user_instance(usr, prj)
+#                 if ue_mgr.user_instance_is_running(usr, prj):
+#                     ue_mgr.stop_user_instance(usr, prj)
 #
 #     # yield data
 #     yield ctf_app, tmp_path, prjs, usrs
@@ -271,12 +271,12 @@ def test_client(client: str):
 # def test_podman_basic(podman_data: FixtureData):
 #     ctf_app, _, prjs, _ = podman_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #     for p in prjs:
 #         assert not prj_mgr.project_is_running(p)
 #         users = prj_mgr.get_active_users_for_project(p)
 #         assert not all(
-#             [user_enrollment_mgr.user_instance_is_running(u, p) for u in users]
+#             [ue_mgr.user_instance_is_running(u, p) for u in users]
 #         )
 #
 #
@@ -379,7 +379,7 @@ def test_client(client: str):
 #         user_modules = {k: 0 for k in prj.user_modules.keys()}
 #         for usr in prj_mgr.get_active_users_for_project(prj):
 #             nodes += 1  # user login node
-#             for module_name in user_enrollment_mgr.get_user_enrollment(
+#             for module_name in ue_mgr.get_user_enrollment(
 #                 prj, usr
 #             ).modules.keys():
 #                 user_modules[module_name] += 1
@@ -388,7 +388,7 @@ def test_client(client: str):
 #
 #     ctf_app, _, prjs, _ = podman_updated_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     total_images = 0
 #     for prj in prjs:
@@ -408,12 +408,12 @@ def test_client(client: str):
 #
 #     ctf_app, _, prjs, _ = podman_updated_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     total_networks = 0
 #     for prj in prjs:
 #         for usr in prj_mgr.get_active_users_for_project(prj):
-#             user_enrollment_mgr.start_user_instance(usr, prj)
+#             ue_mgr.start_user_instance(usr, prj)
 #         nof_networks = calculate_nof_networks(prj)
 #         networks = PodmanClient.get_networks(prj.name)
 #         assert len(networks) == nof_networks
@@ -439,31 +439,31 @@ def test_client(client: str):
 #     podman_updated_data: FixtureData,
 # ):
 #     ctf_app, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.start_user_instance(usrs[0], prjs[0])
+#         ue_mgr.start_user_instance(usrs[0], prjs[0])
 #
-#     user_enrollment_mgr.start_user_instance(usrs[0], prjs[1])
-#     assert user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     ue_mgr.start_user_instance(usrs[0], prjs[1])
+#     assert ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
-#     user_enrollment_mgr.enroll_user_to_project(usrs[0].username, prjs[0].name)
+#     ue_mgr.enroll_user_to_project(usrs[0].username, prjs[0].name)
 #
 #     assert not (
 #         Path(prjs[0].config_root_dir) / f"{usrs[0].username}_compose.yaml"
 #     ).exists()
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[0])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[0])
 #
-#     user_enrollment_mgr.start_user_instance(usrs[0], prjs[0])
-#     assert user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[0])
+#     ue_mgr.start_user_instance(usrs[0], prjs[0])
+#     assert ue_mgr.user_instance_is_running(usrs[0], prjs[0])
 #     assert (Path(prjs[0].config_root_dir) / f"{usrs[0].username}_compose.yaml").exists()
 #
 #     # clean up
-#     user_enrollment_mgr.cancel_user_enrollment(usrs[0], prjs[0])
+#     ue_mgr.cancel_user_enrollment(usrs[0], prjs[0])
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[0])
+#         ue_mgr.user_instance_is_running(usrs[0], prjs[0])
 #     assert not PodmanClient.get_networks(f"{prjs[0].name}_{usrs[0].username}")
 #
 #
@@ -471,58 +471,58 @@ def test_client(client: str):
 #     podman_updated_data: FixtureData,
 # ):
 #     ctf_app, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
-#     user_enrollment_mgr.start_user_instance(usrs[0], prjs[1])
-#     assert user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     ue_mgr.start_user_instance(usrs[0], prjs[1])
+#     assert ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[0])
+#         ue_mgr.user_instance_is_running(usrs[0], prjs[0])
 #
 #
 # def test_stop_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
 #     ctf_app, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
-#     user_enrollment_mgr.start_user_instance(usrs[0], prjs[1])
-#     assert user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     ue_mgr.start_user_instance(usrs[0], prjs[1])
+#     assert ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
-#     user_enrollment_mgr.stop_user_instance(usrs[0], prjs[1])
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     ue_mgr.stop_user_instance(usrs[0], prjs[1])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.stop_user_instance(usrs[0], prjs[0])
+#         ue_mgr.stop_user_instance(usrs[0], prjs[0])
 #
 #
 # def test_restart_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
 #     ctf_app, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
-#     assert not user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     assert not ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
-#     user_enrollment_mgr.restart_user_instance(usrs[0], prjs[1])
-#     assert user_enrollment_mgr.user_instance_is_running(usrs[0], prjs[1])
+#     ue_mgr.restart_user_instance(usrs[0], prjs[1])
+#     assert ue_mgr.user_instance_is_running(usrs[0], prjs[1])
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.restart_user_instance(usrs[0], prjs[0])
+#         ue_mgr.restart_user_instance(usrs[0], prjs[0])
 #
 #
 # def test_build_user_instance(
 #     podman_updated_data: FixtureData,
 # ):
 #     ctf_app, _, prjs, usrs = podman_updated_data
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     with pytest.raises(UserNotEnrolledToProjectException):
-#         user_enrollment_mgr.build_user_instance(usrs[0], prjs[0])
+#         ue_mgr.build_user_instance(usrs[0], prjs[0])
 #
 #
 # def test_delete_project_while_on(
@@ -530,7 +530,7 @@ def test_client(client: str):
 # ):
 #     ctf_app, _, prjs, _ = podman_updated_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     assert not prj_mgr.project_is_running(prjs[1])
 #
@@ -538,7 +538,7 @@ def test_client(client: str):
 #     assert prj_mgr.project_is_running(prjs[1])
 #
 #     for usr in prj_mgr.get_active_users_for_project(prjs[1]):
-#         user_enrollment_mgr.start_user_instance(usr, prjs[1])
+#         ue_mgr.start_user_instance(usr, prjs[1])
 #
 #     deleted_prj = prjs[1]
 #     prj_mgr.delete_project(deleted_prj)
@@ -552,7 +552,7 @@ def test_client(client: str):
 # ):
 #     ctf_app, _, prjs, _ = podman_updated_data
 #     prj_mgr = ctf_app.prj_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     assert not prj_mgr.project_is_running(prjs[0])
 #
@@ -560,16 +560,16 @@ def test_client(client: str):
 #     assert prj_mgr.project_is_running(prjs[0])
 #
 #     for usr in prj_mgr.get_active_users_for_project(prjs[0]):
-#         user_enrollment_mgr.start_user_instance(usr, prjs[0])
+#         ue_mgr.start_user_instance(usr, prjs[0])
 #
 #     users = prj_mgr.get_active_users_for_project(prjs[0])
-#     user_enrollment_mgr.cancel_multiple_enrollments(
+#     ue_mgr.cancel_multiple_enrollments(
 #         [u.username for u in users], prjs[0]
 #     )
 #
 #     for user in users:
 #         with pytest.raises(UserNotEnrolledToProjectException):
-#             user_enrollment_mgr.user_instance_is_running(user, prjs[0])
+#             ue_mgr.user_instance_is_running(user, prjs[0])
 #         assert not PodmanClient.get_networks(f"{prjs[0].name}_{user.username}")
 #
 #     assert prj_mgr.project_is_running(prjs[0])

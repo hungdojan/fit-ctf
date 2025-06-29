@@ -151,10 +151,8 @@ def enrolled_users(ctx: click.Context, project_name: str, format: str, all: bool
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        lof_active_users = (
-            ctf_app.user_enrollment_mgr.get_user_enrollments_for_project_raw(
-                project_name, all
-            )
+        lof_active_users = ctf_app.ue_mgr.get_user_enrollments_for_project_raw(
+            project_name, all
         )
     except CTFException as e:
         click.echo(e)
