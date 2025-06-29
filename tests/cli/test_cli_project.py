@@ -71,9 +71,7 @@ def test_enrolled_users(cli_data: CLIData):
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
-    assert len(rows[1:]) == len(
-        ctf_app.user_enrollment_mgr.get_user_enrollments_for_project("prj1")
-    )
+    assert len(rows[1:]) == len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj1"))
 
     cmd = "project enrolled-users -pn prj10 -f csv".split()
     result = cli_runner.invoke(cli, cmd)

@@ -26,7 +26,7 @@ def enroll(ctx: click.Context, username: str, project_name: str):
     try:
         user = ctf_app.user_mgr.get_user(username)
         prj = ctf_app.prj_mgr.get_project(project_name)
-        ctf_app.user_enrollment_mgr.enroll_user_to_project(user, prj)
+        ctf_app.ue_mgr.enroll_user_to_project(user, prj)
         click.echo(f"User `{user.username}` was enrolled to the project `{prj.name}`.")
     except CTFException as e:
         click.echo(e)
@@ -54,7 +54,7 @@ def enroll_multiple_to_project(
         with open(input_file, "r") as f:
             usernames = [line.strip() for line in f]
 
-        user_enrollments = ctf_app.user_enrollment_mgr.enroll_multiple_users_to_project(
+        user_enrollments = ctf_app.ue_mgr.enroll_multiple_users_to_project(
             usernames, project_name
         )
         user_ids = [ue.user_id.id for ue in user_enrollments]
@@ -78,9 +78,7 @@ def cancel_from_project(ctx: click.Context, username: str, project_name: str):
     """Remove user from the project."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        asyncio.run(
-            ctf_app.user_enrollment_mgr.cancel_user_enrollment(username, project_name)
-        )
+        asyncio.run(ctf_app.ue_mgr.cancel_user_enrollment(username, project_name))
     except CTFException as e:
         click.echo(e)
         exit(1)
@@ -107,11 +105,7 @@ def cancel_multiple_enrollment(
         with open(input_file, "r") as f:
             usernames = [line.strip() for line in f]
 
-        asyncio.run(
-            ctf_app.user_enrollment_mgr.cancel_multiple_enrollments(
-                usernames, project_name
-            )
-        )
+        asyncio.run(ctf_app.ue_mgr.cancel_multiple_enrollments(usernames, project_name))
     except FileNotFoundError:
         click.echo(f"File `{str(input_file.resolve())}` does not exist.")
     except PermissionError:
@@ -125,7 +119,7 @@ def cancel_user(ctx: click.Context, username: str):
     """Cancel user from all the enrolled projects."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        asyncio.run(ctf_app.user_enrollment_mgr.cancel_user_from_all_projects(username))
+        asyncio.run(ctf_app.ue_mgr.cancel_user_from_all_projects(username))
     except CTFException as e:
         click.echo(e)
         exit(1)
@@ -138,9 +132,7 @@ def cancel_project(ctx: click.Context, project_name: str):
     """Cancel all users that are enrolled to the given project."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        asyncio.run(
-            ctf_app.user_enrollment_mgr.cancel_all_project_enrollments(project_name)
-        )
+        asyncio.run(ctf_app.ue_mgr.cancel_all_project_enrollments(project_name))
     except CTFException as e:
         click.echo(e)
         exit(1)

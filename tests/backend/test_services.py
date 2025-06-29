@@ -21,7 +21,7 @@ def service_mgrs(
     if request.param == "project":
         mgr = ctf_app.prj_mgr
     else:
-        mgr = ctf_app.user_enrollment_mgr
+        mgr = ctf_app.ue_mgr
 
     return mgr, ctf_app, request.param
 
@@ -35,7 +35,7 @@ def test_base_services(service_mgrs: ServiceManagers):
             assert services.get("admin")
             assert services["admin"].module_name == "base"
     elif param == "user":
-        for user_enroll in ctf_app.user_enrollment_mgr.get_docs():
+        for user_enroll in ctf_app.ue_mgr.get_docs():
             services = mgr.list_services(user_enroll)
             assert len(services.keys()) == 1
             assert services.get("login")

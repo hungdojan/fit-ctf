@@ -67,16 +67,12 @@ async def test_disable_user(connected_data: FixtureData):
     ctf_app, _ = connected_data
 
     assert len(ctf_app.user_mgr.get_docs()) == 3
-    assert (
-        len(ctf_app.user_enrollment_mgr.get_user_enrollments_for_project("prj2")) == 2
-    )
+    assert len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj2")) == 2
 
     await ctf_app.user_mgr.disable_user("user1")
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert len(ctf_app.user_mgr.get_users_info(True)) == 2
-    assert (
-        len(ctf_app.user_enrollment_mgr.get_user_enrollments_for_project("prj2")) == 1
-    )
+    assert len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj2")) == 1
 
 
 async def test_flush_user(connected_data: FixtureData):

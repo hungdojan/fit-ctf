@@ -51,8 +51,8 @@ async def test_reference_count(connected_data: FixtureData):
     assert ctf_app.module_mgr.reference_count(prj.name) == {"base": 1, "base_ssh": 2}
     assert ctf_app.module_mgr.reference_count(None) == {"base": 2, "base_ssh": 4}
 
-    await ctf_app.user_enrollment_mgr.cancel_user_enrollment(
-        ctf_app.user_enrollment_mgr.get_user_enrollments_for_project(prj)[0], prj
+    await ctf_app.ue_mgr.cancel_user_enrollment(
+        ctf_app.ue_mgr.get_user_enrollments_for_project(prj)[0], prj
     )
 
     assert ctf_app.module_mgr.reference_count(prj.name) == {"base": 1, "base_ssh": 1}
@@ -61,7 +61,7 @@ async def test_reference_count(connected_data: FixtureData):
 async def test_remove_module(connected_data: FixtureData):
     ctf_app, _ = connected_data
     for prj in ctf_app.prj_mgr.get_docs():
-        await ctf_app.user_enrollment_mgr.cancel_all_project_enrollments(prj)
+        await ctf_app.ue_mgr.cancel_all_project_enrollments(prj)
     module_path = ctf_app.module_mgr.list_modules()["base_ssh"]
     assert module_path.is_dir()
     await ctf_app.module_mgr.remove_module("base_ssh")

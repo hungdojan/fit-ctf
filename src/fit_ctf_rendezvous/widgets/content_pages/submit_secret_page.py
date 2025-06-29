@@ -25,7 +25,7 @@ class SubmitSecretPage(Container, CoreWidget):
             yield ListView(
                 *[
                     ListItem(Label(prj.name))
-                    for prj in self.core_mgr.ctf_base.user_enrollment_mgr.get_enrolled_projects(
+                    for prj in self.core_mgr.ctf_base.ue_mgr.get_enrolled_projects(
                         self.core_mgr.active_user
                     )
                 ],

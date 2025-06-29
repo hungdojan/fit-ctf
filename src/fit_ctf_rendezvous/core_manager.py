@@ -129,9 +129,7 @@ class CoreManager(_VariableRegistry):
         """
         if not self.active_user:
             return []
-        return self.ctf_base.user_enrollment_mgr.get_enrolled_projects(
-            self.active_user.username
-        )
+        return self.ctf_base.ue_mgr.get_enrolled_projects(self.active_user.username)
 
     async def start_user_instance(self) -> UserEnrollment | None:
         """Start user login nodes.
@@ -144,14 +142,14 @@ class CoreManager(_VariableRegistry):
         if not self.active_user or not self.selected_project:
             return None
         try:
-            user_enrollment = self.ctf_base.user_enrollment_mgr.get_user_enrollment(
+            user_enrollment = self.ctf_base.ue_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
         except CTFException:
             # TODO: print e
             return None
 
-        await self.ctf_base.user_enrollment_mgr.start_user_cluster(
+        await self.ctf_base.ue_mgr.start_user_cluster(
             self.active_user, self.selected_project
         )
         return user_enrollment
@@ -166,26 +164,24 @@ class CoreManager(_VariableRegistry):
             return
 
         try:
-            self.ctf_base.user_enrollment_mgr.get_user_enrollment(
+            self.ctf_base.ue_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
         except CTFException:
             return
 
-        await self.ctf_base.user_enrollment_mgr.stop_user_cluster(
+        await self.ctf_base.ue_mgr.stop_user_cluster(
             self.active_user, self.selected_project
         )
 
     async def instance_is_running(self) -> bool:
         if not self.active_user or not self.selected_project:
             return False
-        return await self.ctf_base.user_enrollment_mgr.user_cluster_is_running(
+        return await self.ctf_base.ue_mgr.user_cluster_is_running(
             self.active_user, self.selected_project
         )
 
     async def cleanup(self):
         if self.active_user is None:
             return
-        await self.ctf_base.user_enrollment_mgr.stop_all_clusters_of_a_user(
-            self.active_user
-        )
+        await self.ctf_base.ue_mgr.stop_all_clusters_of_a_user(self.active_user)
