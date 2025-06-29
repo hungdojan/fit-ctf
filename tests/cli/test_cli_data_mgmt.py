@@ -24,7 +24,7 @@ def test_cli_import_data(empty_cli_data: CLIData):
     zip_path = tmp_path / "out.zip"
     assert not ctf_app.prj_mgr.get_docs()
     assert not ctf_app.user_mgr.get_docs()
-    assert not ctf_app.user_enrollment_mgr.get_docs()
+    assert not ctf_app.ue_mgr.get_docs()
 
     cmd = f"data-mgmt import -i {str(zip_path.resolve())}".split()
     result = cli_runner.invoke(cli, cmd)
@@ -33,7 +33,7 @@ def test_cli_import_data(empty_cli_data: CLIData):
 
     assert ctf_app.prj_mgr.get_project("prj1")
     assert len(ctf_app.user_mgr.get_docs()) == 2
-    assert len(ctf_app.user_enrollment_mgr.get_docs()) > 0
+    assert len(ctf_app.ue_mgr.get_docs()) > 0
 
     # clean up
     zip_path.unlink()
@@ -45,7 +45,7 @@ def test_cli_setup(empty_cli_data: CLIData):
     file = fixture_path() / "connected_data.yaml"
     assert not ctf_app.prj_mgr.get_docs()
     assert not ctf_app.user_mgr.get_docs()
-    assert not ctf_app.user_enrollment_mgr.get_docs()
+    assert not ctf_app.ue_mgr.get_docs()
 
     cmd = f"data-mgmt setup -i {str(file.resolve())} -f csv"
     result = cli_runner.invoke(cli, cmd)

@@ -17,28 +17,28 @@ def test_user_is_enrolled_to_the_project(
     connected_data: FixtureData,
 ):
     ctf_app, _ = connected_data
-    user_enrollment_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     user_mgr = ctf_app.user_mgr
     prj_mgr = ctf_app.prj_mgr
 
     # fill mgr with data
-    assert not user_enrollment_mgr.user_is_enrolled_to_project(
+    assert not ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user1"), prj_mgr.get_project("prj1")
     )
-    assert not user_enrollment_mgr.user_is_enrolled_to_project(
+    assert not ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user3"), prj_mgr.get_project("prj2")
     )
 
-    assert user_enrollment_mgr.user_is_enrolled_to_project(
+    assert ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user1"), prj_mgr.get_project("prj2")
     )
-    assert user_enrollment_mgr.user_is_enrolled_to_project(
+    assert ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user2"), prj_mgr.get_project("prj1")
     )
-    assert user_enrollment_mgr.user_is_enrolled_to_project(
+    assert ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user2"), prj_mgr.get_project("prj2")
     )
-    assert user_enrollment_mgr.user_is_enrolled_to_project(
+    assert ue_mgr.user_is_enrolled_to_project(
         user_mgr.get_user("user3"), prj_mgr.get_project("prj1")
     )
 
@@ -47,19 +47,19 @@ def test_get_user_enrollment(
     connected_data: FixtureData,
 ):
     ctf_app, _ = connected_data
-    user_enrollment_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
 
-    user_enrollment_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     user_mgr = ctf_app.user_mgr
     prj_mgr = ctf_app.prj_mgr
 
     # fill mgr with data
     with pytest.raises(UserNotEnrolledToProjectException):
-        user_enrollment_mgr.get_user_enrollment(
+        ue_mgr.get_user_enrollment(
             user_mgr.get_user("user1"), prj_mgr.get_project("prj1")
         )
 
-    ue = user_enrollment_mgr.get_user_enrollment(
+    ue = ue_mgr.get_user_enrollment(
         user_mgr.get_user("user1"), prj_mgr.get_project("prj2")
     )
 
@@ -72,7 +72,7 @@ def test_get_user_enrollment(
 
 def test_compose_file(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
 
     with pytest.raises(UserNotEnrolledToProjectException):
         ue_mgr.get_compose_file("user1", "prj1")
@@ -89,7 +89,7 @@ def test_enroll_user_to_project(
     connected_data: FixtureData,
 ):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -142,7 +142,7 @@ def test_enroll_multiple_users_to_project(
     unconnected_data: FixtureData,
 ):
     ctf_app, _ = unconnected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     user_mgr = ctf_app.user_mgr
 
     new_usernames = ["user4", "user5"]
@@ -170,7 +170,7 @@ def test_enroll_multiple_users_to_project(
 
 async def test_get_enrollments_info(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -206,7 +206,7 @@ async def test_get_enrollments_info(connected_data: FixtureData):
 
 async def test_disable_enrollment(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -225,7 +225,7 @@ async def test_disable_enrollment(connected_data: FixtureData):
 
 async def test_disable_multiple_enrollments(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -249,7 +249,7 @@ async def test_disable_multiple_enrollments(connected_data: FixtureData):
 
 async def test_flush_enrollment(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -278,7 +278,7 @@ async def test_flush_enrollment(connected_data: FixtureData):
 
 async def test_flush_multiple_enrollments(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -309,7 +309,7 @@ async def test_flush_multiple_enrollments(connected_data: FixtureData):
 
 async def test_cancel_user_enrollment(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
     user_mgr = ctf_app.user_mgr
 
@@ -336,7 +336,7 @@ async def test_cancel_user_enrollment(connected_data: FixtureData):
 
 async def test_cancel_multiple_enrollments(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
 
     prj1 = prj_mgr.get_project("prj1")
@@ -347,7 +347,7 @@ async def test_cancel_multiple_enrollments(connected_data: FixtureData):
 
 async def test_cancel_all_project_enrollments(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     prj_mgr = ctf_app.prj_mgr
 
     prj1 = prj_mgr.get_project("prj1")
@@ -358,7 +358,7 @@ async def test_cancel_all_project_enrollments(connected_data: FixtureData):
 
 async def test_cancel_user_from_all_projects(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
     user_mgr = ctf_app.user_mgr
 
     user2 = user_mgr.get_user("user2")
@@ -369,7 +369,7 @@ async def test_cancel_user_from_all_projects(connected_data: FixtureData):
 
 async def test_delete_all(connected_data: FixtureData):
     ctf_app, _ = connected_data
-    ue_mgr = ctf_app.user_enrollment_mgr
+    ue_mgr = ctf_app.ue_mgr
 
     assert len(ue_mgr.get_docs()) == 4
     await ue_mgr.delete_all()

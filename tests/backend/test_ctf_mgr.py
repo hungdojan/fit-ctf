@@ -41,13 +41,13 @@ def test_import_project(empty_data: FixtureData):
     zip_path = tmp_path / "project.zip"
     assert not ctf_app.prj_mgr.get_docs()
     assert not ctf_app.user_mgr.get_docs()
-    assert not ctf_app.user_enrollment_mgr.get_docs()
+    assert not ctf_app.ue_mgr.get_docs()
 
     ctf_app.import_project(zip_path)
 
     assert ctf_app.prj_mgr.get_project("prj2")
     assert len(ctf_app.user_mgr.get_docs()) == 2
-    assert len(ctf_app.user_enrollment_mgr.get_docs()) == 2
+    assert len(ctf_app.ue_mgr.get_docs()) == 2
 
     # clean up here since the tmp_path is defined for the session scope
     zip_path.unlink()
@@ -70,7 +70,7 @@ async def test_setup_env_from_file(empty_data: FixtureData):
     new_users = ctf_app.setup_env_from_file(fixture_path() / "connected_data.yaml")
     assert len(ctf_app.prj_mgr.get_docs()) == 2
     assert len(new_users) == 3
-    assert len(ctf_app.user_enrollment_mgr.get_docs()) == 4
+    assert len(ctf_app.ue_mgr.get_docs()) == 4
 
     with pytest.raises(CTFException):
         ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml")

@@ -39,7 +39,7 @@ def empty_data(
         # teardown ctf_app
         asyncio.run(ctf_app.prj_mgr.delete_all())
         asyncio.run(ctf_app.user_mgr.delete_all())
-        asyncio.run(ctf_app.user_enrollment_mgr.delete_all())
+        asyncio.run(ctf_app.ue_mgr.delete_all())
 
     # get data
     db_host, db_name = get_db_info()
@@ -64,7 +64,7 @@ def empty_data(
 
     ctf_app.prj_mgr.remove_docs_by_filter()
     ctf_app.user_mgr.remove_docs_by_filter()
-    ctf_app.user_enrollment_mgr.remove_docs_by_filter()
+    ctf_app.ue_mgr.remove_docs_by_filter()
 
     # make a shadow dir
     request.addfinalizer(teardown)
@@ -174,7 +174,7 @@ def connected_data(
     ctf_app, tmp_path = empty_data
     ctf_app.setup_env_from_file(fixture_path() / "connected_data.yaml")
 
-    assert len(ctf_app.user_enrollment_mgr.get_enrolled_projects("user2")) == 2
+    assert len(ctf_app.ue_mgr.get_enrolled_projects("user2")) == 2
 
     # yield data
     return ctf_app, tmp_path
@@ -229,7 +229,7 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
 #     ctf_app, tmp_path, prjs, usrs = connected_data
 #     prj_mgr = ctf_app.prj_mgr
 #     user_mgr = ctf_app.user_mgr
-#     user_enrollment_mgr = ctf_app.user_enrollment_mgr
+#     ue_mgr = ctf_app.ue_mgr
 #
 #     # fill mgr with data
 #     for prj in prjs:
@@ -240,28 +240,28 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
 #     usrs = user_mgr.get_docs()
 #     prjs = prj_mgr.get_docs()
 #
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[0], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
 #     )
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
 #     )
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module2")
 #     )
 #
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[1], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
 #     )
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
 #     )
-#     user_enrollment_mgr.add_module(
+#     ue_mgr.add_module(
 #         usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module2")
 #     )
 #
-#     [user_enrollment_mgr.compile_compose(u, prjs[0]) for u in usrs[1:]]
-#     [user_enrollment_mgr.compile_compose(u, prjs[1]) for u in usrs[:-1]]
+#     [ue_mgr.compile_compose(u, prjs[0]) for u in usrs[1:]]
+#     [ue_mgr.compile_compose(u, prjs[1]) for u in usrs[:-1]]
 #
 #     # yield data
 #     return ctf_app, tmp_path, prjs, usrs

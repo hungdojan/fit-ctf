@@ -33,7 +33,7 @@ class ModuleManager(BaseComponent):
 
     @property
     def ue_mgr(self) -> "user_enroll.UserEnrollmentManager":
-        return self.ctf_base.user_enrollment_mgr
+        return self.ctf_base.ue_mgr
 
     @property
     def c_client(self) -> ContainerClientInterface:
