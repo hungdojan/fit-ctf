@@ -12,3 +12,7 @@ class UserNotLoggedIn(FitRendezvousException):
 
 class CannotChangePassword(FitRendezvousException):
     pass
+
+
+class InconsistentState(FitRendezvousException):
+    pass

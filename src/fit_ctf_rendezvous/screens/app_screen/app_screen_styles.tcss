@@ -81,3 +81,62 @@ ProjectInfoPage {
         width: 100%;
     }
 }
+
+SubmitSecretPage {
+    Input, Input:focus, Input:hover {
+        border: none;
+        padding: 0;
+        margin: 0;
+        height: 1;
+        width: 50%;
+    }
+
+    Horizontal {
+        margin: 0;
+        padding: 0;
+        border: none;
+        align: center middle;
+        Label {
+            min-width: 20;
+        }
+    }
+
+    ListView {
+        height: 1;
+        width: 50%;
+    }
+    ListView:focus {
+        height: auto;
+        max-height: 50%;
+    }
+
+    Rule {
+        color: white;
+        margin: 0;
+        width: 90w;
+    }
+
+}
+
+UploadKeyPage {
+    VerticalScroll {
+        height: 60%;
+    }
+    Markdown {
+        height: auto;
+    }
+
+    Horizontal {
+        align: center middle;
+    }
+    Input, Input:focus {
+        border: none;
+        height: 1;
+        width: 75%;
+    }
+    Rule {
+        color: white;
+        margin: 0;
+        width: 90w;
+    }
+}

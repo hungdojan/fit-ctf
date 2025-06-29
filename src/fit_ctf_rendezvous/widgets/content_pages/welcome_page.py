@@ -22,7 +22,7 @@ class WelcomePage(Container, CoreWidget):
     @property
     def markdown_text(self) -> str:
         if self._markdown_text is None:
-            with open(get_resource_dir() / "welcome_page.md", "r") as f:
+            with open(get_resource_dir() / "en" / "welcome_page.md", "r") as f:
                 self._markdown_text = f.read()
         return self._markdown_text
 

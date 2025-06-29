@@ -58,16 +58,16 @@ class AppSideBar(Container, CoreWidget):
                 disabled=self.selected_project is None,
                 classes="sidebar-active-btn",
             )
-            yield Button(
-                "Show Console",
-                id="sidebar-show-console-btn",
-                disabled=self.selected_project is None,
-                classes="sidebar-active-btn",
-            )
+            # yield Button(
+            #     "Show Console",
+            #     id="sidebar-show-console-btn",
+            #     disabled=self.selected_project is None,
+            #     classes="sidebar-active-btn",
+            # )
             yield Rule(line_style="ascii")
             yield Button("Select Project", id="sidebar-select-project-btn")
             yield Button("Upload public key", id="sidebar-upload-key-btn")
-            yield Button("Settings", id="sidebar-settings-btn")
+            # yield Button("Settings", id="sidebar-settings-btn")
             yield Button("About & Help", id="sidebar-help-about-btn")
 
         with Center():

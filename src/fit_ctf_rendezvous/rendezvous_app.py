@@ -27,5 +27,5 @@ class RendezvousApp(App):
     async def _shutdown(self) -> None:
         # NOTE: workaround
         if self.core_mgr.active_user is not None:
-            self.core_mgr.cleanup()
+            await self.core_mgr.cleanup()
         return await super()._shutdown()
