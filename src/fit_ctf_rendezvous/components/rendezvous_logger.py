@@ -38,4 +38,5 @@ class RendezvousLogger(Log, LoggerInterface, metaclass=CombinedMeta):
         self.print(msg)
 
     def print(self, msg: str, **kwargs):
-        self.write_line(msg)
+        if self.is_mounted:
+            self.write_line(msg)

@@ -183,6 +183,9 @@ class CoreManager(_VariableRegistry):
             self.active_user, self.selected_project
         )
 
-    def cleanup(self):
-        # TODO: implement shutting down running instances of the user
-        pass
+    async def cleanup(self):
+        if self.active_user is None:
+            return
+        await self.ctf_base.user_enrollment_mgr.stop_all_clusters_of_a_user(
+            self.active_user
+        )
