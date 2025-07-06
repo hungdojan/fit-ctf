@@ -18,7 +18,6 @@ from fit_ctf_components.exceptions import (
 from fit_ctf_components.types import (
     HealthCheckDict,
     ModuleCountDict,
-    PathDict,
     ProjectPortListingDict,
     RawProjectDict,
 )
@@ -68,7 +67,6 @@ class ProjectManager(ClusterConfigManager[Project]):
         self,
         ctf_base: "ctf_base.CTFBase",
         db: Database,
-        paths: PathDict,
     ):
         """Constructor method.
 
@@ -77,7 +75,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["project"], paths)
+        super().__init__(ctf_base, db, db["project"])
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -154,7 +152,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :return: A path to the compose file.
         :rtype: Path
         """
-        compose_file = self._paths["projects"] / project.name / "server_compose.yaml"
+        compose_file = self.paths.project_compose(project)
         if not compose_file.exists():
             self.compile_compose_file(project)
         return compose_file
@@ -302,11 +300,9 @@ class ProjectManager(ClusterConfigManager[Project]):
                 "Not enough available ports."
             )  # pragma: no cover
 
-        dest_dir = self._paths["projects"] / name
-        dest_dir.mkdir(parents=True)
-
-        (dest_dir / "users").mkdir()
-        (dest_dir / "logs").mkdir()
+        self.paths.project_path(name).mkdir(parents=True)
+        self.paths.project_users(name).mkdir(parents=True)
+        self.paths.project_logs(name).mkdir(parents=True)
 
         prj = self.create_and_insert_doc(
             name=name,
@@ -422,9 +418,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :param project: A project object.
         :type project: Project.
         """
-        compose_filepath = (
-            self._paths["projects"] / project.name / "server_compose.yaml"
-        )
+        compose_filepath = self.paths.project_compose(project)
         with open(str(compose_filepath.resolve()), "w") as f:
             template = get_template(
                 "server_compose.yaml.j2", str(JINJA_TEMPLATE_DIRPATHS["v1"].resolve())
@@ -432,7 +426,7 @@ class ProjectManager(ClusterConfigManager[Project]):
             f.write(
                 template.render(
                     project=project.model_dump(),
-                    module_dir=self._paths["modules"],
+                    module_dir=self.paths.module_global,
                     container_name_prefix=project.name,
                 )
             )
@@ -520,7 +514,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         except ProjectNotExistException as e:
             raise ProjectNotExistException(e)
 
-        path = self._paths["projects"] / prj.name
+        path = self.paths.project_path(prj)
         if path.exists():
             shutil.rmtree(path)
 

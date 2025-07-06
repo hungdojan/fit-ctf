@@ -5,6 +5,7 @@ import pymongo
 from pymongo.database import Database
 
 import fit_ctf_components.container_client.container_client_interface as c_client_interface
+from fit_ctf.path_mgmt import PathManagement
 import fit_ctf_models.module_manager as module_mgr
 import fit_ctf_models.project as prj
 import fit_ctf_models.user as user
@@ -35,13 +36,12 @@ class CTFBase:
 
         self._c_client = _c_client(self)
         self._managers = {
-            "project": prj.ProjectManager(self, self._ctf_db, paths),
-            "user": user.UserManager(self, self._ctf_db, paths),
-            "user_enrollment": user_enroll.UserEnrollmentManager(
-                self, self._ctf_db, paths
-            ),
-            "module": module_mgr.ModuleManager(self, paths),
+            "project": prj.ProjectManager(self, self._ctf_db),
+            "user": user.UserManager(self, self._ctf_db),
+            "user_enrollment": user_enroll.UserEnrollmentManager(self, self._ctf_db),
+            "module": module_mgr.ModuleManager(self),
         }
+        self._path_mgmt = PathManagement(paths)
         self._logger = logger_cls(self)
         self._components = {}
 
@@ -88,6 +88,10 @@ class CTFBase:
     @property
     def logger(self) -> LoggerInterface:
         return self._logger
+
+    @property
+    def paths(self) -> PathManagement:
+        return self._path_mgmt
 
     @overload
     def get_component(self, name: str) -> BaseComponent: ...

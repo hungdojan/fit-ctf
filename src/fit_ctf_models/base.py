@@ -7,11 +7,11 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 
 import fit_ctf.ctf_base
+import fit_ctf.path_mgmt as path_mgmt
 from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
-from fit_ctf_components.types import PathDict
 
 
 class Base(ABC, BaseModel):
@@ -48,7 +48,6 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         ctf_base: "fit_ctf.ctf_base.CTFBase",
         db: Database,
         coll: Collection,
-        paths: PathDict,
     ):
         """Constructor method.
 
@@ -62,7 +61,6 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         BaseComponent.__init__(self, ctf_base)
         self._db = db
         self._coll = coll
-        self._paths = paths
 
     @property
     def collection(self) -> Collection:
@@ -76,6 +74,10 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
     @property
     def c_client(self) -> ContainerClientInterface:
         return self.ctf_base.c_client
+
+    @property
+    def paths(self) -> "path_mgmt.PathManagement":
+        return self.ctf_base.paths
 
     @abstractmethod
     def get_doc_by_id(self, _id: ObjectId) -> T | None:  # pragma: no cover
