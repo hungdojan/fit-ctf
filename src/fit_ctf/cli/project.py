@@ -7,7 +7,7 @@ from fit_ctf_models.project import ProjectManager
 from fit_ctf_components.utils import color_state
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import CTFException
+from fit_ctf.exceptions import CTFBaseException
 
 ##########################
 ## Project CLI commands ##
@@ -74,7 +74,7 @@ def create_project(
             description,
         )
         click.echo(f"Project `{prj.name}` was successfully generated.")
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
 
@@ -154,7 +154,7 @@ def enrolled_users(ctx: click.Context, project_name: str, format: str, all: bool
         lof_active_users = ctf_app.ue_mgr.get_user_enrollments_for_project_raw(
             project_name, all
         )
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
     if not lof_active_users:
@@ -213,7 +213,7 @@ def resources_usage(ctx: click.Context, project_name: str):
     prj_mgr: ProjectManager = ctx.parent.obj["ctf_app"].prj_mgr  # pyright: ignore
     try:
         asyncio.run(prj_mgr.get_resource_usage(project_name))
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
 
 

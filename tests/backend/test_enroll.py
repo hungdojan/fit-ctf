@@ -1,6 +1,6 @@
 import pytest
 
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,

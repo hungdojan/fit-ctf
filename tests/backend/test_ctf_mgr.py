@@ -4,8 +4,9 @@ import zipfile
 
 import pytest
 
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.exceptions import CTFException, ProjectNotExistException
+from fit_ctf_models.utils.exceptions import ProjectNotExistException
 from tests import FixtureData, fixture_path
 
 
@@ -57,11 +58,11 @@ async def test_setup_env_from_file(empty_data: FixtureData):
     ctf_app, _ = empty_data
 
     ctf_app.setup_env_from_file(fixture_path() / "project_data.yaml")
-    with pytest.raises(CTFException):
+    with pytest.raises(CTFBaseException):
         ctf_app.setup_env_from_file(fixture_path() / "project_data.yaml")
 
     ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml")
-    with pytest.raises(CTFException):
+    with pytest.raises(CTFBaseException):
         ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml")
 
     await ctf_app.prj_mgr.delete_all()
@@ -72,7 +73,7 @@ async def test_setup_env_from_file(empty_data: FixtureData):
     assert len(new_users) == 3
     assert len(ctf_app.ue_mgr.get_docs()) == 4
 
-    with pytest.raises(CTFException):
+    with pytest.raises(CTFBaseException):
         ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml")
         ctf_app.setup_env_from_file(fixture_path() / "project_data.yaml")
     ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml", exist_ok=True)

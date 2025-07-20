@@ -1,4 +1,4 @@
-from fit_ctf_components.exceptions import UserNotExistsException
+from fit_ctf_models.utils.exceptions import UserNotExistsException
 import fit_ctf_models.user as user
 from fit_ctf_components.auth.auth_interface import AuthInterface
 
