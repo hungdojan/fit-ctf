@@ -1,4 +1,5 @@
 import asyncio
+
 import click
 
 from fit_ctf.cli.utils import (
@@ -9,13 +10,13 @@ from fit_ctf.cli.utils import (
     user_option,
 )
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.cluster import Service
-from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    ConfigurationFileNotEditedException,
-    CTFException,
+from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
+from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf_models.cluster import Service
+from fit_ctf_models.utils.exceptions import (
     ServiceNotExistException,
     UserNotEnrolledToProjectException,
 )
@@ -32,7 +33,7 @@ def user_cluster(ctx: click.Context, username: str, project_name: str):
     try:
         user, project = ctf_app.ue_mgr._get_user_and_project(username, project_name)
         _ = ctf_app.ue_mgr.get_user_enrollment(user, project)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
 

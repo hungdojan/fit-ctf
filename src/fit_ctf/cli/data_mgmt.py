@@ -8,8 +8,8 @@ from fit_ctf.cli.utils import (
     yaml_suffix_validation,
 )
 from fit_ctf.ctf_app import CTFApp
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import CTFException
 
 
 @click.group(name="data-mgmt")
@@ -38,7 +38,7 @@ def export_data(ctx: click.Context, project_name: str, output_file: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         ctf_app.export_project(project_name, output_file)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
 
 
@@ -60,7 +60,7 @@ def import_data(ctx: click.Context, input_file: pathlib.Path):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         ctf_app.import_project(input_file)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
 
 
@@ -106,5 +106,5 @@ def setup_data(
                 for user in new_users
             ]
             get_view(format).print_data(headers, values)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)

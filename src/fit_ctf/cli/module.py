@@ -4,7 +4,7 @@ import click
 from fit_ctf.cli.utils import format_option, module_name_option
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,

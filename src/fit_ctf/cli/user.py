@@ -5,16 +5,14 @@ import click
 
 from fit_ctf.cli.utils import format_option, user_option
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.user import UserManager
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    CTFException,
-    UserExistsException,
-)
 from fit_ctf_components.types import UserInfoDict
+from fit_ctf_models.user import UserManager
+from fit_ctf_models.utils.exceptions import UserExistsException
 
 #######################
 ## User CLI commands ##
@@ -149,7 +147,7 @@ def get_user_info(ctx: click.Context, username: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         user_info = ctf_app.user_mgr.get_user_raw(username)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
     click.echo(YamlParser.dump_data(user_info))
@@ -172,7 +170,7 @@ def enrolled_projects(ctx: click.Context, username: str, format: str, all: bool)
     ue_mgr = ctf_app.ue_mgr
     try:
         lof_prj = ue_mgr.get_enrolled_projects_raw(username, all)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
 
@@ -196,7 +194,7 @@ def change_password(ctx: click.Context, username: str, password: str):
     # TODO: no strength validation
     try:
         ctf_app.user_mgr.change_password(username, password)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
 

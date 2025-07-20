@@ -9,7 +9,7 @@ from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,
