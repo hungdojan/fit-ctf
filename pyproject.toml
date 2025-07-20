@@ -64,6 +64,7 @@ env = [
     "DB_CONNECTION_TIMEOUT=5",
     "DB_NAME=test-ctf-db",
     "ENABLE_CONTAINER_CLIENT_TESTING=0",
+    "APP_SECRET=test-secret"
 ]
 addopts = "-vs"
 asyncio_mode = "auto"

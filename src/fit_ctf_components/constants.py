@@ -20,6 +20,10 @@ def get_db_info() -> tuple[str, str]:
     db_name = os.getenv("DB_NAME")
     if not db_name:
         sys.exit("Environment variable `DB_NAME` is not set.")
+
+    app_secret = os.getenv("APP_SECRET")
+    if not app_secret:
+        sys.exit("Environment variable `APP_SECRET` is not set.")
     return db_host, db_name
 
 

@@ -85,8 +85,7 @@ class UserManager(BaseManagerInterface[User]):
     ):
         filter = {} if filter is None else filter
         projection = {} if projection is None else projection
-        res = self._coll.find_one(filter=filter, projection=projection)
-        return User(**res) if res else None
+        return self._coll.find_one(filter=filter, projection=projection)
 
     def get_docs(self, **filter) -> list[User]:
         res = self._coll.find(filter=filter)
