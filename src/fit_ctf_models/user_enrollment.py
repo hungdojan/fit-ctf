@@ -1,6 +1,6 @@
 import logging
-from pathlib import Path
 import shutil
+from pathlib import Path
 
 from bson import DBRef, ObjectId
 from pydantic import Field
@@ -9,7 +9,14 @@ from pymongo.database import Database
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import (
+    HealthCheckDict,
+    ModuleCountDict,
+    RawEnrolledProjectsDict,
+)
+from fit_ctf_components.utils import get_missing_in_sequence
+from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,
@@ -19,13 +26,6 @@ from fit_ctf_components.exceptions import (
     UserNotEnrolledToProjectException,
     UserNotExistsException,
 )
-from fit_ctf_components.types import (
-    HealthCheckDict,
-    ModuleCountDict,
-    RawEnrolledProjectsDict,
-)
-from fit_ctf_components.utils import get_missing_in_sequence
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 

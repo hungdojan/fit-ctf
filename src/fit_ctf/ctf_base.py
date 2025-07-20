@@ -5,45 +5,50 @@ import pymongo
 from pymongo.database import Database
 
 import fit_ctf_components.container_client.container_client_interface as c_client_interface
-from fit_ctf.path_mgmt import PathManagement
 import fit_ctf_models.module_manager as module_mgr
 import fit_ctf_models.project as prj
 import fit_ctf_models.user as user
 import fit_ctf_models.user_enrollment as user_enroll
+import fit_ctf_models.user_progress as user_progress
 from fit_ctf.exceptions import ManagerNotFound
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.base import BaseComponent, ComponentType
 from fit_ctf_components.logger.default_logger import DefaultLogger
 from fit_ctf_components.logger.logger_interface import LoggerInterface
-from fit_ctf_components.types import PathDict
+from fit_ctf_components.types import EnvInfo, PathDict
+from fit_ctf_models.secret import SecretManager
 
 
 class CTFBase:
     def __init__(
         self,
-        host: str,
-        db_name: str,
+        env_info: EnvInfo,
         paths: PathDict,
         _c_client: type["c_client_interface.ContainerClientInterface"],
         logger_cls: type[LoggerInterface] = DefaultLogger,
     ) -> None:
         self._client = pymongo.MongoClient(
-            host, serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30"))
+            env_info["db_host"],
+            serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
         )
         # test connection
         self._client.server_info()
 
-        self._ctf_db: Database = self._client[db_name]
+        self._ctf_db: Database = self._client[env_info["db_name"]]
 
         self._c_client = _c_client(self)
         self._managers = {
             "project": prj.ProjectManager(self, self._ctf_db),
             "user": user.UserManager(self, self._ctf_db),
             "user_enrollment": user_enroll.UserEnrollmentManager(self, self._ctf_db),
+            "user_progress": user_progress.UserProgressManager(self, self._ctf_db),
             "module": module_mgr.ModuleManager(self),
         }
         self._path_mgmt = PathManagement(paths)
-        self._logger = logger_cls(self)
-        self._components = {}
+        self._components: dict[str, BaseComponent] = {
+            "logger": logger_cls(self),
+        }
+        SecretManager.init_class(env_info["app_secret"])
 
     @property
     def prj_mgr(self) -> "prj.ProjectManager":
@@ -73,6 +78,15 @@ class CTFBase:
         return self._managers["user_enrollment"]
 
     @property
+    def up_mgr(self) -> "user_progress.UserProgressManager":
+        """Returns a user progress manager.
+
+        :return: A user progress manager initialized in CTFApp.
+        :rtype: UserProgressManager
+        """
+        return self._managers["user_progress"]
+
+    @property
     def module_mgr(self) -> "module_mgr.ModuleManager":
         """Returns a user enrollment manager.
 
@@ -87,7 +101,7 @@ class CTFBase:
 
     @property
     def logger(self) -> LoggerInterface:
-        return self._logger
+        return self.get_component("logger", LoggerInterface)
 
     @property
     def paths(self) -> PathManagement:

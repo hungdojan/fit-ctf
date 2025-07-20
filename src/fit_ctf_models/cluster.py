@@ -3,7 +3,7 @@ from typing import Generic, TypeVar
 from pydantic import BaseModel, Field
 
 from fit_ctf_models.base import Base, BaseManagerInterface
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ServiceExistException,
     ServiceNotExistException,
 )

@@ -9,26 +9,33 @@ from jsonschema.exceptions import ValidationError
 
 import fit_ctf_models.project as project
 from fit_ctf.ctf_base import CTFBase
+from fit_ctf.exceptions import (
+    CTFBaseException,
+    ImportFileCorruptedException,
+)
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.container_client import get_c_client_by_name
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.exceptions import (
-    CTFException,
-    ImportFileCorruptedException,
+from fit_ctf_components.types import (
+    DatabaseDumpDict,
+    EnvInfo,
+    NewUserDict,
+    PathDict,
+    SetupDict,
+)
+from fit_ctf_models.cluster import Service
+from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
     UserExistsException,
 )
-from fit_ctf_components.types import DatabaseDumpDict, NewUserDict, PathDict, SetupDict
-from fit_ctf_models.cluster import Service
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 
 
 class CTFApp(CTFBase):
     def __init__(
         self,
-        host: str,
-        db_name: str,
+        env_info: EnvInfo,
         paths: PathDict,
     ):
         """Constructor method
@@ -39,8 +46,7 @@ class CTFApp(CTFBase):
         :type db_name: str
         """
         super().__init__(
-            host,
-            db_name,
+            env_info,
             paths,
             get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
         )
@@ -320,11 +326,11 @@ class CTFApp(CTFBase):
                     self.ue_mgr.enroll_user_to_project(
                         enroll["user"], enroll["project"]
                     )
-                except CTFException as e:
+                except CTFBaseException as e:
                     if exist_ok:
                         self.logger.warning(str(e))
                         continue
-                    raise CTFException(e)
+                    raise CTFBaseException(e)
         return new_users
 
     def setup_env_from_file(

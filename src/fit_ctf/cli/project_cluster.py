@@ -9,13 +9,13 @@ from fit_ctf.cli.utils import (
     service_name_option,
 )
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.cluster import Service
-from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    ConfigurationFileNotEditedException,
-    CTFException,
+from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
+from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf_models.cluster import Service
+from fit_ctf_models.utils.exceptions import (
     ProjectNotExistException,
     ServiceNotExistException,
 )
@@ -30,7 +30,7 @@ def project_cluster(ctx: click.Context, project_name: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         project = ctf_app.prj_mgr.get_project(project_name)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
         exit(1)
     ctx.obj["project"] = project

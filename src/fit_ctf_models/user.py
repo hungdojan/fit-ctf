@@ -9,12 +9,12 @@ import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
+from fit_ctf_models.base import Base, BaseManagerInterface
+from fit_ctf_models.utils.exceptions import (
     UserExistsException,
     UserNotExistsException,
 )
-from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
-from fit_ctf_models.base import Base, BaseManagerInterface
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
@@ -85,8 +85,7 @@ class UserManager(BaseManagerInterface[User]):
     ):
         filter = {} if filter is None else filter
         projection = {} if projection is None else projection
-        res = self._coll.find_one(filter=filter, projection=projection)
-        return User(**res) if res else None
+        return self._coll.find_one(filter=filter, projection=projection)
 
     def get_docs(self, **filter) -> list[User]:
         res = self._coll.find(filter=filter)
