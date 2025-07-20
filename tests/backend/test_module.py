@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from fit_ctf_templates import TEMPLATE_DIRNAME
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,

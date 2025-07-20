@@ -4,7 +4,7 @@ import click
 import pymongo.errors
 
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_components.constants import get_db_info, get_paths
+from fit_ctf_components.constants import get_env_info, get_paths
 from fit_ctf_components.types import PathDict
 
 from . import (
@@ -68,13 +68,13 @@ def cli(
         ctx.obj["paths"] = paths
         return
 
-    db_host, db_name = get_db_info()
+    env_info = get_env_info()
     try:
-        ctf_app = CTFApp(db_host, db_name, paths)
+        ctf_app = CTFApp(env_info, paths)
 
         ctx.obj = {
-            "db_host": db_host,
-            "db_name": db_name,
+            "db_host": env_info["db_host"],
+            "db_name": env_info["db_name"],
             "ctf_app": ctf_app,
         }
     except pymongo.errors.ServerSelectionTimeoutError:  # pragma: no cover

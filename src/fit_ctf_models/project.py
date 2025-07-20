@@ -9,12 +9,6 @@ from pymongo.database import Database
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.constants import DEFAULT_STARTING_PORT
-from fit_ctf_components.exceptions import (
-    ProjectExistsException,
-    ProjectNamingFormatException,
-    ProjectNotExistException,
-    SSHPortOutOfRangeException,
-)
 from fit_ctf_components.types import (
     HealthCheckDict,
     ModuleCountDict,
@@ -22,6 +16,12 @@ from fit_ctf_components.types import (
     RawProjectDict,
 )
 from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.utils.exceptions import (
+    ProjectExistsException,
+    ProjectNamingFormatException,
+    ProjectNotExistException,
+    SSHPortOutOfRangeException,
+)
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import (
     JINJA_TEMPLATE_DIRPATHS,
