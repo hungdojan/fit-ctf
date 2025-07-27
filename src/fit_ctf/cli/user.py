@@ -21,9 +21,7 @@ from fit_ctf_models.utils.exceptions import UserExistsException
 
 @click.group(name="user")
 @click.pass_context
-def user(
-    ctx: click.Context,
-):
+def user(ctx: click.Context):
     """A command for user management."""
     ctx.obj = ctx.parent.obj  # pyright: ignore
 

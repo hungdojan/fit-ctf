@@ -122,6 +122,22 @@ class ServiceExistException(CTFModelException):
 
 
 class ModuleInUseException(CTFModelException):
-    """The selected module is still used by some kind of server"""
+    """The selected module is still used by some kind of server."""
 
+    pass
+
+
+class SecretAlreadyExistsException(CTFModelException):
+    pass
+
+
+class SecretNotFoundException(CTFModelException):
+    pass
+
+
+class UserProgressNotExistException(CTFModelException):
+    pass
+
+
+class SecretAlreadySubmittedException(CTFModelException):
     pass

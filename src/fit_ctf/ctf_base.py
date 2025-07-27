@@ -9,6 +9,7 @@ import fit_ctf_models.module_manager as module_mgr
 import fit_ctf_models.project as prj
 import fit_ctf_models.user as user
 import fit_ctf_models.user_enrollment as user_enroll
+import fit_ctf_models.user_progress as user_progress
 from fit_ctf.exceptions import ManagerNotFound
 from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.base import BaseComponent, ComponentType
@@ -17,7 +18,6 @@ from fit_ctf_components.logger.logger_interface import LoggerInterface
 from fit_ctf_components.secret_mgr.default_secret_mgr import DefaultSecretManager
 from fit_ctf_components.secret_mgr.secret_mgr_interface import SecretManagerInterface
 from fit_ctf_components.types import PathDict
-from fit_ctf_models import user_progress
 
 
 class CTFBase:
@@ -78,6 +78,15 @@ class CTFBase:
         :rtype: UserEnrollmentManager
         """
         return self._managers["user_enrollment"]
+
+    @property
+    def up_mgr(self) -> "user_progress.UserProgressManager":
+        """Returns a user progress manager.
+
+        :return: A user progress manager initialized in CTFApp.
+        :rtype: UserProgressManager
+        """
+        return self._managers["user_progress"]
 
     @property
     def module_mgr(self) -> "module_mgr.ModuleManager":

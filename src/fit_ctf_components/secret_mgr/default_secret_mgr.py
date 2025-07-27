@@ -16,7 +16,7 @@ class DefaultSecretManager(SecretManagerInterface):
     ) -> str:
         h = blake2b(
             key=data.encode(),
-            salt=f"{project.name}-{os.getenv('APP_SECRET')}".encode(),
-            person=user.username.encode(),
+            salt=project.id.__id + f"-{os.getenv('APP_SECRET')}".encode(),
+            person=user.id.__id,
         )
         return h.digest().decode()

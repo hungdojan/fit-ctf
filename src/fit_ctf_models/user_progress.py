@@ -1,24 +1,45 @@
 from datetime import datetime
+from typing import Literal, overload
 
 from bson import DBRef, ObjectId
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.project as _prj
-from fit_ctf_models.secret import Secret
 import fit_ctf_models.user as _user
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import SecretInfo
+from fit_ctf_models.base import Base, BaseManagerInterface
+from fit_ctf_models.secret import Secret
+from fit_ctf_models.utils.exceptions import (
     SecretAlreadyExistsException,
+    SecretAlreadySubmittedException,
     SecretNotFoundException,
     UserProgressNotExistException,
 )
-from fit_ctf_models.base import Base, BaseManagerInterface
+from fit_ctf_models.utils.mongo_queries import MongoQueries
 
 
 class UserProgress(Base):
     user_id: DBRef
     project_id: DBRef
     secrets: dict[str, Secret]
+    found_secrets: int
+    last_submit_time: datetime | None
+
+    def list_secrets(self) -> list[SecretInfo]:
+        return [
+            {"name": secret.name, "submitted": secret.submitted}
+            for secret in self.secrets.values()
+        ]
+
+    def get_secret_by_value(self, secret_value: str) -> Secret | None:
+        found_secret = [
+            secret for secret in self.secrets.values() if secret.value == secret_value
+        ]
+        return found_secret[0] if found_secret else None
+
+    def get_secret_by_name(self, name: str) -> Secret | None:
+        return self.secrets.get(name, None)
 
 
 class UserProgressManager(BaseManagerInterface[UserProgress]):
@@ -54,52 +75,87 @@ class UserProgressManager(BaseManagerInterface[UserProgress]):
         self._coll.insert_one(doc.model_dump())
         return doc
 
+    @overload
     def get_user_progress(
-        self, user: "_user.User", project: "_prj.Project"
+        self, user: "_user.User", project: "_prj.Project", ignore_missing: Literal[True]
+    ) -> UserProgress | None: ...
+
+    @overload
+    def get_user_progress(
+        self,
+        user: "_user.User",
+        project: "_prj.Project",
+        ignore_missing: Literal[False] = False,
+    ) -> UserProgress: ...
+
+    def get_user_progress(
+        self, user: "_user.User", project: "_prj.Project", ignore_missing: bool = False
     ) -> UserProgress | None:
-        return self.get_doc_by_filter(
+        up = self.get_doc_by_filter(
             **{"user_id.$id": user.id, "project_id.$id": project.id, "active": True}
         )
-
-    def generate_secrets(self, data: str, user: "_user.User", project: "_prj.Project"):
-        secret = self.ctf_base.secret_mgr.generate_hash(data, user, project)
-        up = self.get_user_progress(user, project)
-        if not up:
+        if not up and not ignore_missing:
             raise UserProgressNotExistException(
                 "Could not find the user progress document."
             )
-        if secret in up.secrets:
+        return up
+
+    def generate_secrets(self, name: str, user: "_user.User", project: "_prj.Project"):
+        up = self.get_user_progress(user, project)
+        if name in up.secrets:
             raise SecretAlreadyExistsException(
                 "The secret hash is already set for this user."
             )
-        up.secrets[secret] = Secret(value=secret)
 
-    def get_secret_state(
-        self, secret: str, user: "_user.User", project: "_prj.Project"
-    ) -> Secret:
+        secret = self.ctf_base.secret_mgr.generate_hash(name, user, project)
+        up.secrets[name] = Secret(name=name, value=secret)
+
+    def list_secrets(
+        self, user: "_user.User", project: "_prj.Project"
+    ) -> list[SecretInfo]:
         up = self.get_user_progress(user, project)
-        if not up:
-            raise UserProgressNotExistException(
-                "Could not find the user progress document."
-            )
+        return up.list_secrets()
 
-        if secret not in up.secrets:
-            raise SecretNotFoundException("Given secret is not located in the storage.")
-        return up.secrets[secret]
-
-    def update_secret_state(
-        self,
-        secret: str,
-        user: "_user.User",
-        project: "_prj.Project",
-        time: datetime | None,
-    ):
+    def submit_secret(self, secret: str, user: "_user.User", project: "_prj.Project"):
         up = self.get_user_progress(user, project)
-        if not up:
-            raise UserProgressNotExistException(
-                "Could not find the user progress document."
-            )
+        s = up.get_secret_by_value(secret)
+        if not s:
+            raise SecretNotFoundException("Given secret is not located in the storage")
+        if s.submitted is not None:
+            raise SecretAlreadySubmittedException("The secret was already submitted.")
+        s.submitted = datetime.now()
+        # count a total of found secrets
+        up.found_secrets = len(
+            [secret for secret in up.secrets.values() if secret.submitted is not None]
+        )
+        up.last_submit_time = s.submitted
+        self.update_doc(up)
 
-        if secret not in up.secrets:
-            raise SecretNotFoundException("Given secret is not located in the storage.")
-        up.secrets[secret].submited = time
+    def sync_secrets(self, project: "_prj.Project"):
+        for up in self.get_docs(**{"project_id.$id": project.id}):
+            found_secrets = [
+                secret for secret in up.secrets.values() if secret.submitted is not None
+            ]
+
+            # no secrets where found set default values
+            if found_secrets == 0:
+                up.found_secrets = 0
+                up.last_submit_time = None
+                self.update_doc(up)
+                continue
+
+            # sync found secrets, update only when data are misaligned
+            found_secrets = sorted(
+                found_secrets, key=lambda x: x.submitted or 0, reverse=True
+            )
+            if (
+                up.found_secrets != len(found_secrets)
+                or up.last_submit_time != found_secrets[0].submitted
+            ):
+                up.found_secrets = len(found_secrets)
+                up.last_submit_time = found_secrets[0].submitted
+                self.update_doc(up)
+
+    def fetch_leaderboard(self, project: "_prj.Project", nof_users: int) -> list[dict]:
+        pipeline = MongoQueries.fetch_leaderboard(project, nof_users)
+        return [item for item in self.collection.aggregate(pipeline)]
