@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal, overload
 
 from bson import DBRef, ObjectId
+from bson.binary import Binary
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
@@ -9,7 +10,7 @@ import fit_ctf_models.project as _prj
 import fit_ctf_models.user as _user
 from fit_ctf_components.types import SecretInfo
 from fit_ctf_models.base import Base, BaseManagerInterface
-from fit_ctf_models.secret import Secret
+from fit_ctf_models.secret import Secret, SecretManager
 from fit_ctf_models.utils.exceptions import (
     SecretAlreadyExistsException,
     SecretAlreadySubmittedException,
@@ -27,22 +28,50 @@ class UserProgress(Base):
     last_submit_time: datetime | None
 
     def list_secrets(self) -> list[SecretInfo]:
+        """Return the list of stored secrets."""
         return [
-            {"name": secret.name, "submitted": secret.submitted}
-            for secret in self.secrets.values()
+            {"name": name, "submitted": secret.submitted}
+            for name, secret in self.secrets.items()
         ]
 
-    def get_secret_by_value(self, secret_value: str) -> Secret | None:
-        found_secret = [
-            secret for secret in self.secrets.values() if secret.value == secret_value
-        ]
-        return found_secret[0] if found_secret else None
+    def get_secret_by_value(self, search_index: str) -> Secret | None:
+        """Search for a stored secret by its value.
+
+        :param secret_value: The encrypted secret value.
+        :type secret_value: str
+        :return: Found secret, None if not found.
+        :rtype: Secret | None
+        """
+        for secret in self.secrets.values():
+            if secret.search_index == search_index:
+                return secret
+        return None
 
     def get_secret_by_name(self, name: str) -> Secret | None:
+        """Return a secret based on the name.
+
+        :param name: Secret identification name.
+        :type name: str
+        :return: Found secret, None if not found.
+        :rtype: Secret | None
+        """
         return self.secrets.get(name, None)
 
+    def get_last_submit(self) -> datetime | None:
+        """Get the date of the last submitted secret.
 
-class UserProgressManager(BaseManagerInterface[UserProgress]):
+        :return: Timestamp of the last submitted secret. None if no secret was found.
+        :rtype: datetime | None
+        """
+        submitted: list[datetime] = [
+            sec.submitted for sec in self.secrets.values() if sec.submitted is not None
+        ]
+        if not submitted:
+            return None
+        return sorted(submitted, reverse=True)[0]
+
+
+class UserProgressManager(BaseManagerInterface[UserProgress], SecretManager):
 
     def __init__(self, ctf_base: "ctf_base.CTFBase", db: Database):
         super().__init__(ctf_base, db, db["user_progress"])
@@ -100,61 +129,115 @@ class UserProgressManager(BaseManagerInterface[UserProgress]):
             )
         return up
 
-    def generate_secrets(self, name: str, user: "_user.User", project: "_prj.Project"):
-        up = self.get_user_progress(user, project)
-        if name in up.secrets:
-            raise SecretAlreadyExistsException(
-                "The secret hash is already set for this user."
-            )
+    # secrets
 
-        secret = self.ctf_base.secret_mgr.generate_hash(name, user, project)
-        up.secrets[name] = Secret(name=name, value=secret)
+    def add_secret(self, doc: UserProgress, name: str, value: str) -> None:
+        """Adds a secret to the list of secrets.
 
-    def list_secrets(
-        self, user: "_user.User", project: "_prj.Project"
-    ) -> list[SecretInfo]:
-        up = self.get_user_progress(user, project)
-        return up.list_secrets()
+        :param doc: Secret map document.
+        :type doc: UserProgress
+        :param name: The identification name of the secret.
+        :type name: str
+        :param value: The value of the secret.
+        :type value: str
+        :raises SecretAlreadyExistsException:
+            The secret with the given name already exist in the database.
+        """
+        if doc.secrets.get(name):
+            raise SecretAlreadyExistsException(f"Secret `{name}` already exists.")
 
-    def submit_secret(self, secret: str, user: "_user.User", project: "_prj.Project"):
-        up = self.get_user_progress(user, project)
-        s = up.get_secret_by_value(secret)
-        if not s:
-            raise SecretNotFoundException("Given secret is not located in the storage")
-        if s.submitted is not None:
-            raise SecretAlreadySubmittedException("The secret was already submitted.")
-        s.submitted = datetime.now()
-        # count a total of found secrets
-        up.found_secrets = len(
-            [secret for secret in up.secrets.values() if secret.submitted is not None]
+        search_index = self.compute_search_index(value)
+        nonce, ct = self.encrypt(value)
+        doc.secrets[name] = Secret(
+            **{
+                "search_index": search_index,
+                "nonce": Binary(nonce),
+                "enc_secret": Binary(ct),
+                "submitted": None,
+                "user_id": None,
+            }
         )
-        up.last_submit_time = s.submitted
-        self.update_doc(up)
+        self.update_doc(doc)
 
-    def sync_secrets(self, project: "_prj.Project"):
-        for up in self.get_docs(**{"project_id.$id": project.id}):
-            found_secrets = [
-                secret for secret in up.secrets.values() if secret.submitted is not None
-            ]
+    def update_secret_value(self, doc: UserProgress, name: str, value: str) -> None:
+        """Update a secret value.
 
-            # no secrets where found set default values
-            if found_secrets == 0:
-                up.found_secrets = 0
-                up.last_submit_time = None
-                self.update_doc(up)
-                continue
+        Does not save the document.
+        :param doc: Secret map document.
+        :type doc: UserProgress
+        :param name: The identification name of the secret.
+        :type name: str
+        :param value: The value of the secret.
+        :type value: str
+        :raises SecretNotFoundException: When the secret was not found in the list.
+        """
+        if not doc.secrets.get(name):
+            raise SecretNotFoundException(f"Secret `{name}` not found.")
 
-            # sync found secrets, update only when data are misaligned
-            found_secrets = sorted(
-                found_secrets, key=lambda x: x.submitted or 0, reverse=True
-            )
-            if (
-                up.found_secrets != len(found_secrets)
-                or up.last_submit_time != found_secrets[0].submitted
-            ):
-                up.found_secrets = len(found_secrets)
-                up.last_submit_time = found_secrets[0].submitted
-                self.update_doc(up)
+        nonce, ct = self.encrypt(value)
+        doc.secrets[name].nonce = Binary(nonce)
+        doc.secrets[name].enc_secret = Binary(ct)
+        self.update_doc(doc)
+
+    def get_secret_by_value(self, doc: UserProgress, value: str) -> Secret | None:
+        """Retrieve a secret object from the document.
+
+        :param doc: Secret map document.
+        :type doc: UserProgress
+        :param value: The value of the secret.
+        :type value: str
+        """
+        return doc.get_secret_by_value(self.compute_search_index(value))
+
+    def submit_secret(self, doc: UserProgress, value: str, user: "_user.User"):
+        """Tries to submit a secret.
+
+        Raises exceptions if the secret is not found or was already submitted.
+        If the function passes, both Secret and UserProgress instances were updated
+        but are NOT SAVED IN THE DATABASE.
+        :param doc: Secret map document
+        :type doc: UserProgress
+        :param value: The value of the secret.
+        :type value: str
+        :param user: The user object that submitted the secret.
+        :type user: _user.User
+        :raises SecretNotFoundException: When the secret was not found in the list.
+        :raises SecretAlreadySubmittedException: When the secret was already submitted in the past.
+        """
+        secret = doc.get_secret_by_value(self.compute_search_index(value))
+        if not secret:
+            raise SecretNotFoundException("Submitted secret not found.")
+        if secret.submitted is not None:
+            raise SecretAlreadySubmittedException("This secret was already submitted")
+
+        secret.submitted = datetime.now()
+        secret.user_id = user.id
+        doc.found_secrets += 1
+        doc.last_submit_time = secret.submitted
+        self.update_doc(doc)
+
+    def delete_secret(
+        self, doc: UserProgress, name: str, ignore_missing: bool = True
+    ) -> None:
+        """Remove the secret from the list.
+
+        :param doc: Secret map document.
+        :type doc: UserProgress
+        :param name: The identification name of the secret.
+        :type name: str
+        :param value: The value of the secret.
+        :type value: str
+        """
+        if not doc.secrets.get(name):
+            if not ignore_missing:
+                raise SecretNotFoundException(f"Secret `{name}` not found.")
+            return
+
+        secret = doc.secrets.pop(name)
+        if secret.submitted is not None:
+            doc.found_secrets -= 1
+            doc.last_submit_time = doc.get_last_submit()
+        self.update_doc(doc)
 
     def fetch_leaderboard(self, project: "_prj.Project", nof_users: int) -> list[dict]:
         pipeline = MongoQueries.fetch_leaderboard(project, nof_users)

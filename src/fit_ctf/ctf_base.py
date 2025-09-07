@@ -15,28 +15,26 @@ from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.base import BaseComponent, ComponentType
 from fit_ctf_components.logger.default_logger import DefaultLogger
 from fit_ctf_components.logger.logger_interface import LoggerInterface
-from fit_ctf_components.secret_mgr.default_secret_mgr import DefaultSecretManager
-from fit_ctf_components.secret_mgr.secret_mgr_interface import SecretManagerInterface
-from fit_ctf_components.types import PathDict
+from fit_ctf_components.types import EnvInfo, PathDict
+from fit_ctf_models.secret import SecretManager
 
 
 class CTFBase:
     def __init__(
         self,
-        host: str,
-        db_name: str,
+        env_info: EnvInfo,
         paths: PathDict,
         _c_client: type["c_client_interface.ContainerClientInterface"],
         logger_cls: type[LoggerInterface] = DefaultLogger,
-        secret_cls: type[SecretManagerInterface] = DefaultSecretManager,
     ) -> None:
         self._client = pymongo.MongoClient(
-            host, serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30"))
+            env_info["db_host"],
+            serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
         )
         # test connection
         self._client.server_info()
 
-        self._ctf_db: Database = self._client[db_name]
+        self._ctf_db: Database = self._client[env_info["db_name"]]
 
         self._c_client = _c_client(self)
         self._managers = {
@@ -47,10 +45,10 @@ class CTFBase:
             "module": module_mgr.ModuleManager(self),
         }
         self._path_mgmt = PathManagement(paths)
-        self._components = {
+        self._components: dict[str, BaseComponent] = {
             "logger": logger_cls(self),
-            "secret_mgr": secret_cls(self),
         }
+        SecretManager.init_class(env_info["app_secret"])
 
     @property
     def prj_mgr(self) -> "prj.ProjectManager":
@@ -104,10 +102,6 @@ class CTFBase:
     @property
     def logger(self) -> LoggerInterface:
         return self.get_component("logger", LoggerInterface)
-
-    @property
-    def secret_mgr(self) -> SecretManagerInterface:
-        return self.get_component("secret_mgr", SecretManagerInterface)
 
     @property
     def paths(self) -> PathManagement:

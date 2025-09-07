@@ -79,3 +79,9 @@ class NewUserDict(TypedDict):
 class SecretInfo(TypedDict):
     name: str
     submitted: datetime | None
+
+
+class EnvInfo(TypedDict):
+    db_host: str
+    db_name: str
+    app_secret: str

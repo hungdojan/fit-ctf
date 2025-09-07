@@ -17,7 +17,13 @@ from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.container_client import get_c_client_by_name
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.types import DatabaseDumpDict, NewUserDict, PathDict, SetupDict
+from fit_ctf_components.types import (
+    DatabaseDumpDict,
+    EnvInfo,
+    NewUserDict,
+    PathDict,
+    SetupDict,
+)
 from fit_ctf_models.cluster import Service
 from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
@@ -29,8 +35,7 @@ from fit_ctf_models.utils.mongo_queries import MongoQueries
 class CTFApp(CTFBase):
     def __init__(
         self,
-        host: str,
-        db_name: str,
+        env_info: EnvInfo,
         paths: PathDict,
     ):
         """Constructor method
@@ -41,8 +46,7 @@ class CTFApp(CTFBase):
         :type db_name: str
         """
         super().__init__(
-            host,
-            db_name,
+            env_info,
             paths,
             get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
         )
