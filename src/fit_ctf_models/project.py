@@ -3,7 +3,6 @@ import re
 import shutil
 from pathlib import Path
 
-from bson import ObjectId
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
@@ -75,7 +74,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["project"])
+        super().__init__(ctf_base, db, db["project"], Project)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -85,34 +84,6 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: _user_enroll.UserEnrollmentManager
         """
         return self.ctf_base.ue_mgr
-
-    def get_doc_by_id(self, _id: ObjectId) -> Project | None:
-        res = self._coll.find_one({"_id": _id})
-        return Project(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection)
-
-    def get_doc_by_filter(self, **kw) -> Project | None:
-        res = self._coll.find_one(filter=kw)
-        return Project(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        return self._coll.find_one(filter=filter, projection=projection)
-
-    def get_docs(self, **filter) -> list[Project]:
-        res = self._coll.find(filter=filter)
-        return [Project(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> Project:
-        doc = Project(**kw)
-        self.insert_doc(doc)
-        return doc
 
     def get_project(
         self, project_or_name: str | Project, active: bool | None = True

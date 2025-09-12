@@ -2,7 +2,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from bson import DBRef, ObjectId
+from bson import DBRef
 from pydantic import Field
 from pymongo.database import Database
 
@@ -75,7 +75,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["user_enrollment"])
+        super().__init__(ctf_base, db, db["user_enrollment"], UserEnrollment)
 
     @property
     def prj_mgr(self) -> "_project.ProjectManager":
@@ -203,34 +203,6 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         """
         pipeline = MongoQueries.user_enrollment_get_forwarded_ports(project)
         return [i["forwarded_ports"] for i in self.collection.aggregate(pipeline)][0]
-
-    def get_doc_by_id(self, _id: ObjectId) -> UserEnrollment | None:
-        res = self._coll.find_one({"_id": _id})
-        return UserEnrollment(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection=projection)
-
-    def get_doc_by_filter(self, **kw) -> UserEnrollment | None:
-        res = self._coll.find_one(filter=kw)
-        return UserEnrollment(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        return self._coll.find_one(filter=filter, projection=projection)
-
-    def get_docs(self, **filter) -> list[UserEnrollment]:
-        res = self._coll.find(filter=filter)
-        return [UserEnrollment(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> UserEnrollment:
-        doc = UserEnrollment(**kw)
-        self._coll.insert_one(doc.model_dump())
-        return doc
 
     def compile_compose_file(
         self,
