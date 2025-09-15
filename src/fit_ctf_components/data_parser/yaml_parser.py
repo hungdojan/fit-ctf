@@ -1,5 +1,6 @@
 import pathlib
 
+import jsonschema
 import yaml
 from jsonschema.validators import validator_for
 from referencing import Registry, Resource
@@ -53,7 +54,7 @@ class YamlParser(DataParserInterface):
             )
         schema = yaml.safe_load(schema_filepath.resolve().read_text())
         cls._validators[validator_name] = validator_for(schema)(
-            schema, registry=cls.registry
+            schema, registry=cls.registry, format_checker=jsonschema.FormatChecker()
         )
 
     @classmethod

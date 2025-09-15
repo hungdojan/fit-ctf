@@ -35,7 +35,7 @@ def get_paths() -> tuple[Path, Path, Path]:
     user_env = os.getenv("USER_SHARE_DIR", f"{default_config_path}/user")
     module_env = os.getenv("MODULE_SHARE_DIR", f"{default_config_path}/module")
 
-    prj_share_path = Path(prj_env)
-    user_share_path = Path(user_env)
-    module_share_path = Path(module_env)
+    prj_share_path = Path(os.path.expandvars(prj_env))
+    user_share_path = Path(os.path.expandvars(user_env))
+    module_share_path = Path(os.path.expandvars(module_env))
     return prj_share_path, user_share_path, module_share_path

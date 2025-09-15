@@ -30,7 +30,7 @@ def enroll(ctx: click.Context, username: str, project_name: str):
         click.echo(f"User `{user.username}` was enrolled to the project `{prj.name}`.")
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="enroll-multiple")
@@ -81,7 +81,7 @@ def cancel_from_project(ctx: click.Context, username: str, project_name: str):
         asyncio.run(ctf_app.ue_mgr.cancel_user_enrollment(username, project_name))
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="cancel-multiple")
@@ -122,7 +122,7 @@ def cancel_user(ctx: click.Context, username: str):
         asyncio.run(ctf_app.ue_mgr.cancel_user_from_all_projects(username))
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="cancel-project")
@@ -135,4 +135,4 @@ def cancel_project(ctx: click.Context, project_name: str):
         asyncio.run(ctf_app.ue_mgr.cancel_all_project_enrollments(project_name))
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)

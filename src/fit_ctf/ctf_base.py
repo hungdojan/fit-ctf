@@ -9,7 +9,6 @@ import fit_ctf_models.module_manager as module_mgr
 import fit_ctf_models.project as prj
 import fit_ctf_models.user as user
 import fit_ctf_models.user_enrollment as user_enroll
-import fit_ctf_models.user_progress as user_progress
 from fit_ctf.exceptions import ManagerNotFound
 from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.base import BaseComponent, ComponentType
@@ -30,6 +29,7 @@ class CTFBase:
         self._client = pymongo.MongoClient(
             env_info["db_host"],
             serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
+            tz_aware=True,
         )
         # test connection
         self._client.server_info()
@@ -41,7 +41,6 @@ class CTFBase:
             "project": prj.ProjectManager(self, self._ctf_db),
             "user": user.UserManager(self, self._ctf_db),
             "user_enrollment": user_enroll.UserEnrollmentManager(self, self._ctf_db),
-            "user_progress": user_progress.UserProgressManager(self, self._ctf_db),
             "module": module_mgr.ModuleManager(self),
         }
         self._path_mgmt = PathManagement(paths)
@@ -76,15 +75,6 @@ class CTFBase:
         :rtype: UserEnrollmentManager
         """
         return self._managers["user_enrollment"]
-
-    @property
-    def up_mgr(self) -> "user_progress.UserProgressManager":
-        """Returns a user progress manager.
-
-        :return: A user progress manager initialized in CTFApp.
-        :rtype: UserProgressManager
-        """
-        return self._managers["user_progress"]
 
     @property
     def module_mgr(self) -> "module_mgr.ModuleManager":

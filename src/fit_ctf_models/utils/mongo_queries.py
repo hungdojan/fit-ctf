@@ -518,26 +518,26 @@ class MongoQueries:
             },
         ]
 
-    @staticmethod
-    def fetch_leaderboard(project: "prj.Project", nof_users: int) -> list[dict]:
-        pipeline = [
-            {"$match": {"project_id.$id": project.id}},
-            {"$sort": {"last_submit_time", 1}},
-        ]
-        if nof_users >= 0:
-            pipeline.append({"$limit": nof_users})
-        pipeline.extend(
-            [
-                {
-                    "$lookup": {
-                        "from": "user",
-                        "localField": "user_id.$id",
-                        "foreignField": "_id",
-                        "as": "user",
-                        "pipeline": [{"$project": {"_id": 0, "username": 1}}],
-                    }
-                },
-                {"$project": {"_id": 0, "secrets": 1}},
-            ]
-        )
-        return pipeline
+    # @staticmethod
+    # def fetch_leaderboard(project: "prj.Project", nof_users: int) -> list[dict]:
+    #     pipeline = [
+    #         {"$match": {"project_id.$id": project.id}},
+    #         {"$sort": {"last_submit_time", 1}},
+    #     ]
+    #     if nof_users >= 0:
+    #         pipeline.append({"$limit": nof_users})
+    #     pipeline.extend(
+    #         [
+    #             {
+    #                 "$lookup": {
+    #                     "from": "user",
+    #                     "localField": "user_id.$id",
+    #                     "foreignField": "_id",
+    #                     "as": "user",
+    #                     "pipeline": [{"$project": {"_id": 0, "username": 1}}],
+    #                 }
+    #             },
+    #             {"$project": {"_id": 0, "secrets": 1}},
+    #         ]
+    #     )
+    #     return pipeline

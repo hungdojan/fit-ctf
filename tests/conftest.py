@@ -9,7 +9,7 @@ from click.testing import CliRunner
 from dotenv import load_dotenv
 
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_components.constants import get_db_info
+from fit_ctf_components.constants import get_env_info
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.types import PathDict
 
@@ -42,9 +42,7 @@ def empty_data(
         asyncio.run(ctf_app.ue_mgr.delete_all())
 
     # get data
-    db_host, db_name = get_db_info()
-    if not db_host:
-        pytest.exit("DB_HOST environment variable is not set!")
+    env_info = get_env_info()
     os.environ["LOG_DEST"] = str(workdir.resolve())
 
     YamlParser.init_parser()
@@ -58,7 +56,7 @@ def empty_data(
 
     # init testing env and clear database (just in case)
     try:
-        ctf_app = CTFApp(db_host, db_name, paths)
+        ctf_app = CTFApp(env_info, paths)
     except pymongo.errors.ServerSelectionTimeoutError:
         pytest.exit("DB is probably not running")
 

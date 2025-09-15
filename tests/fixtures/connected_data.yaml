@@ -15,9 +15,46 @@ projects:
 enrollments:
   - user: user1
     project: prj2
+    progress:
+      secrets:
+        key1:
+          # secret value: value1
+          search_index: 'MNEYhNbspDT3JaPsuC0oWhdbRYmFQFH0mEfkOVZbG5Y'
+          nonce: 'H93v6QpGZxRMb1AZ'
+          enc_secret: 'a91KCrTNlb34SPQQ1/lO+0JaJtkTCg=='
+          submitted: '2025-09-27T18:09:25.594Z'
+          user: user1
+        key2:
+          # secret value: value2
+          search_index: 'rKonVQ8EPDmcKMatfjc2jhQHgwZRpWlqB9iND-cu3cg'
+          nonce: 'k6u6ZCXstNbHbm9W'
+          enc_secret: 'Sek8h5Szjv8au6L9wu6O/7vghbg+/A=='
+          submitted: null
+          user: null
+      found_secrets: 1
+      last_submit_time: '2025-09-27T18:09:25.594Z'
   - user: user2
     project: prj1
+    progress:
+      secrets:
+        key3:
+          # secret value: value3
+          search_index: '1xVTxOBu7eFeNiDCQDlGrQtCv2L33xETCy16Rst0ikk'
+          nonce: 'GKOLt85qLE5ghJpM'
+          enc_secret: 'UuqG0srkwEOjAFz5ZQkEU35cbcI/Ig=='
+          submitted: null
+          user: null
+      found_secrets: 0
+      last_submit_time: null
   - user: user2
     project: prj2
+    progress:
+      secrets: {}
+      found_secrets: 0
+      last_submit_time: null
   - user: user3
     project: prj1
+    progress:
+      secrets: {}
+      found_secrets: 0
+      last_submit_time: null

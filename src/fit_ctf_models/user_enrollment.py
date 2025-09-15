@@ -3,7 +3,6 @@ import shutil
 from pathlib import Path
 
 from bson import DBRef
-from pydantic import Field
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
@@ -16,6 +15,7 @@ from fit_ctf_components.types import (
 )
 from fit_ctf_components.utils import get_missing_in_sequence
 from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.user_progress import UserProgress, UserProgressManager
 from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
@@ -57,10 +57,10 @@ class UserEnrollment(ClusterConfig):
     project_id: DBRef
     container_port: int
     forwarded_port: int
-    progress: dict = Field(default_factory=dict)
+    progress: UserProgress
 
 
-class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
+class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressManager):
     """A manager class that handles operations with `UserEnrollment` objects."""
 
     def __init__(
@@ -75,7 +75,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["user_enrollment"], UserEnrollment)
+        ClusterConfigManager.__init__(
+            self, ctf_base, db, db["user_enrollment"], UserEnrollment
+        )
+        UserProgressManager.__init__(self, ctf_base)
 
     @property
     def prj_mgr(self) -> "_project.ProjectManager":
@@ -437,6 +440,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             services={
                 "login": self.create_login_user_service(user, project, container_port)
             },
+            progress=UserProgress(),
         )
         return user_enrollment
 
@@ -488,11 +492,102 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                             user, project, available_ports[i]
                         )
                     },
+                    progress=UserProgress(),
                 )
             )
 
         self._coll.insert_many([uc.model_dump() for uc in user_enrollments])
         return user_enrollments
+
+    def import_user_enrollment(
+        self,
+        user_or_username: "str | _user.User",
+        project_or_name: "str | _project.Project",
+        progress: UserProgress,
+        container_port: int = -1,
+        forwarded_port: int = -1,
+    ) -> UserEnrollment:
+        """Enroll user to the project.
+
+        :param username: User username or instance in question.
+        :type username: str | _user.User
+        :param project_or_name: Project name or instance in question.
+        :type project_or_name: str | _project.Project
+        :param container_port: An SSH port of the login node. If set to `-1` the function will
+            autogenerate a value. Defaults to -1.
+        :type container_port: int, optional
+        :param forwarded_port: A forwarded port for the user to connect to the outer
+            server. If set to `-1` the function will autogenerate a value. Defaults to -1.
+        :type forwarded_port: int, optional
+        :raises UserNotExistsException: User with the given username was not found.
+        :raises ProjectNotExistException: Project data was not found in the database.
+        :raise UserEnrolledToProjectException: The user is already enrolled to the project.
+        :raises MaxUserCountReachedException: Project has already reached the maximum
+            number of enrolled users.
+        :raises PortUsageCollisionException: The port is already in use.
+        :return: A created `UserEnrollment` object.
+        :rtype: UserEnrollment
+        """
+        user, project = self._get_user_and_project(user_or_username, project_or_name)
+        users = self.get_user_enrollments_for_project_raw(project)
+        user_enrollment = self.get_doc_by_filter(
+            **{"user_id.$id": user.id, "project_id.$id": project.id, "active": True}
+        )
+
+        if user_enrollment:
+            raise UserEnrolledToProjectException(
+                f"The user `{user.username}` is already enrolled to `{project.name}`"
+            )
+
+        if len(users) >= project.max_nof_users:
+            raise MaxUserCountReachedException(
+                f"Project `{project.name}` has already reached the maximum number of users."
+            )
+
+        # checking container ports
+        used_container_ports = self.get_used_ports(project)
+        if container_port < 0:
+            container_port = get_missing_in_sequence(
+                used_container_ports, project.starting_port_bind
+            )
+        elif container_port in used_container_ports:
+            raise ContainerPortUsageCollisionException(
+                "Selected port is already in used."
+            )
+        elif (
+            container_port < project.starting_port_bind
+            or container_port > project.max_port
+        ):
+            raise SSHPortOutOfRangeException(
+                "The container port must be in range "
+                f"{project.starting_port_bind} and {project.max_port}."
+            )
+
+        # checking forwarded ports
+        if forwarded_port < 0:
+            forwarded_port = container_port
+        elif forwarded_port in self.get_all_forwarded_ports(None):
+            raise ForwardedPortUsageCollisionException(
+                "The forwarded port is already in used."
+            )
+        elif forwarded_port < 1 or forwarded_port > 65_535:
+            raise SSHPortOutOfRangeException(
+                "Forwarded port must be in range 1 to 65 535."
+            )
+
+        self.paths.enrolled_user_path(user, project).mkdir(parents=True)
+
+        user_enrollment = self.create_and_insert_doc(
+            user_id=DBRef("user", user.id),
+            project_id=DBRef("project", project.id),
+            container_port=container_port,
+            forwarded_port=forwarded_port,
+            services={
+                "login": self.create_login_user_service(user, project, container_port)
+            },
+            progress=progress,
+        )
+        return user_enrollment
 
     # LIST ENROLLMENTS
 

@@ -1,13 +1,14 @@
 import asyncio
+
 import click
 
 from fit_ctf.cli.utils import format_option, project_option
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.project import ProjectManager
-from fit_ctf_components.utils import color_state
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf.exceptions import CTFBaseException
+from fit_ctf_components.utils import color_state
+from fit_ctf_models.project import ProjectManager
 
 ##########################
 ## Project CLI commands ##
@@ -76,7 +77,7 @@ def create_project(
         click.echo(f"Project `{prj.name}` was successfully generated.")
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @project.command(name="ls")
@@ -156,7 +157,7 @@ def enrolled_users(ctx: click.Context, project_name: str, format: str, all: bool
         )
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
     if not lof_active_users:
         click.echo("No active users found.")
         return
@@ -265,3 +266,26 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
     header = [" ".join([i.capitalize() for i in i.split("_")]) for i in header_order]
     values = [[i[key] for key in header_order] for i in data_buffer]
     get_view(format).print_data(header, values)
+
+
+@project.command(name="leaderboard")
+@project_option
+@format_option
+@click.option(
+    "-n",
+    "--nof-users",
+    help="Display number of NUM users. Set -1 to print the whole leaderboard.",
+    type=int,
+    default=-1,
+)
+@click.pass_context
+def leaderboard(ctx: click.Context, project_name: str, format: str, nof_users: int):
+    """Display the leaderboard of top NUM users."""
+    pass
+
+
+@project.command("sync-leaderboard-data")
+@project_option
+def sync_project_progresses(ctx: click.Context, project_name: str):
+    """Synchronize misaligned progress data."""
+    pass

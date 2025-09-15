@@ -17,6 +17,7 @@ from . import (
     system,
     user,
     user_cluster,
+    user_progress,
 )
 
 
@@ -98,3 +99,4 @@ cli.add_command(project_cluster.project_cluster)
 cli.add_command(module.module)
 cli.add_command(system.system)
 cli.add_command(data_mgmt.data_mgmt)
+cli.add_command(user_progress.user_progress)
