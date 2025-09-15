@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Any
 
 from bson import ObjectId
-from bson.binary import Binary
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -17,8 +16,8 @@ from pydantic import BaseModel, ConfigDict
 class Secret(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
     search_index: str
-    nonce: Binary
-    enc_secret: Binary
+    nonce: str
+    enc_secret: str
     submitted: datetime | None = None
     user_id: ObjectId | None = None
 
@@ -50,28 +49,28 @@ class SecretManager:
     @classmethod
     def compute_search_index(cls, secret: str) -> str:
         prehash = hashlib.scrypt(
-            password=secret.encode(), salt=cls.IDX_SALT, n=2**15, r=8, p=1, dklen=32
+            password=secret.encode(), salt=cls.IDX_SALT, n=2**13, r=8, p=1
         )
         mac = hmac.new(cls.IDX_KEY, prehash, hashlib.sha256).digest()
         return base64.urlsafe_b64encode(mac).decode().rstrip("=")
 
     @classmethod
-    def encrypt(cls, secret: str) -> tuple[bytes, bytes]:
+    def encrypt(cls, secret: str) -> tuple[str, str]:
         """Encrypt a secret.
 
-        Generates a nonce and a cipher text.
+        Generates a nonce and a cipher text. Both outputs are encoded with base64.
         :param secret: A secret value.
         :type secret: str
         :return: A pair of nonce and cipher_text
-        :rtype: tuple[bytes, bytes]
+        :rtype: tuple[str, str]
         """
         aes = AESGCM(cls.ENC_KEY)
         nonce = os.urandom(12)
         cipher_text = aes.encrypt(nonce, secret.encode(), associated_data=None)
-        return nonce, cipher_text
+        return base64.b64encode(nonce).decode(), base64.b64encode(cipher_text).decode()
 
     @classmethod
-    def decrypt(cls, nonce: bytes, cipher_text: bytes) -> str:
+    def decrypt(cls, nonce: str, cipher_text: str) -> str:
         """Decrypt the secret
 
         Decrypts the secret from the nonce and cipher text.
@@ -83,5 +82,8 @@ class SecretManager:
         :rtype: str
         """
         aes = AESGCM(cls.ENC_KEY)
-        plain_text = aes.encrypt(nonce, cipher_text, associated_data=None)
+        decoded_nonce = base64.b64decode(nonce.encode())
+        decoded_ct = base64.b64decode(cipher_text.encode())
+
+        plain_text = aes.decrypt(decoded_nonce, decoded_ct, associated_data=None)
         return plain_text.decode()

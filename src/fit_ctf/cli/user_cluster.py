@@ -35,7 +35,7 @@ def user_cluster(ctx: click.Context, username: str, project_name: str):
         _ = ctf_app.ue_mgr.get_user_enrollment(user, project)
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     ctx.obj["user"] = user
     ctx.obj["project"] = project
@@ -142,7 +142,7 @@ def services(ctx: click.Context):
         )
     except UserNotEnrolledToProjectException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @services.command(name="register")
@@ -169,7 +169,7 @@ def register_service(
         service = ctf_app.ue_mgr.get_service(user_enroll, service_name)
         if service:
             click.echo(f"Service {service.service_name} already exists.")
-            exit(0)
+            ctx.exit(0)
     except ServiceNotExistException:
         pass
 
@@ -196,7 +196,7 @@ def list_services(ctx: click.Context):
         services = ctf_app.ue_mgr.list_services(user_enroll)
     except UserNotEnrolledToProjectException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     services_raw = {k: v.model_dump() for k, v in services.items()}
     click.echo(YamlParser.dump_data(services_raw))
@@ -213,7 +213,7 @@ def update_service(ctx: click.Context, service_name: str):
         service = ctf_app.ue_mgr.get_service(user_enroll, service_name)
     except ServiceNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     try:
         doc = document_editor(service.model_dump(), {"service_name"}, "service_editor")

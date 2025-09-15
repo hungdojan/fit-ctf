@@ -127,17 +127,25 @@ class ModuleInUseException(CTFModelException):
     pass
 
 
-class SecretAlreadyExistsException(CTFModelException):
+class SecretNameAlreadyExistsException(CTFModelException):
+    """Secret with given name already exists."""
+
     pass
 
 
 class SecretNotFoundException(CTFModelException):
+    """Could not locate the secret in the given progress document."""
+
     pass
 
 
-class UserProgressNotExistException(CTFModelException):
+class SecretValueCollision(CTFModelException):
+    """There is a collision of secret values."""
+
     pass
 
 
 class SecretAlreadySubmittedException(CTFModelException):
+    """Submitted secret was already submitted."""
+
     pass
