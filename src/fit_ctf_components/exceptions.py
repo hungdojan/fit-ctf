@@ -158,15 +158,3 @@ class ModuleInUseException(CTFException):
     """The selected module is still used by some kind of server"""
 
     pass
-
-
-class UserProgressNotExistException(CTFException):
-    pass
-
-
-class SecretAlreadyExistsException(CTFException):
-    pass
-
-
-class SecretNotFoundException(CTFException):
-    pass
