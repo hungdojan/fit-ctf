@@ -42,3 +42,8 @@ class PathManagement:
 
     def enrolled_user_path(self, user: "_user.User", project: "_prj.Project") -> Path:
         return self.project_users(project) / user.username
+
+    def enrolled_user_secrets(
+        self, user: "_user.User", project: "_prj.Project"
+    ) -> Path:
+        return self.enrolled_user_path(user, project) / "secrets"

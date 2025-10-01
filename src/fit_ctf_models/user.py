@@ -1,6 +1,5 @@
 import shutil
 
-from bson import ObjectId
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
@@ -57,7 +56,7 @@ class UserManager(BaseManagerInterface[User]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["user"])
+        super().__init__(ctf_base, db, db["user"], User)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -67,35 +66,6 @@ class UserManager(BaseManagerInterface[User]):
         :rtype: user_enrollment.UserEnrollmentManager
         """
         return self.ctf_base.ue_mgr
-
-    def get_doc_by_id(self, _id: ObjectId) -> User | None:
-        res = self._coll.find_one({"_id": _id})
-        return User(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection=projection)
-
-    def get_doc_by_filter(self, **kw) -> User | None:
-        res = self._coll.find_one(filter=kw)
-        return User(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        res = self._coll.find_one(filter=filter, projection=projection)
-        return User(**res) if res else None
-
-    def get_docs(self, **filter) -> list[User]:
-        res = self._coll.find(filter=filter)
-        return [User(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> User:
-        doc = User(**kw)
-        self._coll.insert_one(doc.model_dump())
-        return doc
 
     def get_user(
         self, user_or_username: str | User, active: bool | None = True

@@ -32,7 +32,7 @@ def project_cluster(ctx: click.Context, project_name: str):
         project = ctf_app.prj_mgr.get_project(project_name)
     except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
     ctx.obj["project"] = project
 
 
@@ -182,7 +182,7 @@ def list_services(ctx: click.Context):
         services = ctf_app.prj_mgr.list_services(project)
     except ProjectNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     services_raw = {k: v.model_dump() for k, v in services.items()}
     click.echo(YamlParser.dump_data(services_raw))
@@ -199,7 +199,7 @@ def update_service(ctx: click.Context, service_name: str):
         service = ctf_app.prj_mgr.get_service(project, service_name)
     except ServiceNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     try:
         doc = document_editor(service.model_dump(), {"service_name"}, "service_editor")

@@ -28,7 +28,7 @@ def create(ctx: click.Context, module_name: str):
         ctf_app.module_mgr.create_module(module_name)
     except ModuleExistsException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     click.echo(f"Module `{module_name}` successfully created.")
 
@@ -63,7 +63,7 @@ def get(ctx: click.Context, module_name: str):
         click.echo(str(path.resolve()))
     except ModuleNotExistsException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @module.command(name="referenced")
@@ -102,5 +102,5 @@ def remove(ctx: click.Context, module_name: str):
         asyncio.run(ctf_app.module_mgr.remove_module(module_name))
     except (ModuleNotExistsException, ModuleInUseException) as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
     click.echo(f"Module `{module_name}` successfully removed.")

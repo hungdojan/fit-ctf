@@ -5,6 +5,7 @@ from pathlib import Path
 from shutil import copytree
 from typing import Literal, cast
 
+from dateutil import parser
 from jsonschema.exceptions import ValidationError
 
 import fit_ctf_models.project as project
@@ -17,8 +18,16 @@ from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.container_client import get_c_client_by_name
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.types import DatabaseDumpDict, NewUserDict, PathDict, SetupDict
+from fit_ctf_components.types import (
+    DatabaseDumpDict,
+    EnvInfo,
+    NewUserDict,
+    PathDict,
+    SetupDict,
+)
 from fit_ctf_models.cluster import Service
+from fit_ctf_models.secret import Secret
+from fit_ctf_models.user_progress import UserProgress
 from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
     UserExistsException,
@@ -29,8 +38,7 @@ from fit_ctf_models.utils.mongo_queries import MongoQueries
 class CTFApp(CTFBase):
     def __init__(
         self,
-        host: str,
-        db_name: str,
+        env_info: EnvInfo,
         paths: PathDict,
     ):
         """Constructor method
@@ -41,8 +49,7 @@ class CTFApp(CTFBase):
         :type db_name: str
         """
         super().__init__(
-            host,
-            db_name,
+            env_info,
             paths,
             get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
         )
@@ -102,7 +109,25 @@ class CTFApp(CTFBase):
             {k: v for k, v in u.model_dump().items() if k != "_id"} for u in users
         ]
         pipeline = MongoQueries.export_user_enrollments(project)
-        data["enrollments"] = list(self.ue_mgr.collection.aggregate(pipeline))
+        enrollments = list(self.ue_mgr.collection.aggregate(pipeline))
+
+        # some processing for enrollment documents
+        # contains a nested object `progress` that have datetime and ObjectID objects
+        # ObjectIDs are mapped to the username
+        # datetime objects are printed as string
+        for enrollment in enrollments:
+            progress = enrollment["progress"]
+            for v in progress["secrets"].values():
+                user_id = v.pop("user_id")
+                user = None
+                if user_id:
+                    user = self.user_mgr.get_doc_by_id(user_id)
+                v["user"] = user.username if user else None
+                if v["submitted"]:
+                    v["submitted"] = v["submitted"].isoformat()
+            if progress["last_submit_time"]:
+                progress["last_submit_time"] = progress["last_submit_time"].isoformat()
+        data["enrollments"] = enrollments
 
         module_count = self.module_mgr.reference_count(project.name)
         data["modules"] = [k for k, v in module_count.items() if v > 0]
@@ -209,7 +234,31 @@ class CTFApp(CTFBase):
         for enrollment in data["enrollments"]:
             user = enrollment["user"]
             project = enrollment["project"]
-            user_enroll = self.ue_mgr.enroll_user_to_project(user, project)
+            progress_dict = enrollment["progress"]
+            # manually generate progress nested object
+            progress = UserProgress(
+                secrets={
+                    k: Secret(
+                        search_index=v["search_index"],
+                        nonce=v["nonce"],
+                        enc_secret=v["enc_secret"],
+                        submitted=(
+                            parser.parse(v["submitted"]) if v["submitted"] else None
+                        ),
+                        user_id=(
+                            self.user_mgr.get_user(v["user"]).id if v["user"] else None
+                        ),
+                    )
+                    for k, v in progress_dict["secrets"].items()
+                },
+                found_secrets=progress_dict["found_secrets"],
+                last_submit_time=(
+                    parser.parse(progress_dict["last_submit_time"])
+                    if progress_dict["last_submit_time"]
+                    else None
+                ),
+            )
+            user_enroll = self.ue_mgr.import_user_enrollment(user, project, progress)
             self.ue_mgr.remove_service(user_enroll, "login")
             for name, service in enrollment["services"].items():
                 self.ue_mgr.register_service(user_enroll, name, Service(**service))
@@ -319,8 +368,23 @@ class CTFApp(CTFBase):
         if data.get("enrollments"):
             for enroll in data["enrollments"]:
                 try:
-                    self.ue_mgr.enroll_user_to_project(
-                        enroll["user"], enroll["project"]
+                    # manually extract user_id
+                    secrets = {}
+                    for key, item in enroll["progress"].pop("secrets", {}).items():
+                        user_info = item.pop("user")
+                        user_id = (
+                            None
+                            if not user_info
+                            else self.user_mgr.get_user(user_info).id
+                        )
+                        secrets[key] = Secret(**item, user_id=user_id)
+
+                    progress = UserProgress(
+                        **enroll["progress"],
+                        secrets=secrets,
+                    )
+                    self.ue_mgr.import_user_enrollment(
+                        enroll["user"], enroll["project"], progress
                     )
                 except CTFBaseException as e:
                     if exist_ok:

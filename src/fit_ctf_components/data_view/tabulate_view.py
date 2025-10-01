@@ -7,4 +7,12 @@ class TabulateView(data_view.DataView):
 
     @staticmethod
     def print_data(headers: list, values: list[list], **kw):  # pragma: no cover
-        print(tabulate(values, headers, tablefmt="pipe", stralign="center", **kw))
+        print(
+            tabulate(
+                [["null" if v is None else v for v in rows] for rows in values],
+                headers,
+                tablefmt="pipe",
+                stralign="center",
+                **kw
+            )
+        )

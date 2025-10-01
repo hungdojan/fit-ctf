@@ -67,3 +67,26 @@ $defs:
         patternProperties:
           ".*":
             $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/service.yaml"
+      progress:
+        $ref: "#/$defs/user_progress"
+    required:
+      - user
+      - project
+      - progress
+  user_progress:
+    type: object
+    properties:
+      secrets:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/secret.yaml"
+      found_secrets:
+        type: integer
+      last_submit_time:
+        type: ["string", "null"]
+        format: date-time
+    required:
+      - secrets
+      - found_secrets
+      - last_submit_time
