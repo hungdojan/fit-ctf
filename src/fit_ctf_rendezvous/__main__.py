@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 from fit_ctf.ctf_base import CTFBase
-from fit_ctf_components.constants import get_db_info, get_paths
+from fit_ctf_components.constants import get_env_info, get_paths
 from fit_ctf_components.container_client import get_c_client_by_name
 from fit_ctf_components.types import PathDict
 from fit_ctf_rendezvous.core_manager import CoreManager
@@ -13,7 +13,7 @@ from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 def main():
     load_dotenv()
 
-    db_host, db_name = get_db_info()
+    env_info = get_env_info()
     paths = PathDict(
         **{
             key: value
@@ -22,8 +22,7 @@ def main():
     )
 
     ctf_base = CTFBase(
-        db_host,
-        db_name,
+        env_info,
         paths,
         get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
     )
