@@ -5,7 +5,7 @@ from fit_ctf.ctf_base import CTFBase
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_components.exceptions import CTFException
+from fit_ctf_components.exceptions import CTFBaseException
 from fit_ctf_models.project import Project
 from fit_ctf_models.user import User
 from fit_ctf_models.user_enrollment import UserEnrollment
@@ -145,7 +145,7 @@ class CoreManager(_VariableRegistry):
             user_enrollment = self.ctf_base.ue_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
-        except CTFException:
+        except CTFBaseException:
             # TODO: print e
             return None
 
@@ -167,7 +167,7 @@ class CoreManager(_VariableRegistry):
             self.ctf_base.ue_mgr.get_user_enrollment(
                 self.active_user, self.selected_project
             )
-        except CTFException:
+        except CTFBaseException:
             return
 
         await self.ctf_base.ue_mgr.stop_user_cluster(

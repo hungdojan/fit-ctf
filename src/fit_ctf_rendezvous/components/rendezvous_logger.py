@@ -20,7 +20,7 @@ class RendezvousLogger(Log, LoggerInterface, metaclass=CombinedMeta):
     ) -> None:
         Log.__init__(self, **kwargs)
         LoggerInterface.__init__(self, ctf_base)
-        ctf_base._logger = self
+        ctf_base.register_component("logger", self)
 
     def info(self, msg: str, **kwargs):
         self.print(msg)
