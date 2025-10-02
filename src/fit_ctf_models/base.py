@@ -1,5 +1,5 @@
-from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from abc import ABC
+from typing import Any, Generic, Type, TypeVar
 
 from bson import ObjectId
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,11 +7,11 @@ from pymongo.collection import Collection
 from pymongo.database import Database
 
 import fit_ctf.ctf_base
+import fit_ctf.path_mgmt as path_mgmt
 from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
-from fit_ctf_components.types import PathDict
 
 
 class Base(ABC, BaseModel):
@@ -48,7 +48,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         ctf_base: "fit_ctf.ctf_base.CTFBase",
         db: Database,
         coll: Collection,
-        paths: PathDict,
+        model_cls: Type[T],
     ):
         """Constructor method.
 
@@ -62,7 +62,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         BaseComponent.__init__(self, ctf_base)
         self._db = db
         self._coll = coll
-        self._paths = paths
+        self.model_cls = model_cls
 
     @property
     def collection(self) -> Collection:
@@ -77,8 +77,11 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
     def c_client(self) -> ContainerClientInterface:
         return self.ctf_base.c_client
 
-    @abstractmethod
-    def get_doc_by_id(self, _id: ObjectId) -> T | None:  # pragma: no cover
+    @property
+    def paths(self) -> "path_mgmt.PathManagement":
+        return self.ctf_base.paths
+
+    def get_doc_by_id(self, _id: ObjectId) -> T | None:
         """Search for a document using ObjectId.
 
         :param _id: ID of the document.
@@ -86,12 +89,10 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :return: A document object (subclass of `Base`) if found.
         :rtype: T | None
         """
-        raise NotImplementedError()
+        res = self._coll.find_one({"_id": _id})
+        return self.model_cls(**res) if res else None
 
-    @abstractmethod
-    def get_doc_by_id_raw(
-        self, _id: ObjectId, projection: dict | None = None
-    ):  # pragma: no cover
+    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
         """Search for a document using ObjectId in raw format.
 
         :param _id: ID of the document.
@@ -100,18 +101,18 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :type projection: dict[str, Any] | None
         :return: Result of query.
         """
-        raise NotImplementedError()
+        projection = {} if projection is None else projection
+        return self._coll.find_one({"_id": _id}, projection)
 
-    @abstractmethod
-    def get_doc_by_filter(self, **kw) -> T | None:  # pragma: no cover
+    def get_doc_by_filter(self, **kw) -> T | None:
         """Search for a document with filter.
 
         :return: A document object (subclass of `Base`) if found.
         :rtype: T | None
         """
-        raise NotImplementedError()
+        res = self._coll.find_one(filter=kw)
+        return self.model_cls(**res) if res else None
 
-    @abstractmethod
     def get_doc_by_filter_raw(
         self, filter: dict | None = None, projection: dict | None = None
     ):
@@ -123,25 +124,28 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :type projection: dict | None
         :return: Result of query.
         """
-        raise NotImplementedError()
+        filter = {} if filter is None else filter
+        projection = {} if projection is None else projection
+        return self._coll.find_one(filter=filter, projection=projection)
 
-    @abstractmethod
-    def get_docs(self, **filter) -> list[T]:  # pragma: no cover
+    def get_docs(self, **filter) -> list[T]:
         """Search for all documents using filter.
 
         :return: A list of found documents.
         :rtype: T | None.
         """
-        raise NotImplementedError()
+        res = self._coll.find(filter=filter)
+        return [self.model_cls(**data) for data in res]
 
-    @abstractmethod
     def create_and_insert_doc(self, **kw) -> T:  # pragma no cover
         """Insert a document of a given class.
 
         :return: A new document.
         :rtype: T
         """
-        raise NotImplementedError()
+        doc = self.model_cls(**kw)
+        self.insert_doc(doc)
+        return doc
 
     def get_docs_raw(self, filter: dict[str, Any], projection: dict[str, Any]) -> list:
         """Search for all documents using filter and return results in raw format.

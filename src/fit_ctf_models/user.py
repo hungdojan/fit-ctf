@@ -1,6 +1,5 @@
 import shutil
 
-from bson import ObjectId
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
@@ -9,12 +8,12 @@ import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
+from fit_ctf_models.base import Base, BaseManagerInterface
+from fit_ctf_models.utils.exceptions import (
     UserExistsException,
     UserNotExistsException,
 )
-from fit_ctf_components.types import NewUserDict, PathDict, UserInfoDict, UserRole
-from fit_ctf_models.base import Base, BaseManagerInterface
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
@@ -49,7 +48,6 @@ class UserManager(BaseManagerInterface[User]):
         self,
         ctf_base: "ctf_base.CTFBase",
         db: Database,
-        paths: PathDict,
     ):
         """Constructor method.
 
@@ -58,7 +56,7 @@ class UserManager(BaseManagerInterface[User]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["user"], paths)
+        super().__init__(ctf_base, db, db["user"], User)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -68,35 +66,6 @@ class UserManager(BaseManagerInterface[User]):
         :rtype: user_enrollment.UserEnrollmentManager
         """
         return self.ctf_base.ue_mgr
-
-    def get_doc_by_id(self, _id: ObjectId) -> User | None:
-        res = self._coll.find_one({"_id": _id})
-        return User(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection=projection)
-
-    def get_doc_by_filter(self, **kw) -> User | None:
-        res = self._coll.find_one(filter=kw)
-        return User(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        res = self._coll.find_one(filter=filter, projection=projection)
-        return User(**res) if res else None
-
-    def get_docs(self, **filter) -> list[User]:
-        res = self._coll.find(filter=filter)
-        return [User(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> User:
-        doc = User(**kw)
-        self._coll.insert_one(doc.model_dump())
-        return doc
 
     def get_user(
         self, user_or_username: str | User, active: bool | None = True
@@ -173,7 +142,7 @@ class UserManager(BaseManagerInterface[User]):
         :rtype: User
         """
         user = self.get_user(username)
-        shadow_path = self._paths["users"] / user.username / "shadow"
+        shadow_path = self.paths.user_path(user) / "shadow"
 
         # calculate and update hash for shadow
         self.ctf_base.logger.debug(f"Updating `{shadow_path.resolve()}`")
@@ -215,7 +184,7 @@ class UserManager(BaseManagerInterface[User]):
         if user:
             raise UserExistsException(f"User `{username}` already exists.")
 
-        root_dir = self._paths["users"] / username
+        root_dir = self.paths.user_path(username)
         root_dir.mkdir(parents=True)
         shadow_file = root_dir / "shadow"
         (root_dir / "home").mkdir(parents=True, mode=0o777)
@@ -323,7 +292,7 @@ class UserManager(BaseManagerInterface[User]):
         except UserNotExistsException as e:
             raise UserNotExistsException(e)
 
-        path = self._paths["users"] / username
+        path = self.paths.user_path(username)
         if path.exists():
             shutil.rmtree(path)
         self.remove_doc_by_id(user.id)
@@ -365,7 +334,7 @@ class UserManager(BaseManagerInterface[User]):
             pairs.extend(
                 [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user, True)]
             )
-            path = self._paths["users"] / user.username
+            path = self.paths.user_path(user)
             if path.exists():
                 shutil.rmtree(path)
 

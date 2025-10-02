@@ -1,4 +1,5 @@
 import asyncio
+
 import click
 
 from fit_ctf.cli.utils import (
@@ -9,13 +10,13 @@ from fit_ctf.cli.utils import (
     user_option,
 )
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.cluster import Service
-from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    ConfigurationFileNotEditedException,
-    CTFException,
+from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
+from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf_models.cluster import Service
+from fit_ctf_models.utils.exceptions import (
     ServiceNotExistException,
     UserNotEnrolledToProjectException,
 )
@@ -32,9 +33,9 @@ def user_cluster(ctx: click.Context, username: str, project_name: str):
     try:
         user, project = ctf_app.ue_mgr._get_user_and_project(username, project_name)
         _ = ctf_app.ue_mgr.get_user_enrollment(user, project)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     ctx.obj["user"] = user
     ctx.obj["project"] = project
@@ -141,7 +142,7 @@ def services(ctx: click.Context):
         )
     except UserNotEnrolledToProjectException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @services.command(name="register")
@@ -168,7 +169,7 @@ def register_service(
         service = ctf_app.ue_mgr.get_service(user_enroll, service_name)
         if service:
             click.echo(f"Service {service.service_name} already exists.")
-            exit(0)
+            ctx.exit(0)
     except ServiceNotExistException:
         pass
 
@@ -195,7 +196,7 @@ def list_services(ctx: click.Context):
         services = ctf_app.ue_mgr.list_services(user_enroll)
     except UserNotEnrolledToProjectException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     services_raw = {k: v.model_dump() for k, v in services.items()}
     click.echo(YamlParser.dump_data(services_raw))
@@ -212,7 +213,7 @@ def update_service(ctx: click.Context, service_name: str):
         service = ctf_app.ue_mgr.get_service(user_enroll, service_name)
     except ServiceNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     try:
         doc = document_editor(service.model_dump(), {"service_name"}, "service_editor")

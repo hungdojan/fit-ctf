@@ -1,4 +1,5 @@
 import pathlib
+from datetime import datetime
 from enum import Enum
 from typing import TypedDict
 
@@ -73,3 +74,14 @@ class UserInfoDict(TypedDict):
 class NewUserDict(TypedDict):
     username: str
     password: str
+
+
+class SecretInfo(TypedDict):
+    name: str
+    submitted: datetime | None
+
+
+class EnvInfo(TypedDict):
+    db_host: str
+    db_name: str
+    app_secret: str

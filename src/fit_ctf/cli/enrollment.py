@@ -6,7 +6,7 @@ import click
 from fit_ctf.cli.utils import project_option, user_option
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.exceptions import CTFException
+from fit_ctf.exceptions import CTFBaseException
 
 
 @click.group(name="enrollment")
@@ -28,9 +28,9 @@ def enroll(ctx: click.Context, username: str, project_name: str):
         prj = ctf_app.prj_mgr.get_project(project_name)
         ctf_app.ue_mgr.enroll_user_to_project(user, prj)
         click.echo(f"User `{user.username}` was enrolled to the project `{prj.name}`.")
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="enroll-multiple")
@@ -79,9 +79,9 @@ def cancel_from_project(ctx: click.Context, username: str, project_name: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         asyncio.run(ctf_app.ue_mgr.cancel_user_enrollment(username, project_name))
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="cancel-multiple")
@@ -120,9 +120,9 @@ def cancel_user(ctx: click.Context, username: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         asyncio.run(ctf_app.ue_mgr.cancel_user_from_all_projects(username))
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @enrollment.command(name="cancel-project")
@@ -133,6 +133,6 @@ def cancel_project(ctx: click.Context, project_name: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         asyncio.run(ctf_app.ue_mgr.cancel_all_project_enrollments(project_name))
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)

@@ -5,16 +5,14 @@ import click
 
 from fit_ctf.cli.utils import format_option, user_option
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.user import UserManager
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    CTFException,
-    UserExistsException,
-)
 from fit_ctf_components.types import UserInfoDict
+from fit_ctf_models.user import UserManager
+from fit_ctf_models.utils.exceptions import UserExistsException
 
 #######################
 ## User CLI commands ##
@@ -23,9 +21,7 @@ from fit_ctf_components.types import UserInfoDict
 
 @click.group(name="user")
 @click.pass_context
-def user(
-    ctx: click.Context,
-):
+def user(ctx: click.Context):
     """A command for user management."""
     ctx.obj = ctx.parent.obj  # pyright: ignore
 
@@ -50,18 +46,18 @@ def create_user(
     if password:
         if not AuthInterface.validate_password_strength(password):
             click.echo("Password is not strong enough!")
-            exit(1)
+            ctx.exit(1)
     elif generate_password:
         password = AuthInterface.generate_password(DEFAULT_PASSWORD_LENGTH)
     else:
         click.echo("Missing either `-p` or `--generate-password` option.")
-        exit(1)
+        ctx.exit(1)
 
     try:
         _, data = user_mgr.create_new_user(username, password, email=email)
     except UserExistsException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     # print password
     headers = ["Username", "Password"]
@@ -103,10 +99,10 @@ def multiple_create(
         get_view(format).print_data(headers, values)
     except FileNotFoundError:
         click.echo(f"File `{str(input_file.resolve())}` does not exist.")
-        exit(1)
+        ctx.exit(1)
     except PermissionError:
         click.echo(f"Permission denied to access: {str(input_file.resolve())}")
-        exit(1)
+        ctx.exit(1)
 
 
 @user.command(name="ls")
@@ -149,9 +145,9 @@ def get_user_info(ctx: click.Context, username: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         user_info = ctf_app.user_mgr.get_user_raw(username)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
     click.echo(YamlParser.dump_data(user_info))
 
 
@@ -172,9 +168,9 @@ def enrolled_projects(ctx: click.Context, username: str, format: str, all: bool)
     ue_mgr = ctf_app.ue_mgr
     try:
         lof_prj = ue_mgr.get_enrolled_projects_raw(username, all)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     if not lof_prj:
         click.echo("User has is not enrolled to any project.")
@@ -196,9 +192,9 @@ def change_password(ctx: click.Context, username: str, password: str):
     # TODO: no strength validation
     try:
         ctf_app.user_mgr.change_password(username, password)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
 
 @user.command(name="delete")

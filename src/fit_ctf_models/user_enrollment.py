@@ -1,14 +1,22 @@
 import logging
+import shutil
 from pathlib import Path
 
-from bson import DBRef, ObjectId
-from pydantic import Field
+from bson import DBRef
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import (
+    HealthCheckDict,
+    ModuleCountDict,
+    RawEnrolledProjectsDict,
+)
+from fit_ctf_components.utils import get_missing_in_sequence
+from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.user_progress import UserProgress, UserProgressManager
+from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,
@@ -18,14 +26,6 @@ from fit_ctf_components.exceptions import (
     UserNotEnrolledToProjectException,
     UserNotExistsException,
 )
-from fit_ctf_components.types import (
-    HealthCheckDict,
-    ModuleCountDict,
-    PathDict,
-    RawEnrolledProjectsDict,
-)
-from fit_ctf_components.utils import get_missing_in_sequence
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
@@ -57,17 +57,16 @@ class UserEnrollment(ClusterConfig):
     project_id: DBRef
     container_port: int
     forwarded_port: int
-    progress: dict = Field(default_factory=dict)
+    progress: UserProgress
 
 
-class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
+class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressManager):
     """A manager class that handles operations with `UserEnrollment` objects."""
 
     def __init__(
         self,
         ctf_base: "ctf_base.CTFBase",
         db: Database,
-        paths: PathDict,
     ):
         """Constructor method.
 
@@ -76,7 +75,10 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["user_enrollment"], paths)
+        ClusterConfigManager.__init__(
+            self, ctf_base, db, db["user_enrollment"], UserEnrollment
+        )
+        UserProgressManager.__init__(self, ctf_base)
 
     @property
     def prj_mgr(self) -> "_project.ProjectManager":
@@ -100,7 +102,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
-    ) -> tuple[_user.User, "_project.Project"]:
+    ) -> tuple["_user.User", "_project.Project"]:
         """Retrieve both `User` and `Project` objects.
 
         :param user_or_username: User username or user object.
@@ -114,7 +116,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         """
         return self._get_user(user_or_username), self._get_project(project_or_name)
 
-    def _get_user(self, user_or_username: "str | _user.User") -> _user.User:
+    def _get_user(self, user_or_username: "str | _user.User") -> "_user.User":
         """Get a user from the username or user object.
 
         :param user_or_username: Username or a user object.
@@ -205,34 +207,6 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         pipeline = MongoQueries.user_enrollment_get_forwarded_ports(project)
         return [i["forwarded_ports"] for i in self.collection.aggregate(pipeline)][0]
 
-    def get_doc_by_id(self, _id: ObjectId) -> UserEnrollment | None:
-        res = self._coll.find_one({"_id": _id})
-        return UserEnrollment(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection=projection)
-
-    def get_doc_by_filter(self, **kw) -> UserEnrollment | None:
-        res = self._coll.find_one(filter=kw)
-        return UserEnrollment(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        return self._coll.find_one(filter=filter, projection=projection)
-
-    def get_docs(self, **filter) -> list[UserEnrollment]:
-        res = self._coll.find(filter=filter)
-        return [UserEnrollment(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> UserEnrollment:
-        doc = UserEnrollment(**kw)
-        self._coll.insert_one(doc.model_dump())
-        return doc
-
     def compile_compose_file(
         self,
         user: "_user.User",
@@ -247,9 +221,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         """
         ue = self.get_user_enrollment(user, project)
         compose_file = (
-            self._paths["projects"]
-            / project.name
-            / "users"
+            self.paths.enrolled_user_path(user, project)
             / f"{user.username}_compose.yaml"
         )
 
@@ -262,7 +234,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                     project=project.model_dump(),
                     user=user.model_dump(),
                     user_enrollment=ue.model_dump(),
-                    module_dir=self._paths["modules"],
+                    module_dir=self.paths.module_global,
                     container_name_prefix=f"{user.username}_{project.name}",
                 )
             )
@@ -293,9 +265,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             raise UserNotEnrolledToProjectException(e)
 
         compose_file = (
-            self._paths["projects"]
-            / project.name
-            / "users"
+            self.paths.enrolled_user_path(user, project)
             / f"{user.username}_compose.yaml"
         )
         if not compose_file.exists():
@@ -336,8 +306,8 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         :return: A generated service.
         :rtype: Service
         """
-        user_home_dirpath = self._paths["users"] / user.username / "home"
-        shadow_path = self._paths["users"] / user.username / "shadow"
+        user_home_dirpath = self.paths.user_path(user) / "home"
+        shadow_path = self.paths.user_path(user) / "shadow"
         return Service(
             service_name="login",
             module_name="base_ssh",
@@ -460,6 +430,8 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                 "Forwarded port must be in range 1 to 65 535."
             )
 
+        self.paths.enrolled_user_path(user, project).mkdir(parents=True)
+
         user_enrollment = self.create_and_insert_doc(
             user_id=DBRef("user", user.id),
             project_id=DBRef("project", project.id),
@@ -468,6 +440,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             services={
                 "login": self.create_login_user_service(user, project, container_port)
             },
+            progress=UserProgress(),
         )
         return user_enrollment
 
@@ -507,6 +480,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         users = self.user_mgr.get_docs(username={"$in": new_users}, active=True)
         user_enrollments = []
         for i, user in enumerate(users):
+            self.paths.enrolled_user_path(user, project).mkdir(parents=True)
             user_enrollments.append(
                 UserEnrollment(
                     user_id=DBRef("user", user.id),
@@ -518,17 +492,108 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
                             user, project, available_ports[i]
                         )
                     },
+                    progress=UserProgress(),
                 )
             )
 
         self._coll.insert_many([uc.model_dump() for uc in user_enrollments])
         return user_enrollments
 
+    def import_user_enrollment(
+        self,
+        user_or_username: "str | _user.User",
+        project_or_name: "str | _project.Project",
+        progress: UserProgress,
+        container_port: int = -1,
+        forwarded_port: int = -1,
+    ) -> UserEnrollment:
+        """Enroll user to the project.
+
+        :param username: User username or instance in question.
+        :type username: str | _user.User
+        :param project_or_name: Project name or instance in question.
+        :type project_or_name: str | _project.Project
+        :param container_port: An SSH port of the login node. If set to `-1` the function will
+            autogenerate a value. Defaults to -1.
+        :type container_port: int, optional
+        :param forwarded_port: A forwarded port for the user to connect to the outer
+            server. If set to `-1` the function will autogenerate a value. Defaults to -1.
+        :type forwarded_port: int, optional
+        :raises UserNotExistsException: User with the given username was not found.
+        :raises ProjectNotExistException: Project data was not found in the database.
+        :raise UserEnrolledToProjectException: The user is already enrolled to the project.
+        :raises MaxUserCountReachedException: Project has already reached the maximum
+            number of enrolled users.
+        :raises PortUsageCollisionException: The port is already in use.
+        :return: A created `UserEnrollment` object.
+        :rtype: UserEnrollment
+        """
+        user, project = self._get_user_and_project(user_or_username, project_or_name)
+        users = self.get_user_enrollments_for_project_raw(project)
+        user_enrollment = self.get_doc_by_filter(
+            **{"user_id.$id": user.id, "project_id.$id": project.id, "active": True}
+        )
+
+        if user_enrollment:
+            raise UserEnrolledToProjectException(
+                f"The user `{user.username}` is already enrolled to `{project.name}`"
+            )
+
+        if len(users) >= project.max_nof_users:
+            raise MaxUserCountReachedException(
+                f"Project `{project.name}` has already reached the maximum number of users."
+            )
+
+        # checking container ports
+        used_container_ports = self.get_used_ports(project)
+        if container_port < 0:
+            container_port = get_missing_in_sequence(
+                used_container_ports, project.starting_port_bind
+            )
+        elif container_port in used_container_ports:
+            raise ContainerPortUsageCollisionException(
+                "Selected port is already in used."
+            )
+        elif (
+            container_port < project.starting_port_bind
+            or container_port > project.max_port
+        ):
+            raise SSHPortOutOfRangeException(
+                "The container port must be in range "
+                f"{project.starting_port_bind} and {project.max_port}."
+            )
+
+        # checking forwarded ports
+        if forwarded_port < 0:
+            forwarded_port = container_port
+        elif forwarded_port in self.get_all_forwarded_ports(None):
+            raise ForwardedPortUsageCollisionException(
+                "The forwarded port is already in used."
+            )
+        elif forwarded_port < 1 or forwarded_port > 65_535:
+            raise SSHPortOutOfRangeException(
+                "Forwarded port must be in range 1 to 65 535."
+            )
+
+        self.paths.enrolled_user_path(user, project).mkdir(parents=True)
+
+        user_enrollment = self.create_and_insert_doc(
+            user_id=DBRef("user", user.id),
+            project_id=DBRef("project", project.id),
+            container_port=container_port,
+            forwarded_port=forwarded_port,
+            services={
+                "login": self.create_login_user_service(user, project, container_port)
+            },
+            progress=progress,
+        )
+        return user_enrollment
+
     # LIST ENROLLMENTS
 
     def get_user_enrollments_for_project(
         self, project_or_name: "str | _project.Project", include_inactive: bool = False
-    ) -> list[_user.User]:
+    ) -> list["_user.User"]:
         """Return list of users that are enrolled to the project.
 
         :param project_or_name: Project name or a `Project` object.
@@ -577,9 +642,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             {
                 **item["users"],
                 "mount": str(
-                    (
-                        self._paths["users"] / item["users"]["username"] / "home"
-                    ).resolve()
+                    (self.paths.user_path(item["users"]["username"]) / "home").resolve()
                 ),
                 "forwarded_port": item["forwarded_port"],
             }
@@ -772,14 +835,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
             )
 
         # remove user_compose.yaml
-        compose_path = (
-            self._paths["projects"]
-            / project.name
-            / "users"
-            / f"{user.username}_compose.yaml"
-        )
-        if compose_path.exists():
-            compose_path.unlink()
+        enrolled_user_path = self.paths.enrolled_user_path(user, project)
+        if enrolled_user_path.exists():
+            shutil.rmtree(enrolled_user_path)
         self.remove_doc_by_id(user_enrollment.id)
 
     def flush_multiple_enrollments(
@@ -801,14 +859,9 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         for data in query_res:
             user = _user.User(**data["user"])
             project = _project.Project(**data["project"])
-            compose_path = (
-                self._paths["projects"]
-                / project.name
-                / "users"
-                / f"{user.username}_compose.yaml"
-            )
-            if compose_path.exists():
-                compose_path.unlink()
+            enrolled_user_path = self.paths.enrolled_user_path(user, project)
+            if enrolled_user_path.exists():
+                shutil.rmtree(enrolled_user_path)
 
         self.remove_docs_by_id([data["_id"] for data in query_res])
 
@@ -1031,7 +1084,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment]):
         return await self.c_client.compose_states(self.get_compose_file(user, project))
 
     async def stop_multiple_user_clusters(
-        self, users: list[_user.User], project: "_project.Project"
+        self, users: list["_user.User"], project: "_project.Project"
     ):
         """Stop multiple user clusters.
 

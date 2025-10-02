@@ -9,13 +9,13 @@ from fit_ctf.cli.utils import (
     service_name_option,
 )
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf_models.cluster import Service
-from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import (
-    ConfigurationFileNotEditedException,
-    CTFException,
+from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
+from fit_ctf_components.utils import color_state, document_editor
+from fit_ctf_models.cluster import Service
+from fit_ctf_models.utils.exceptions import (
     ProjectNotExistException,
     ServiceNotExistException,
 )
@@ -30,9 +30,9 @@ def project_cluster(ctx: click.Context, project_name: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         project = ctf_app.prj_mgr.get_project(project_name)
-    except CTFException as e:
+    except CTFBaseException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
     ctx.obj["project"] = project
 
 
@@ -182,7 +182,7 @@ def list_services(ctx: click.Context):
         services = ctf_app.prj_mgr.list_services(project)
     except ProjectNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     services_raw = {k: v.model_dump() for k, v in services.items()}
     click.echo(YamlParser.dump_data(services_raw))
@@ -199,7 +199,7 @@ def update_service(ctx: click.Context, service_name: str):
         service = ctf_app.prj_mgr.get_service(project, service_name)
     except ServiceNotExistException as e:
         click.echo(e)
-        exit(1)
+        ctx.exit(1)
 
     try:
         doc = document_editor(service.model_dump(), {"service_name"}, "service_editor")

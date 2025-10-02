@@ -1,6 +1,6 @@
 import pytest
 
-from fit_ctf_components.exceptions import (
+from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,
@@ -77,7 +77,9 @@ def test_compose_file(connected_data: FixtureData):
     with pytest.raises(UserNotEnrolledToProjectException):
         ue_mgr.get_compose_file("user1", "prj1")
 
-    path = ctf_app._paths["projects"] / "prj1" / "users" / "user2_compose.yaml"
+    path = (
+        ctf_app._paths["projects"] / "prj1" / "users" / "user2" / "user2_compose.yaml"
+    )
     assert not path.exists()
 
     compose_path = ue_mgr.get_compose_file("user2", "prj1")
@@ -264,6 +266,7 @@ async def test_flush_enrollment(connected_data: FixtureData):
         ctf_app._paths["projects"]
         / prj1.name
         / "users"
+        / "user2"
         / f"{user2.username}_compose.yaml"
     )
     assert path.exists()
@@ -321,6 +324,7 @@ async def test_cancel_user_enrollment(connected_data: FixtureData):
         ctf_app._paths["projects"]
         / prj2.name
         / "users"
+        / "user1"
         / f"{user1.username}_compose.yaml"
     )
     assert filepath.exists()

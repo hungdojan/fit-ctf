@@ -3,26 +3,24 @@ import re
 import shutil
 from pathlib import Path
 
-from bson import ObjectId
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.constants import DEFAULT_STARTING_PORT
-from fit_ctf_components.exceptions import (
+from fit_ctf_components.types import (
+    HealthCheckDict,
+    ModuleCountDict,
+    ProjectPortListingDict,
+    RawProjectDict,
+)
+from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
     ProjectNotExistException,
     SSHPortOutOfRangeException,
 )
-from fit_ctf_components.types import (
-    HealthCheckDict,
-    ModuleCountDict,
-    PathDict,
-    ProjectPortListingDict,
-    RawProjectDict,
-)
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_templates import (
     JINJA_TEMPLATE_DIRPATHS,
@@ -68,7 +66,6 @@ class ProjectManager(ClusterConfigManager[Project]):
         self,
         ctf_base: "ctf_base.CTFBase",
         db: Database,
-        paths: PathDict,
     ):
         """Constructor method.
 
@@ -77,7 +74,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :param paths: A list of content paths.
         :type paths: PathDict
         """
-        super().__init__(ctf_base, db, db["project"], paths)
+        super().__init__(ctf_base, db, db["project"], Project)
 
     @property
     def ue_mgr(self) -> "_ue.UserEnrollmentManager":
@@ -87,34 +84,6 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: _user_enroll.UserEnrollmentManager
         """
         return self.ctf_base.ue_mgr
-
-    def get_doc_by_id(self, _id: ObjectId) -> Project | None:
-        res = self._coll.find_one({"_id": _id})
-        return Project(**res) if res else None
-
-    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
-        projection = {} if projection is None else projection
-        return self._coll.find_one({"_id": _id}, projection)
-
-    def get_doc_by_filter(self, **kw) -> Project | None:
-        res = self._coll.find_one(filter=kw)
-        return Project(**res) if res else None
-
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
-        filter = {} if filter is None else filter
-        projection = {} if projection is None else projection
-        return self._coll.find_one(filter=filter, projection=projection)
-
-    def get_docs(self, **filter) -> list[Project]:
-        res = self._coll.find(filter=filter)
-        return [Project(**data) for data in res]
-
-    def create_and_insert_doc(self, **kw) -> Project:
-        doc = Project(**kw)
-        self.insert_doc(doc)
-        return doc
 
     def get_project(
         self, project_or_name: str | Project, active: bool | None = True
@@ -154,7 +123,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :return: A path to the compose file.
         :rtype: Path
         """
-        compose_file = self._paths["projects"] / project.name / "server_compose.yaml"
+        compose_file = self.paths.project_compose(project)
         if not compose_file.exists():
             self.compile_compose_file(project)
         return compose_file
@@ -302,11 +271,9 @@ class ProjectManager(ClusterConfigManager[Project]):
                 "Not enough available ports."
             )  # pragma: no cover
 
-        dest_dir = self._paths["projects"] / name
-        dest_dir.mkdir(parents=True)
-
-        (dest_dir / "users").mkdir()
-        (dest_dir / "logs").mkdir()
+        self.paths.project_path(name).mkdir(parents=True)
+        self.paths.project_users(name).mkdir(parents=True)
+        self.paths.project_logs(name).mkdir(parents=True)
 
         prj = self.create_and_insert_doc(
             name=name,
@@ -422,9 +389,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         :param project: A project object.
         :type project: Project.
         """
-        compose_filepath = (
-            self._paths["projects"] / project.name / "server_compose.yaml"
-        )
+        compose_filepath = self.paths.project_compose(project)
         with open(str(compose_filepath.resolve()), "w") as f:
             template = get_template(
                 "server_compose.yaml.j2", str(JINJA_TEMPLATE_DIRPATHS["v1"].resolve())
@@ -432,7 +397,7 @@ class ProjectManager(ClusterConfigManager[Project]):
             f.write(
                 template.render(
                     project=project.model_dump(),
-                    module_dir=self._paths["modules"],
+                    module_dir=self.paths.module_global,
                     container_name_prefix=project.name,
                 )
             )
@@ -520,7 +485,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         except ProjectNotExistException as e:
             raise ProjectNotExistException(e)
 
-        path = self._paths["projects"] / prj.name
+        path = self.paths.project_path(prj)
         if path.exists():
             shutil.rmtree(path)
 
