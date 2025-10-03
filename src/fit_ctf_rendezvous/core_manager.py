@@ -9,7 +9,16 @@ from fit_ctf_components.exceptions import CTFBaseException
 from fit_ctf_models.project import Project
 from fit_ctf_models.user import User
 from fit_ctf_models.user_enrollment import UserEnrollment
-from fit_ctf_rendezvous.exceptions import CannotChangePassword
+from fit_ctf_models.utils.exceptions import (
+    SecretAlreadySubmittedException,
+    SecretNotFoundException,
+)
+from fit_ctf_rendezvous.exceptions import (
+    CannotChangePassword,
+    InvalidAction,
+    SecretSubmitFail,
+    UserNotLoggedIn,
+)
 
 REGEX_IS_LOWER_CASE = re.compile("[a-z]")
 REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
@@ -132,6 +141,32 @@ class CoreManager(_VariableRegistry):
         return self.ctf_base.user_enrollment_mgr.get_enrolled_projects(
             self.active_user.username
         )
+
+    def submit_secret(self, value: str, project_name: str) -> None:
+        """Wrapper function for submitting project secrets.
+
+        :param value: A submitted secret value.
+        :type value: str
+        :param project_name: A name of the selected project.
+        :type project_name: str
+        :raise UserNotLoggedIn: In case a submission of secret by anonymous user.
+        :raise InvalidAction: Unable to perform action.
+        :raise SecretSubmitFail: The submitted secret was not successful.
+        """
+        if not self.active_user:
+            raise UserNotLoggedIn("Cannot submit a secret.")
+        try:
+            project = self.ctf_base.prj_mgr.get_project(project_name)
+            ue = self.ctf_base.ue_mgr.get_user_enrollment(self.active_user, project)
+        except CTFBaseException as e:
+            raise InvalidAction(e)
+
+        try:
+            self.ctf_base.ue_mgr.submit_secret(ue, value)
+        except SecretAlreadySubmittedException as e:
+            raise SecretSubmitFail(e)
+        except SecretNotFoundException:
+            raise SecretSubmitFail("Invalid secret.")
 
     async def start_user_instance(self) -> UserEnrollment | None:
         """Start user login nodes.

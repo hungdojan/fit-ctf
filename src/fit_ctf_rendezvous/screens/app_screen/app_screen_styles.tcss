@@ -105,6 +105,7 @@ SubmitSecretPage {
         height: 1;
         width: 50%;
     }
+
     ListView:focus {
         height: auto;
         max-height: 50%;

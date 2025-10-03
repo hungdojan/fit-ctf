@@ -55,8 +55,6 @@ class AppSideBar(Container, CoreWidget):
             yield Button(
                 "Submit Secret",
                 id="sidebar-submit-secret-btn",
-                disabled=self.selected_project is None,
-                classes="sidebar-active-btn",
             )
             # yield Button(
             #     "Show Console",

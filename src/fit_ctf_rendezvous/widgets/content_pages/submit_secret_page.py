@@ -1,14 +1,19 @@
+import asyncio
+
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Center, Container, Horizontal
 from textual.widget import Widget
 from textual.widgets import Button, Input, Label, ListItem, ListView, Rule
 
+from fit_ctf_rendezvous.exceptions import FitRendezvousException
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class SubmitSecretPage(Container, CoreWidget):
+
+    DISABLE_BUTTON_DELAY = 5
 
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
@@ -38,13 +43,33 @@ class SubmitSecretPage(Container, CoreWidget):
 
     @on(Button.Pressed, "#validate-secret-btn")
     def validate_button_handler(self):
+        """Define action after submit button is pressed."""
         input_widget = self.query_one("#secret-value-input", Input)
         list_view = self.query_one("#project-list-selected", ListView)
         if not list_view.highlighted_child:
+            self.notify("Project not selected.")
             return
         # secret
-        _ = input_widget.value
+        secret_value = input_widget.value
         # selected_prj
-        _ = list_view.highlighted_child.query_one(Label)._content
+        project_name = str(list_view.highlighted_child.query_one(Label)._content)
 
-        # TODO: validate secret and selected project
+        try:
+            self.core_mgr.submit_secret(secret_value, project_name)
+            self.notify(
+                "Secret successfully submitted", timeout=3, severity="information"
+            )
+        except FitRendezvousException as e:
+            self.notify(str(e), timeout=3, severity="error")
+            # to prevent secret brute-forcing
+            # button will be disabled for few seconds if failed
+            button = self.query_one("#validate-secret-btn", Button)
+            button.disabled = True
+            self.run_worker(
+                self.reenable_submit_button(button), name="temporary-button-disable"
+            )
+
+    async def reenable_submit_button(self, button: Button):
+        """Disable a button to prevent brute-forcing."""
+        await asyncio.sleep(self.DISABLE_BUTTON_DELAY)
+        button.disabled = False
