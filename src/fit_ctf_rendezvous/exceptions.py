@@ -16,3 +16,11 @@ class CannotChangePassword(FitRendezvousException):
 
 class InconsistentState(FitRendezvousException):
     pass
+
+
+class InvalidAction(FitRendezvousException):
+    pass
+
+
+class SecretSubmitFail(FitRendezvousException):
+    pass
