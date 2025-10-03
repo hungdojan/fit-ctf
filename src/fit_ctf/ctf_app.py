@@ -368,8 +368,10 @@ class CTFApp(CTFBase):
         if data.get("enrollments"):
             for enroll in data["enrollments"]:
                 try:
-                    # manually extract user_id
-                    secrets = {}
+                    ue = self.ue_mgr.enroll_user_to_project(
+                        enroll["user"], enroll["project"]
+                    )
+                    # load secrets
                     for key, item in enroll["progress"].pop("secrets", {}).items():
                         user_info = item.pop("user")
                         user_id = (
@@ -377,15 +379,25 @@ class CTFApp(CTFBase):
                             if not user_info
                             else self.user_mgr.get_user(user_info).id
                         )
-                        secrets[key] = Secret(**item, user_id=user_id)
 
-                    progress = UserProgress(
-                        **enroll["progress"],
-                        secrets=secrets,
+                        secret = self.ue_mgr.add_secret(ue, key, item["value"])
+
+                        # manually update if secret is found
+                        secret.user_id = user_id
+                        secret.submitted = (
+                            parser.parse(item["submitted"])
+                            if item["submitted"]
+                            else None
+                        )
+                        self.ue_mgr.update_doc(ue)
+                    # update generate secret information
+                    ue.progress.last_submit_time = (
+                        parser.parse(enroll["progress"]["last_submit_time"])
+                        if enroll["progress"]["last_submit_time"]
+                        else None
                     )
-                    self.ue_mgr.import_user_enrollment(
-                        enroll["user"], enroll["project"], progress
-                    )
+                    ue.progress.found_secrets = enroll["progress"]["found_secrets"]
+                    self.ue_mgr.update_doc(ue)
                 except CTFBaseException as e:
                     if exist_ok:
                         self.logger.warning(str(e))

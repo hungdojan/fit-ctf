@@ -69,7 +69,7 @@ class UserProgressManager(BaseComponent):
     def __init__(self, ctf_base: "ctf_base.CTFBase"):
         super().__init__(ctf_base)
 
-    def add_secret(self, ue: "_ue.UserEnrollment", name: str, value: str) -> None:
+    def add_secret(self, ue: "_ue.UserEnrollment", name: str, value: str) -> Secret:
         """Adds a secret to the list of secrets.
 
         :param ue: Base User enrollment document.
@@ -82,6 +82,8 @@ class UserProgressManager(BaseComponent):
             The secret with the given name already exists in the progress doc.
         :raises SecretValueCollision:
             The secret with the given value already exists in the progress doc.
+        :return: Created secret.
+        :rtype: Secret
         """
         progress = ue.progress
         if progress.secrets.get(name):
@@ -93,7 +95,7 @@ class UserProgressManager(BaseComponent):
 
         search_index = SecretManager.compute_search_index(value)
         nonce, ct = SecretManager.encrypt(value)
-        progress.secrets[name] = Secret(
+        secret = Secret(
             **{
                 "search_index": search_index,
                 "nonce": nonce,
@@ -102,7 +104,9 @@ class UserProgressManager(BaseComponent):
                 "user_id": None,
             }
         )
+        progress.secrets[name] = secret
         self.ctf_base.ue_mgr.update_doc(ue)
+        return secret
 
     def update_secret_value(
         self,
