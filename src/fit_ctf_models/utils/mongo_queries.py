@@ -518,26 +518,63 @@ class MongoQueries:
             },
         ]
 
-    # @staticmethod
-    # def fetch_leaderboard(project: "prj.Project", nof_users: int) -> list[dict]:
-    #     pipeline = [
-    #         {"$match": {"project_id.$id": project.id}},
-    #         {"$sort": {"last_submit_time", 1}},
-    #     ]
-    #     if nof_users >= 0:
-    #         pipeline.append({"$limit": nof_users})
-    #     pipeline.extend(
-    #         [
-    #             {
-    #                 "$lookup": {
-    #                     "from": "user",
-    #                     "localField": "user_id.$id",
-    #                     "foreignField": "_id",
-    #                     "as": "user",
-    #                     "pipeline": [{"$project": {"_id": 0, "username": 1}}],
-    #                 }
-    #             },
-    #             {"$project": {"_id": 0, "secrets": 1}},
-    #         ]
-    #     )
-    #     return pipeline
+    @staticmethod
+    def user_enrollment_fetch_leaderboard(project: "prj.Project") -> list[dict]:
+        pipeline = [
+            {"$match": {"project_id.$id": project.id}},
+            {
+                "$lookup": {
+                    "from": "user",
+                    "localField": "user_id.$id",
+                    "foreignField": "_id",
+                    "as": "user",
+                    "pipeline": [{"$project": {"_id": 0, "username": 1}}],
+                }
+            },
+            {"$unwind": "$user"},
+            {
+                "$sort": {
+                    "progress.found_secrets": -1,
+                    "progress.last_submit_time": 1,
+                }
+            },
+            # remove hashes from the output data
+            # it converts object to array
+            # then only select relevant data
+            # and reassemble back to object
+            {
+                "$addFields": {
+                    "progress.secrets": {
+                        "$arrayToObject": {
+                            "$map": {
+                                "input": {"$objectToArray": "$progress.secrets"},
+                                "as": "item",
+                                "in": {
+                                    "k": "$$item.k",
+                                    "v": {
+                                        "$let": {
+                                            "vars": {"s": "$$item.v"},
+                                            "in": {
+                                                "submitted": "$$s.submitted",
+                                            },
+                                        }
+                                    },
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "progress.secrets": 1,
+                    "progress.found_secrets": 1,
+                    "progress.last_submit_time": 1,
+                    "user": 1,
+                }
+            },
+            # pop username from the nested object
+            {"$set": {"user": "$user.username"}},
+        ]
+        return pipeline
