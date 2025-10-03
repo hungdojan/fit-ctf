@@ -28,6 +28,13 @@ def test_export_project(connected_data: FixtureData):
                 pathlib.Path(tmp_dir) / "database_dump.yaml"
             )
             assert len(data["enrollments"]) == 2
+            ue_doc = [i for i in data["enrollments"] if i["user"] == "user1"][0]
+            assert (
+                ue_doc
+                and len(ue_doc["progress"]["secrets"]) == 2
+                and ue_doc["progress"]["last_submit_time"]
+                and ue_doc["progress"]["found_secrets"] == 1
+            )
             assert set(data["modules"]) == {"base", "base_ssh"}
             assert len(data["users"]) == 2
             assert data["project"]["name"] == "prj2"
@@ -49,6 +56,16 @@ def test_import_project(empty_data: FixtureData):
     assert ctf_app.prj_mgr.get_project("prj2")
     assert len(ctf_app.user_mgr.get_docs()) == 2
     assert len(ctf_app.ue_mgr.get_docs()) == 2
+
+    ue = ctf_app.ue_mgr.get_user_enrollment(
+        ctf_app.user_mgr.get_user("user1"), ctf_app.prj_mgr.get_project("prj2")
+    )
+    assert (
+        ue
+        and len(ue.progress.secrets) == 2
+        and ue.progress.last_submit_time
+        and ue.progress.found_secrets == 1
+    )
 
     # clean up here since the tmp_path is defined for the session scope
     zip_path.unlink()
