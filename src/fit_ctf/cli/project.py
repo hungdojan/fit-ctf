@@ -271,17 +271,17 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
 @project.command(name="leaderboard")
 @project_option
 @format_option
-@click.option(
-    "-n",
-    "--nof-users",
-    help="Display number of NUM users. Set -1 to print the whole leaderboard.",
-    type=int,
-    default=-1,
-)
 @click.pass_context
-def leaderboard(ctx: click.Context, project_name: str, format: str, nof_users: int):
+def leaderboard(ctx: click.Context, project_name: str, format: str):
     """Display the leaderboard of top NUM users."""
-    pass
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    data = ctf_app.ue_mgr.get_leaderboard(ctf_app.prj_mgr.get_project(project_name))
+    header_order = ["user", "found_secrets", "total_secrets", "last_submit_time"]
+    headers = ["Pos", "User", "Submitted", "Total", "Last submit"]
+    values = [
+        [i + 1] + [item[key] for key in header_order] for i, item in enumerate(data)
+    ]
+    get_view(format).print_data(headers, values)
 
 
 @project.command("sync-leaderboard-data")

@@ -85,3 +85,11 @@ class EnvInfo(TypedDict):
     db_host: str
     db_name: str
     app_secret: str
+
+
+class LeaderBoardItem(TypedDict):
+    user: str
+    secrets: dict
+    found_secrets: int
+    total_secrets: int
+    last_submit_time: datetime | None
