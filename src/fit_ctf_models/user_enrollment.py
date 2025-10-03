@@ -10,6 +10,7 @@ import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
 from fit_ctf_components.types import (
     HealthCheckDict,
+    LeaderBoardItem,
     ModuleCountDict,
     RawEnrolledProjectsDict,
 )
@@ -725,7 +726,34 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
             _filter["project_id.$id"] = project.id
 
         pipeline = [{"$match": _filter}, *MongoQueries.count_module_name_occurences()]
-        return [i for i in self.collection.aggregate(pipeline)]
+        return list(self.collection.aggregate(pipeline))
+
+    # GET LEADERBOARD
+    def get_leaderboard(self, project: "_project.Project") -> list[LeaderBoardItem]:
+        """Calculate leaderboard data using MongoDB aggregation pipeline.
+
+        :param project: A selected project.
+        :type project: _project.Project
+        :return: A list of tranformed leaderboard objects.
+        :rtype: list[LeaderBoardItem]
+        """
+
+        def _transform_items(items: dict) -> list[LeaderBoardItem]:
+            """Transform fetch data to final format."""
+            return [
+                {
+                    "secrets": obj["progress"]["secrets"],
+                    "found_secrets": obj["progress"]["found_secrets"],
+                    "last_submit_time": obj["progress"]["last_submit_time"],
+                    "total_secrets": len(obj["progress"]["secrets"]),
+                    "user": obj["user"],
+                }
+                for obj in items
+            ]
+
+        pipeline = MongoQueries.user_enrollment_fetch_leaderboard(project)
+        fetch_leaderboard_items = list(self.collection.aggregate(pipeline))
+        return _transform_items(fetch_leaderboard_items)
 
     # CANCEL USER ENROLLMENTS
 
