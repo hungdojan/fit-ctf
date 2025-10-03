@@ -71,4 +71,38 @@ $defs:
         type: string
       user:
         type: string
-    required: ["project", "user"]
+      progress:
+        $ref: "#/$defs/user_progress"
+    required:
+      - project
+      - user
+      - progress
+
+  user_progress:
+    type: object
+    properties:
+      secrets:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "#/$defs/secret"
+      found_secrets:
+        type: integer
+      last_submit_time:
+        type: ["string", "null"]
+        format: date-time
+    required:
+      - secrets
+      - last_submit_time
+      - found_secrets
+
+  secret:
+    type: object
+    properties:
+      value:
+        type: string
+      submitted:
+        type: ["string", "null"]
+        format: date-time
+      user:
+        type: ["string", "null"]

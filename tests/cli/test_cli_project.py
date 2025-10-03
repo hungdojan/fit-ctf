@@ -124,6 +124,31 @@ def test_used_ports(cli_data: CLIData):
     assert re.match("No project found!", result.output)
 
 
+def test_leaderboard(cli_data: CLIData):
+    _, _, cli_runner = cli_data
+
+    # missing arguments
+    cmd = "project leaderboard".split()
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code != 0
+
+    # missing
+    cmd = "project leaderboard -pn prj1 --format csv".split()
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    f = StringIO(result.output)
+    data = list(csv.DictReader(f))
+    assert len(data) == 2 and not any([i["Last submit"] for i in data])
+
+    # missing
+    cmd = "project leaderboard -pn prj2 --format csv".split()
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    f = StringIO(result.output)
+    data = list(csv.DictReader(f))
+    assert len(data) == 2 and data[0]["User"] == "user1" and data[0]["Last submit"]
+
+
 def test_delete(cli_data: CLIData):
     ctf_app, _, cli_runner = cli_data
     assert len(ctf_app.prj_mgr.get_docs()) == 2

@@ -150,3 +150,31 @@ def test_progress_methods(connected_data: FixtureData):
     assert len(progress.list_secrets()) == 2
     assert secret and progress.get_last_submit() == secret.submitted
     assert progress.get_secret_by_name("key1") == progress.get_secret_by_value("value1")
+
+
+def test_leaderboard(connected_data: FixtureData):
+    ctf_app, _ = connected_data
+    prj = ctf_app.prj_mgr.get_project("prj2")
+    leaderboard_data = ctf_app.ue_mgr.get_leaderboard(prj)
+    assert len(leaderboard_data) == len(
+        ctf_app.ue_mgr.get_user_enrollments_for_project("prj2")
+    )
+    assert leaderboard_data[0]["user"] == "user1"
+
+    user = ctf_app.user_mgr.get_user("user2")
+    ue = ctf_app.ue_mgr.get_user_enrollment(user, prj)
+    ctf_app.ue_mgr.add_secret(ue, "secret1", "secret-value1")
+    ctf_app.ue_mgr.add_secret(ue, "secret2", "secret-value2")
+
+    # reload from database
+    ue = ctf_app.ue_mgr.get_user_enrollment(user, prj)
+    assert ue and len(ue.progress.secrets.keys()) == 2
+    assert ctf_app.ue_mgr.get_leaderboard(prj)[0]["user"] == "user1"
+
+    # same number of secrets different time
+    ctf_app.ue_mgr.submit_secret(ue, "secret-value1")
+    assert ctf_app.ue_mgr.get_leaderboard(prj)[0]["user"] == "user1"
+
+    # user2 has submitted more secrets
+    ctf_app.ue_mgr.submit_secret(ue, "secret-value2")
+    assert ctf_app.ue_mgr.get_leaderboard(prj)[0]["user"] == "user2"
