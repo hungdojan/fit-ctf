@@ -19,6 +19,7 @@ from fit_ctf_rendezvous.exceptions import (
     SecretSubmitFail,
     UserNotLoggedIn,
 )
+from fit_ctf_rendezvous.utils import LeaderboardDataTableItem
 
 REGEX_IS_LOWER_CASE = re.compile("[a-z]")
 REGEX_IS_UPPER_CASE = re.compile("[A-Z]")
@@ -167,6 +168,32 @@ class CoreManager(_VariableRegistry):
             raise SecretSubmitFail(e)
         except SecretNotFoundException:
             raise SecretSubmitFail("Invalid secret.")
+
+    def get_leaderboard(self) -> list[LeaderboardDataTableItem]:
+        """Fetch leaderboard from the backend."""
+        if not self.selected_project:
+            raise InvalidAction("Cannot fetch leaderboard without selected project.")
+        leaderboard_items = self.ctf_base.ue_mgr.get_leaderboard(self.selected_project)
+        return [
+            LeaderboardDataTableItem(
+                {
+                    "position": pos + 1,
+                    "username": item["user"],
+                    "found_secrets": item["found_secrets"],
+                    "last_submit_time": (
+                        item["last_submit_time"].astimezone().strftime("%x %X")
+                        if item["last_submit_time"]
+                        else ""
+                    ),
+                    "percentage_score": "{:.2f} %".format(
+                        item["found_secrets"] / item["total_secrets"] * 100
+                        if item["total_secrets"] > 0
+                        else 0
+                    ),
+                }
+            )
+            for pos, item in enumerate(leaderboard_items)
+        ]
 
     async def start_user_instance(self) -> UserEnrollment | None:
         """Start user login nodes.

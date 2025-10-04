@@ -36,6 +36,11 @@ AppSideBar {
         border: none;
         width: 100w;
     }
+    .sidebar-big-button,
+    .sidebar-big-button:hover,
+    .sidebar-big-button:focus {
+        border: ascii white;
+    }
     VerticalScroll {
         align: center middle;
         padding: 0 2;
@@ -43,6 +48,7 @@ AppSideBar {
             width: 100%;
         }
     }
+
 }
 
 ProjectSelector {

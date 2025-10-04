@@ -1,4 +1,5 @@
 from jinja2 import Environment, FileSystemLoader
+from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
 from textual.containers import Container, VerticalScroll
@@ -43,10 +44,31 @@ class ProjectInfoPage(Container, CoreWidget):
                     yield self.generate_leaderboard()
 
     def generate_leaderboard(self) -> DataTable:
+        """Generate the leaderboard tab content"""
         table = DataTable()
-        # TODO:
-        columns = ("No.", "Username", "Score")
+        # header and the order
+        columns = ("Pos", "Username", "Found Secrets", "Last Submit Time", "Score")
+        header_order = (
+            "position",
+            "username",
+            "found_secrets",
+            "last_submit_time",
+            "percentage_score",
+        )
+        # generate each row, highlight a username of the active user
+        rows = [
+            [
+                (
+                    Text(l_item[key], style="bold yellow")
+                    if key == "username" and l_item[key] == self.active_user.username
+                    else l_item[key]
+                )
+                for key in header_order
+            ]
+            for l_item in self.core_mgr.get_leaderboard()
+        ]
         table.add_columns(*columns)
+        table.add_rows(rows)
         return table
 
     def generate_ssh_help(self) -> str:

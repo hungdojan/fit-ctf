@@ -738,7 +738,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         :rtype: list[LeaderBoardItem]
         """
 
-        def _transform_items(items: dict) -> list[LeaderBoardItem]:
+        def _transform_items(items) -> list[LeaderBoardItem]:
             """Transform fetch data to final format."""
             return [
                 {

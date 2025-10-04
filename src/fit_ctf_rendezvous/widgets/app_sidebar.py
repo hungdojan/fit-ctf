@@ -41,20 +41,26 @@ class AppSideBar(Container, CoreWidget):
     def compose(self) -> ComposeResult:
         with Center():
             yield Button(f"Hello, {self.active_user.username}", id="sidebar-home-btn")
-        # TODO: selected project
+            yield self.label
         with Center():
             yield Rule(line_style="ascii")
         with VerticalScroll():
-            yield self.label
+            yield Button(
+                "Select Project",
+                id="sidebar-select-project-btn",
+                classes="sidebar-big-button",
+            )
+            yield Button(
+                "Submit Secret",
+                id="sidebar-submit-secret-btn",
+                classes="sidebar-big-button",
+            )
+            yield Rule(line_style="ascii")
             yield Button(
                 "Project Info",
                 id="sidebar-project-info-btn",
                 disabled=self.selected_project is None,
                 classes="sidebar-active-btn",
-            )
-            yield Button(
-                "Submit Secret",
-                id="sidebar-submit-secret-btn",
             )
             # yield Button(
             #     "Show Console",
@@ -63,7 +69,6 @@ class AppSideBar(Container, CoreWidget):
             #     classes="sidebar-active-btn",
             # )
             yield Rule(line_style="ascii")
-            yield Button("Select Project", id="sidebar-select-project-btn")
             yield Button("Upload public key", id="sidebar-upload-key-btn")
             # yield Button("Settings", id="sidebar-settings-btn")
             yield Button("About & Help", id="sidebar-help-about-btn")
