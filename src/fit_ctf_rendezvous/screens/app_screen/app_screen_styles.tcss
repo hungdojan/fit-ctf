@@ -89,14 +89,6 @@ ProjectInfoPage {
 }
 
 SubmitSecretPage {
-    Input, Input:focus, Input:hover {
-        border: none;
-        padding: 0;
-        margin: 0;
-        height: 1;
-        width: 50%;
-    }
-
     Horizontal {
         margin: 0;
         padding: 0;
@@ -104,25 +96,46 @@ SubmitSecretPage {
         align: center middle;
         Label {
             min-width: 20;
+            margin: 1 0;
+        }
+        Input, Input:focus, Input:hover {
+            width: 50%;
+        }
+        Select {
+            border: blank;
+            width: 50%;
         }
     }
-
-    ListView {
-        height: 1;
-        width: 50%;
-    }
-
-    ListView:focus {
-        height: auto;
-        max-height: 50%;
-    }
-
     Rule {
         color: white;
         margin: 0;
         width: 90w;
     }
+}
 
+ChangePasswordPage {
+    Vertical {
+        min-width: 80;
+    }
+    Horizontal {
+        margin: 0;
+        padding: 0;
+        border: none;
+        align: center middle;
+        Label {
+            min-width: 22;
+            border: none;
+            margin: 1 0;
+        }
+        Input, Input:focus {
+            width: 40;
+        }
+    }
+    Rule {
+        color: white;
+        margin: 0;
+        width: 90w;
+    }
 }
 
 UploadKeyPage {
@@ -132,14 +145,14 @@ UploadKeyPage {
     Markdown {
         height: auto;
     }
-
     Horizontal {
         align: center middle;
-    }
-    Input, Input:focus {
-        border: none;
-        height: 1;
-        width: 75%;
+        Label {
+            margin: 1 0;
+        }
+        Input, Input:focus {
+            width: 75%;
+        }
     }
     Rule {
         color: white;

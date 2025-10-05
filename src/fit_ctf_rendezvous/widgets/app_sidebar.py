@@ -69,6 +69,7 @@ class AppSideBar(Container, CoreWidget):
             #     classes="sidebar-active-btn",
             # )
             yield Rule(line_style="ascii")
+            yield Button("Change Password", id="sidebar-change-pswd-btn")
             yield Button("Upload public key", id="sidebar-upload-key-btn")
             # yield Button("Settings", id="sidebar-settings-btn")
             yield Button("About & Help", id="sidebar-help-about-btn")

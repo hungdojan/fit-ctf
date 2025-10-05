@@ -1,6 +1,9 @@
 import re
 from typing import Any, Callable
 
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
+
 from fit_ctf.ctf_base import CTFBase
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
@@ -194,6 +197,16 @@ class CoreManager(_VariableRegistry):
             )
             for pos, item in enumerate(leaderboard_items)
         ]
+
+    def upload_public_key(self, pub_key: bytes):
+        try:
+            serialization.load_ssh_public_key(pub_key)
+        except (ValueError, UnsupportedAlgorithm) as e:
+            raise InvalidAction(e)
+
+        # TODO:
+        # self.ctf_base.user_mgr.upload_public_key(pub_key)
+        # TODO: upload a key, raise PublicKeyAlreadyExist if already uploaded
 
     async def start_user_instance(self) -> UserEnrollment | None:
         """Start user login nodes.

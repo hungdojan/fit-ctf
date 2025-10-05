@@ -18,6 +18,9 @@ from fit_ctf_rendezvous.widgets import (
     UploadKeyPage,
     WelcomePage,
 )
+from fit_ctf_rendezvous.widgets.content_pages.change_password_page import (
+    ChangePasswordPage,
+)
 
 
 class AppScreen(BaseScreen):
@@ -43,6 +46,7 @@ class AppScreen(BaseScreen):
             "upload-key": UploadKeyPage(self, id="upload-key-page"),
             "help-about": HelpAboutPage(self, id="help-about-page"),
             "settings": SettingsPage(self, id="settings-page"),
+            "change-pswd": ChangePasswordPage(self, id="change-pswd-page"),
         }
         self.page_state = "home"
         self.curr_content_widget = self.pages[self.page_state]

@@ -4,6 +4,7 @@ from textual.containers import Center, Container, Horizontal, VerticalScroll
 from textual.widget import Widget
 from textual.widgets import Button, Input, Label, Markdown, Rule
 
+from fit_ctf_rendezvous.exceptions import PublicKeyAlreadyExist
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.utils import get_resource_dir
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
@@ -39,6 +40,9 @@ class UploadKeyPage(Container, CoreWidget):
     def upload_key_handler(self):
         key_input = self.query_one("#key-value-input", Input)
         # key value
-        _ = key_input.value
-
-        # TODO: validate key and update `authorized_keys` file
+        key_bytes = key_input.value.strip().encode()
+        try:
+            self.core_mgr.upload_public_key(key_bytes)
+            self.notify("Key successfully uploaded")
+        except PublicKeyAlreadyExist:
+            self.notify("Key already uploaded.")
