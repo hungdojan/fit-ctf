@@ -1,5 +1,7 @@
 import shutil
 
+from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.hazmat.primitives import serialization
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
@@ -11,6 +13,7 @@ from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
 from fit_ctf_models.base import Base, BaseManagerInterface
 from fit_ctf_models.utils.exceptions import (
+    PublicKeyUploadFail,
     UserExistsException,
     UserNotExistsException,
 )
@@ -243,6 +246,33 @@ class UserManager(BaseManagerInterface[User]):
             users.append(data)
 
         return users
+
+    def upload_public_key(self, user_or_username: User | str, pub_key: bytes):
+        """Upload public SSH key to `authorized_keys` file.
+
+        :param user_or_username: User username or user object.
+        :type user_or_username: str | User
+        :param pub_key: Raw public key bytes.
+        :type pub_key: bytes
+        """
+        try:
+            serialization.load_ssh_public_key(pub_key)
+        except (ValueError, UnsupportedAlgorithm) as e:
+            raise PublicKeyUploadFail(e)
+
+        # create required file
+        ssh_dirpath = self.paths.user_path(user_or_username) / "home" / ".ssh"
+        ssh_dirpath.mkdir(parents=True, exist_ok=True)
+        authorized_keys_file = ssh_dirpath / "authorized_keys"
+
+        # read content and then rewrite it
+        # not the fastest way to add a key
+        key_set = set()
+        if authorized_keys_file.exists():
+            key_set = set(authorized_keys_file.read_bytes().splitlines())
+        key_set.add(pub_key)
+        with open(authorized_keys_file, "wb") as f:
+            f.writelines(key_set)
 
     def get_users_info(self, active: bool | None = None) -> list[UserInfoDict]:
         """Get list of all users.

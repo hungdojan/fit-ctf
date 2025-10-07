@@ -12,7 +12,7 @@ from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
 from fit_ctf_components.types import UserInfoDict
 from fit_ctf_models.user import UserManager
-from fit_ctf_models.utils.exceptions import UserExistsException
+from fit_ctf_models.utils.exceptions import PublicKeyUploadFail, UserExistsException
 
 #######################
 ## User CLI commands ##
@@ -204,3 +204,25 @@ def delete_user(ctx: click.Context, usernames: list[str]):
     """Remove user from the database."""
     user_mgr: UserManager = ctx.parent.obj["ctf_app"].user_mgr  # pyright: ignore
     asyncio.run(user_mgr.delete_users(usernames))
+
+
+@user.command(name="upload-key")
+@user_option
+@click.option(
+    "-f",
+    "--file",
+    required=True,
+    help="Path to the public key.",
+    type=click.Path(path_type=pathlib.Path),
+)
+@click.pass_context
+def upload_public_key(ctx: click.Context, username: str, file: pathlib.Path):
+    """Upload a user's public key for easier SSH access."""
+    with open(file, "rb") as f:
+        content = f.read()
+    user_mgr: UserManager = ctx.parent.obj["ctf_app"].user_mgr  # pyright: ignore
+    try:
+        user_mgr.upload_public_key(username, content)
+    except PublicKeyUploadFail as e:
+        click.echo(str(e))
+        ctx.exit(1)

@@ -1,7 +1,10 @@
 import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_models.utils.exceptions import (
+    PublicKeyUploadFail,
     UserExistsException,
     UserNotExistsException,
 )
@@ -133,6 +136,38 @@ def test_user_errors(connected_data: FixtureData):
         ctf_app.user_mgr.create_new_user("user1", "StrongPassword12")
     with pytest.raises(UserNotExistsException):
         ctf_app.user_mgr.flush_user("user10")
+
+
+def test_upload_public_key(user_data: FixtureData):
+    ctf_app, _ = user_data
+    user = ctf_app.user_mgr.get_user("user1")
+    with pytest.raises(PublicKeyUploadFail):
+        ctf_app.user_mgr.upload_public_key(user, b"random_bytes")
+
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+
+    public_key_bytes = public_key.public_bytes(
+        encoding=serialization.Encoding.OpenSSH,
+        format=serialization.PublicFormat.OpenSSH,
+    )
+
+    ssh_dir = ctf_app.user_mgr.paths.user_path(user) / "home" / ".ssh"
+    assert not ssh_dir.exists()
+    ctf_app.user_mgr.upload_public_key(user, public_key_bytes)
+    assert ssh_dir.exists()
+    authorized_keys_file = ssh_dir / "authorized_keys"
+    assert (
+        authorized_keys_file.exists()
+        and len(authorized_keys_file.read_bytes().splitlines()) == 1
+    )
+
+    ctf_app.user_mgr.upload_public_key(user, public_key_bytes)
+    assert (
+        authorized_keys_file.exists()
+        and len(authorized_keys_file.read_bytes().splitlines()) == 1
+        and authorized_keys_file.read_bytes().strip() == public_key_bytes
+    )
 
 
 # # user data

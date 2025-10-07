@@ -4,6 +4,9 @@ import tempfile
 from io import StringIO
 from pathlib import Path
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519
+
 from fit_ctf.cli import cli
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
@@ -154,3 +157,36 @@ def test_cli_delete_user(cli_data: CLIData):
     f = StringIO(result.output)
     data = list(csv.reader(f))[1:]
     assert len(data) == 1
+
+
+def test_upload_key(cli_data: CLIData):
+    ctf_app, tmp_dir, cli_runner = cli_data
+    cmd = "user upload-key".split()
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code != 0
+
+    # create a pair of keys
+    private_key = ed25519.Ed25519PrivateKey.generate()
+    public_key = private_key.public_key()
+
+    public_key_bytes = public_key.public_bytes(
+        encoding=serialization.Encoding.OpenSSH,
+        format=serialization.PublicFormat.OpenSSH,
+    )
+    public_key_file = tmp_dir / "id_ed25519.pub"
+    public_key_file.write_bytes(b"random test")
+
+    cmd = ["user", "upload-key", "-u", "user3", "-f", public_key_file.resolve()]
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code != 0
+
+    public_key_file.write_bytes(public_key_bytes)
+
+    cmd = ["user", "upload-key", "-u", "user3", "-f", public_key_file.resolve()]
+    result = cli_runner.invoke(cli, cmd)
+    assert result.exit_code == 0
+    authorized_keys_file = (
+        ctf_app.user_mgr.paths.user_path("user3") / "home" / ".ssh" / "authorized_keys"
+    )
+    assert authorized_keys_file.exists()
+    assert authorized_keys_file.read_bytes().strip() == public_key_bytes
