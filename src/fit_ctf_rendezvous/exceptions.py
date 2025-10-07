@@ -24,7 +24,3 @@ class InvalidAction(FitRendezvousException):
 
 class SecretSubmitFail(FitRendezvousException):
     pass
-
-
-class PublicKeyAlreadyExist(FitRendezvousException):
-    pass
