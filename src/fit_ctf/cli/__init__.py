@@ -74,8 +74,6 @@ def cli(
         ctf_app = CTFApp(env_info, paths)
 
         ctx.obj = {
-            "db_host": env_info["db_host"],
-            "db_name": env_info["db_name"],
             "ctf_app": ctf_app,
         }
     except pymongo.errors.ServerSelectionTimeoutError:  # pragma: no cover

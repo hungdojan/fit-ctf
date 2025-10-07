@@ -149,3 +149,9 @@ class SecretAlreadySubmittedException(CTFModelException):
     """Submitted secret was already submitted."""
 
     pass
+
+
+class PublicKeyUploadFail(CTFModelException):
+    """Cannot upload the public key."""
+
+    pass
