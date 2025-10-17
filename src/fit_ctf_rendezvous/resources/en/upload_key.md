@@ -1,9 +1,65 @@
-# How to upload key
+# Upload SSH key
 
- Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Quisque porta. Etiam neque. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Phasellus enim erat, vestibulum vel, aliquam a, posuere eu, velit. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Pellentesque sapien. Duis viverra diam non justo. Phasellus enim erat, vestibulum vel, aliquam a, posuere eu, velit. Integer vulputate sem a nibh rutrum consequat. Aliquam erat volutpat. Fusce tellus odio, dapibus id fermentum quis, suscipit id erat. Vivamus porttitor turpis ac leo. Aliquam ante.
+SSH is a encrypted network protocol designed for operating network services over unsecure networks.
+Most popular usages of SSH protocol are login and command-line execution on a remote machine/server.
 
-Fusce dui leo, imperdiet in, aliquam sit amet, feugiat eu, orci. Etiam posuere lacus quis dolor. Proin mattis lacinia justo. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Nullam dapibus fermentum ipsum. Nam sed tellus id magna elementum tincidunt. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Nam quis nulla. Praesent in mauris eu tortor porttitor accumsan. Aliquam erat volutpat.
+Most CTF projects will require you to log into a remote login node using SSH. There two primary ways to
+authenticate against the server: either with your **login credentials** (username + password) or using a pair
+of **asymmetric cryptographic keys**.
 
-Integer pellentesque quam vel velit. Aliquam ante. Fusce dui leo, imperdiet in, aliquam sit amet, feugiat eu, orci. Nam quis nulla. Etiam quis quam. Maecenas libero. Nulla quis diam. Ut tempus purus at lorem. Etiam dictum tincidunt diam. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Fusce wisi. Pellentesque ipsum. Nam libero tempore, cum soluta nobis est eligendi optio cumque nihil impedit quo minus id quod maxime placeat facere possimus, omnis voluptas assumenda est, omnis dolor repellendus. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur? Integer rutrum, orci vestibulum ullamcorper ultricies, lacus quam ultricies odio, vitae placerat pede sem sit amet enim. Curabitur sagittis hendrerit ante. Etiam dictum tincidunt diam.
+This page describes a set of instruction on the **Linux** system on how to create a pair of
+key and how to upload it to the server,
 
-Integer imperdiet lectus quis justo. Integer in sapien. In sem justo, commodo ut, suscipit at, pharetra vitae, orci. Proin mattis lacinia justo. Phasellus faucibus molestie nisl. Integer imperdiet lectus quis justo. Aliquam in lorem sit amet leo accumsan lacinia. In enim a arcu imperdiet malesuada. Vivamus porttitor turpis ac leo. Aenean placerat. Vivamus luctus egestas leo. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur? Phasellus faucibus molestie nisl. Etiam neque. Cras pede libero, dapibus nec, pretium sit amet, tempor quis. Donec ipsum massa, ullamcorper in, auctor et, scelerisque sed, est. Vestibulum fermentum tortor id mi. Aenean placerat.
+
+## Prerequisites
+Firstly, make sure that your system has **OpenSSH client** software installed. Run the following command
+to see, if it print a help/usage.
+
+```sh
+ssh
+```
+
+If you get error `command not found: ssh` that means that you system does not have OpenSSH installed.
+Depending on your system, download the OpenSSH client.
+
+```sh
+# Ubuntu/Debian
+sudo apt update
+sudo apt install openssh-client
+
+# Fedora
+sudo dnf install openssh-clients
+
+# Arch
+sudo pacman -S openssh
+```
+
+## Generate keys
+We use utility `ssh-keygen` for generating a pair of SSH keys. More information can be found
+here: [here](https://www.ssh.com/academy/ssh/keygen). This tutorial uses a new algorithm ED25519.
+
+```sh
+ssh-keygen -t ed25519 -c "your@email.com"
+# will prompt a key filename, can be empty
+# will prompt for a passphrase (aka a new password), can be empty
+```
+
+If you have not specify the key file location, 2 new files should be created in `$HOME/.ssh/id_ed25519*`.
+File with `*.pub` suffix is a **public key** and can be shared with anyone.
+The second file is a **private key** and **MUST NOT BE SHARED WITH ANYONE**.
+
+## Upload key
+There are two way how to upload the **public key** to the server for authentication. Either use
+utility `ssh-copy-id` to copy it to server, you will be prompted to log in to your server using your existing credentials.
+Validate that the key was successfully uploaded by login to the login node. It should not ask you for you password.
+Note that your instance **MUST BE RUNNING** when you run `ssh-copy-id` command.
+
+```sh
+ssh-copy-id -i <path_to_private_key> -p <port> <user>@<server>
+# should ask for password
+ssh -p <port> <user>@<server>
+# should not ask for password
+```
+
+Other option is to copy a **public key** content and paste it in the input field *Public key* and
+click the button *Upload Key*. If you get a green notification that means that the key was successfully uploaded.
