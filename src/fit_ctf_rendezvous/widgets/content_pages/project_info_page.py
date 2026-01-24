@@ -91,7 +91,7 @@ class ProjectInfoPage(Container, CoreWidget):
         if not user_enrollment:
             raise InconsistentState(
                 f"User {self.active_user.username} is not enrolled "
-                "in {self.core_mgr.selected_project.name}."
+                f"in {self.core_mgr.selected_project.name}."
             )
         return user_enrollment.forwarded_port
 

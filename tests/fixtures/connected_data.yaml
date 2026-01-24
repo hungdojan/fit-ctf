@@ -18,11 +18,11 @@ enrollments:
     progress:
       secrets:
         key1:
-          value: value1
+          flag: value1
           submitted: '2025-09-27T18:09:25.594Z'
           user: user1
         key2:
-          value: value2
+          flag: value2
           submitted: null
           user: null
       found_secrets: 1
@@ -32,7 +32,7 @@ enrollments:
     progress:
       secrets:
         key3:
-          value: value3
+          flag: value3
           submitted: null
           user: null
       found_secrets: 0

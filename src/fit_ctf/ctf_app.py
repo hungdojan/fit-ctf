@@ -239,9 +239,7 @@ class CTFApp(CTFBase):
             progress = UserProgress(
                 secrets={
                     k: Secret(
-                        search_index=v["search_index"],
-                        nonce=v["nonce"],
-                        enc_secret=v["enc_secret"],
+                        flag=v["flag"],
                         submitted=(
                             parser.parse(v["submitted"]) if v["submitted"] else None
                         ),
@@ -380,7 +378,7 @@ class CTFApp(CTFBase):
                             else self.user_mgr.get_user(user_info).id
                         )
 
-                        secret = self.ue_mgr.add_secret(ue, key, item["value"])
+                        secret = self.ue_mgr.add_secret(ue, key, item["flag"])
 
                         # manually update if secret is found
                         secret.user_id = user_id

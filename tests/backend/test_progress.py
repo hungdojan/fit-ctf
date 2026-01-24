@@ -52,9 +52,7 @@ def test_add_secret(connected_data: FixtureData):
         secret
         and secret.submitted is None
         and secret.user_id is None
-        and "test-secret" not in secret.nonce
-        and "test-secret" not in secret.search_index
-        and "test-secret" not in secret.enc_secret
+        and secret.flag == "test-secret"
     )
 
     with pytest.raises(SecretNameAlreadyExistsException):

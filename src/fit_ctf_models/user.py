@@ -152,7 +152,7 @@ class UserManager(BaseManagerInterface[User]):
         self._generate_shadow(user.username, password, str(shadow_path.resolve()))
 
         # calculate hash to store to the database
-        user.password = LocalAuth(self).get_password_hash(password)
+        user.password = LocalAuth(self).register(user.username, password)
 
         self.update_doc(user)
         return user
@@ -198,7 +198,7 @@ class UserManager(BaseManagerInterface[User]):
 
         user = self.create_and_insert_doc(
             username=username,
-            password=AuthInterface.get_password_hash(password),
+            password=LocalAuth(self).register(username, password),
             role=role,
             email=email,
         )

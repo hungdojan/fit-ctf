@@ -6,7 +6,7 @@ import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.types import SecretInfo
-from fit_ctf_models.secret import Secret, SecretManager
+from fit_ctf_models.secret import Secret
 from fit_ctf_models.utils.exceptions import (
     SecretAlreadySubmittedException,
     SecretNameAlreadyExistsException,
@@ -28,9 +28,8 @@ class UserProgress(BaseModel):
         :return: Found secret object, None if not found.
         :rtype: Secret | None
         """
-        search_index = SecretManager.compute_search_index(value)
         for secret in self.secrets.values():
-            if secret.search_index == search_index:
+            if secret.flag == value:
                 return secret
         return None
 
@@ -44,10 +43,14 @@ class UserProgress(BaseModel):
         """
         return self.secrets.get(name, None)
 
-    def list_secrets(self) -> list[SecretInfo]:
+    def list_secrets(self, show_flag: bool = False) -> list[SecretInfo]:
         """Return the list of stored secrets."""
         return [
-            {"name": name, "submitted": secret.submitted}
+            {
+                "name": name,
+                "submitted": secret.submitted,
+                "flag": secret.flag if show_flag else None,
+            }
             for name, secret in self.secrets.items()
         ]
 
@@ -93,13 +96,9 @@ class UserProgressManager(BaseComponent):
         if progress.get_secret_by_value(value):
             raise SecretValueCollision("Secret with given value already exists.")
 
-        search_index = SecretManager.compute_search_index(value)
-        nonce, ct = SecretManager.encrypt(value)
         secret = Secret(
             **{
-                "search_index": search_index,
-                "nonce": nonce,
-                "enc_secret": ct,
+                "flag": value,
                 "submitted": None,
                 "user_id": None,
             }
@@ -136,11 +135,7 @@ class UserProgressManager(BaseComponent):
         if progress.get_secret_by_value(value):
             raise SecretValueCollision("Secret with given value already exists.")
 
-        search_index = SecretManager.compute_search_index(value)
-        nonce, ct = SecretManager.encrypt(value)
-        progress.secrets[name].nonce = nonce
-        progress.secrets[name].enc_secret = ct
-        progress.secrets[name].search_index = search_index
+        progress.secrets[name].flag = value
 
         # nullify a secret stats if "updated" secret is changed
         if override_submit and progress.secrets[name].submitted:

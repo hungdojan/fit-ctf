@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
-import hashlib
 import re
 import secrets
 import string
+from abc import ABC, abstractmethod
 
 
 class AuthInterface(ABC):
@@ -58,17 +57,18 @@ class AuthInterface(ABC):
         """
         return re.search(r"^[a-z0-9]{4,}$", username) is not None
 
-    @staticmethod
-    def get_password_hash(password: str) -> str:
-        """Calculates SHA256 hash of the given password.
+    @abstractmethod
+    def register(self, username: str, password: str) -> str:
+        """Register user.
 
-        :param password: Base string from which the hash value is calculated.
+        :param username: Account's username.
+        :type username: str
+        :param password: Account's password.
         :type password: str
-        :return: Generated hash digest.
+        :return: Hashed password or token.
         :rtype: str
         """
-        hash_obj = hashlib.sha256(password.encode("utf-8"))
-        return hash_obj.hexdigest()
+        raise NotImplementedError()
 
     @abstractmethod
     def validate_credentials(self, username: str, password: str) -> bool:

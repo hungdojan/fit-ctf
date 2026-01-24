@@ -79,6 +79,7 @@ class NewUserDict(TypedDict):
 class SecretInfo(TypedDict):
     name: str
     submitted: datetime | None
+    flag: str | None
 
 
 class EnvInfo(TypedDict):
