@@ -1,15 +1,13 @@
 # choose database username
-DB_USERNAME="admin"
+DB_USERNAME={{ db_vals.username }}
 # choose database password
-DB_PASSWORD="database"
+DB_PASSWORD={{ db_vals.password }}
 # choose name of the production database
-DB_NAME="ctf-db"
+DB_NAME={{ db_vals.name }}
 # generated URI path to connect to the database
-DB_HOST="mongodb://${DB_USERNAME}:${DB_PASSWORD}@localhost:27017"
+DB_HOST="mongodb://${DB_USERNAME}:${DB_PASSWORD}@{{ db_vals.host }}:27017"
 # a container engine to run (currently only `podman` is supported; `mock` is for testing)
 CONTAINER_CLIENT="podman"
-# an application secret used to generate flag secrets
-APP_SECRET="123456789a-secret"
 
 # waiting time (in seconds) of the timeout while connecting to the database
 # the tool tests the connection during start-up; to lower the number, the fast it will

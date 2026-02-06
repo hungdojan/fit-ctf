@@ -32,6 +32,7 @@ python-dateutil = "^2.9.0.post0"
 pyyaml = "^6.0.3"
 termcolor = "^3.1.0"
 argon2-cffi = "^25.1.0"
+invoke = "^2.2.1"
 [tool.poetry.group.test.dependencies]
 pytest = "^8.0.2"
 coverage = "^7.4.3"
@@ -70,7 +71,6 @@ env = [
     "DB_CONNECTION_TIMEOUT=5",
     "DB_NAME=test-ctf-db",
     "ENABLE_CONTAINER_CLIENT_TESTING=0",
-    "APP_SECRET=test-secret"
 ]
 addopts = "-vs"
 asyncio_mode = "auto"
