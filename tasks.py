@@ -53,7 +53,7 @@ def db_deploy(
     config_dir = root_dirpath() / "db" / "mongodb-quadlet"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("mongodb.container.j2")
-    container_systemd_dir = Path.home() / ".config" / "containers" / "systemd"
+    container_systemd_dir = Path.home() / ".config" / "containers"
     with open(container_systemd_dir / "mongodb.container", "w") as f:
         f.write(
             template.render(
@@ -65,7 +65,6 @@ def db_deploy(
             )
         )
     shutil.copy(config_dir / "mongodb.volume", container_systemd_dir / "mongodb.volume")
-    pass
 
 
 @task

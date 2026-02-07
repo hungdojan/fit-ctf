@@ -5,7 +5,7 @@ DB_PASSWORD={{ db_vals.password }}
 # choose name of the production database
 DB_NAME={{ db_vals.name }}
 # generated URI path to connect to the database
-DB_HOST="mongodb://${DB_USERNAME}:${DB_PASSWORD}@{{ db_vals.host }}:27017"
+DB_HOST="mongodb://${DB_USERNAME}:${DB_PASSWORD}@{{ db_vals.host }}:27017/${DB_NAME}"
 # a container engine to run (currently only `podman` is supported; `mock` is for testing)
 CONTAINER_CLIENT="podman"
 
