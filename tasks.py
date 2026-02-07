@@ -1,4 +1,5 @@
 import os
+import shutil
 from pathlib import Path
 
 import jinja2
@@ -43,8 +44,27 @@ def db_shell(ctx: Context):
 
 
 @task
-def db_deploy(ctx: Context):
-    # TODO:
+def db_deploy(
+    _: Context,
+    db_username: str,
+    db_password: str,
+    db_name: str,
+):
+    config_dir = root_dirpath() / "db" / "mongodb-quadlet"
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
+    template = env.get_template("mongodb.container.j2")
+    container_systemd_dir = Path.home() / ".config" / "containers" / "systemd"
+    with open(container_systemd_dir / "mongodb.container", "w") as f:
+        f.write(
+            template.render(
+                db_vals={
+                    "username": db_username,
+                    "password": db_password,
+                    "name": db_name,
+                }
+            )
+        )
+    shutil.copy(config_dir / "mongodb.volume", container_systemd_dir / "mongodb.volume")
     pass
 
 

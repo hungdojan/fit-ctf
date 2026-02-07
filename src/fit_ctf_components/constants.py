@@ -14,6 +14,7 @@ load_dotenv()
 
 
 def get_env_info() -> EnvInfo:
+    # TODO: load from shared config
     # TODO: move config to SHARE DIR location
     db_host = os.getenv("DB_HOST")
     if not db_host:
@@ -23,10 +24,7 @@ def get_env_info() -> EnvInfo:
     if not db_name:
         sys.exit("Environment variable `DB_NAME` is not set.")
 
-    app_secret = os.getenv("APP_SECRET")
-    if not app_secret:
-        sys.exit("Environment variable `APP_SECRET` is not set.")
-    return {"db_host": db_host, "db_name": db_name, "app_secret": app_secret}
+    return {"db_host": db_host, "db_name": db_name}
 
 
 def get_paths() -> tuple[Path, Path, Path]:

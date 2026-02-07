@@ -85,7 +85,6 @@ class SecretInfo(TypedDict):
 class EnvInfo(TypedDict):
     db_host: str
     db_name: str
-    app_secret: str
 
 
 class LeaderBoardItem(TypedDict):
