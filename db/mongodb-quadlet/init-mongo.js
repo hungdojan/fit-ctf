@@ -7,7 +7,7 @@ const appUsername = process.env.MONGO_APP_USERNAME || 'fit_ctf_user';
 const appPassword = process.env.MONGO_APP_PASSWORD || 'fit_ctf_password';
 
 // Switch to the application database
-db = db.getSiblingDB(dbName);
+db = db.getSiblingDB('admin');
 
 // Create application user with readWrite role
 db.createUser({
@@ -17,6 +17,10 @@ db.createUser({
     {
       role: 'readWrite',
       db: dbName
-    }
+    },
+    {
+      role: 'readWrite',
+      db: 'test-ctf-db'
+    },
   ]
 });

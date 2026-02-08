@@ -25,8 +25,15 @@ class CTFBase:
         _c_client: type["c_client_interface.ContainerClientInterface"],
         logger_cls: type[LoggerInterface] = DefaultLogger,
     ) -> None:
+        db_uri = (
+            f"mongodb://{env_info['db_username']}:"
+            f"{env_info['db_password']}@{env_info['db_host']}:{env_info['db_port']}/"
+        )
+        if env_info["db_name"]:
+            db_uri += f"{env_info['db_name']}"
+        db_uri += "?authSource=admin"
         self._client = pymongo.MongoClient(
-            env_info["db_host"],
+            db_uri,
             serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
             tz_aware=True,
         )

@@ -83,8 +83,11 @@ class SecretInfo(TypedDict):
 
 
 class EnvInfo(TypedDict):
+    db_username: str
+    db_password: str
     db_host: str
     db_name: str
+    db_port: str
 
 
 class LeaderBoardItem(TypedDict):

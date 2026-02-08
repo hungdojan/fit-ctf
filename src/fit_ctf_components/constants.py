@@ -16,15 +16,30 @@ load_dotenv()
 def get_env_info() -> EnvInfo:
     # TODO: load from shared config
     # TODO: move config to SHARE DIR location
+    db_username = os.getenv("DB_USERNAME")
+    if not db_username:
+        sys.exit("Environment variable `DB_USERNAME` is not set.")
+
+    db_password = os.getenv("DB_PASSWORD")
+    if not db_password:
+        sys.exit("Environment variable `DB_PASSWORD` is not set.")
+
     db_host = os.getenv("DB_HOST")
     if not db_host:
         sys.exit("Environment variable `DB_HOST` is not set.")
 
-    db_name = os.getenv("DB_NAME")
-    if not db_name:
-        sys.exit("Environment variable `DB_NAME` is not set.")
+    db_name = os.getenv("DB_NAME", "")
+    db_port = os.getenv("DB_PORT")
+    if not db_port:
+        sys.exit("Environment variable `DB_PORT` is not set.")
 
-    return {"db_host": db_host, "db_name": db_name}
+    return {
+        "db_username": db_username,
+        "db_password": db_password,
+        "db_host": db_host,
+        "db_name": db_name,
+        "db_port": db_port,
+    }
 
 
 def get_paths() -> tuple[Path, Path, Path]:

@@ -84,6 +84,7 @@ def generate_env(
     db_password: str,
     db_name: str,
     db_host: str = "localhost",
+    db_port: int = 27017,
 ):
     config_dir = root_dirpath() / "config" / "setup"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
@@ -98,6 +99,7 @@ def generate_env(
                     "password": db_password,
                     "name": db_name,
                     "host": db_host,
+                    "port": db_port,
                 }
             )
         )
