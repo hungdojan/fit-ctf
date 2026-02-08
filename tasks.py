@@ -1,5 +1,7 @@
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import jinja2
@@ -32,20 +34,20 @@ def db_restart(_: Context):
 
 
 @task
-def db_shell(ctx: Context):
-    ctx.run(
-        f"""podman exec \\
-            -it ctf-database-mongo mongosh \\
-            -u {os.getenv('DB_USERNAME')} \\
-            -p {os.getenv('DB_PASSWORD')}
-        """,
-        pty=True,
+def db_shell(_: Context):
+    cmd = (
+        "podman exec "
+        "-it ctf-database-mongo mongosh "
+        f"-u {os.getenv('DB_USERNAME')} "
+        f"-p {os.getenv('DB_PASSWORD')} "
+        f"{os.getenv("DB_NAME")}"
     )
+    subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
 
 
 @task
 def db_deploy(
-    _: Context,
+    ctx: Context,
     db_admin_username: str,
     db_admin_password: str,
     db_username: str,
@@ -55,8 +57,7 @@ def db_deploy(
     config_dir = root_dirpath() / "db" / "mongodb-quadlet"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("mongodb.container.j2")
-    # container_systemd_dir = Path.home() / ".config" / "containers"
-    container_systemd_dir = root_dirpath()
+    container_systemd_dir = Path.home() / ".config" / "containers" / "systemd"
     with open(container_systemd_dir / "mongodb.container", "w") as f:
         f.write(
             template.render(
@@ -67,10 +68,11 @@ def db_deploy(
                     "password": db_password,
                     "name": db_name,
                 },
-                init_script_path=str(config_dir / "init-mongo.js")
+                init_script_path=str(config_dir / "init-mongo.js"),
             )
         )
     shutil.copy(config_dir / "mongodb.volume", container_systemd_dir / "mongodb.volume")
+    ctx.run("systemctl --user daemon-reload")
 
 
 @task
@@ -86,7 +88,7 @@ def generate_env(
     config_dir = root_dirpath() / "config" / "setup"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("env_example")
-    with open(root_dirpath() / ".env-test", "w") as f:
+    with open(root_dirpath() / ".env", "w") as f:
         f.write(
             template.render(
                 db_vals={

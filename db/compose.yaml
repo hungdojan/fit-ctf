@@ -5,6 +5,9 @@ services:
     image: docker.io/library/mongo:latest
     container_name: ctf-database-mongo
     restart: always
+    env_file:
+      - path: ../.env
+        required: true
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${DB_ADMIN_USERNAME}"
       MONGO_INITDB_ROOT_PASSWORD: "${DB_ADMIN_PASSWORD}"
@@ -17,11 +20,7 @@ services:
       fit-ctf-net: {}
     volumes:
       - mongo_data:/data/db:z
-      - .mongo-quadlet/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
-
-env_file:
-  - path: ../.env
-    required: true
+      - ./mongodb-quadlet/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
 
 volumes:
   mongo_data:
