@@ -46,6 +46,8 @@ def db_shell(ctx: Context):
 @task
 def db_deploy(
     _: Context,
+    db_admin_username: str,
+    db_admin_password: str,
     db_username: str,
     db_password: str,
     db_name: str,
@@ -53,15 +55,19 @@ def db_deploy(
     config_dir = root_dirpath() / "db" / "mongodb-quadlet"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("mongodb.container.j2")
-    container_systemd_dir = Path.home() / ".config" / "containers"
+    # container_systemd_dir = Path.home() / ".config" / "containers"
+    container_systemd_dir = root_dirpath()
     with open(container_systemd_dir / "mongodb.container", "w") as f:
         f.write(
             template.render(
                 db_vals={
+                    "admin_username": db_admin_username,
+                    "admin_password": db_admin_password,
                     "username": db_username,
                     "password": db_password,
                     "name": db_name,
-                }
+                },
+                init_script_path=str(config_dir / "init-mongo.js")
             )
         )
     shutil.copy(config_dir / "mongodb.volume", container_systemd_dir / "mongodb.volume")
@@ -70,6 +76,8 @@ def db_deploy(
 @task
 def generate_env(
     _: Context,
+    db_admin_username: str,
+    db_admin_password: str,
     db_username: str,
     db_password: str,
     db_name: str,
@@ -82,6 +90,8 @@ def generate_env(
         f.write(
             template.render(
                 db_vals={
+                    "admin_username": db_admin_username,
+                    "admin_password": db_admin_password,
                     "username": db_username,
                     "password": db_password,
                     "name": db_name,

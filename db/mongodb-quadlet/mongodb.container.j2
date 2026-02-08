@@ -2,15 +2,18 @@
 Description=FIT CTF database service
 
 [Container]
-ContainerName=ctf-database-mongo
+ContainerName=%N
 Image=docker.io/library/mongo:latest
 AutoUpdate=registry
-Environment=MONGO_INITDB_ROOT_USERNAME={{ db_vals.username }}
-Environment=MONGO_INITDB_ROOT_PASSWORD={{ db_vals.password }}
+Environment=MONGO_INITDB_ROOT_USERNAME={{ db_vals.admin_username }}
+Environment=MONGO_INITDB_ROOT_PASSWORD={{ db_vals.admin_password }}
 Environment=MONGO_INITDB_DATABASE={{ db_vals.name }}
+Environment=MONGO_APP_USERNAME={{ db_vals.username }}
+Environment=MONGO_APP_PASSWORD={{ db_vals.password }}
 
 PublishPort=27017:27017
 Volume=mongodb-data:/data/db
+Volume={{ init_script_path }}:/docker-entrypoint-initdb.d/init-mongo.js:ro
 
 [Install]
 WantedBy=default.target
