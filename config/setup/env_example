@@ -1,7 +1,3 @@
-# set default admin values
-DB_ADMIN_USERNAME={{ db_vals.admin_username }}
-DB_ADMIN_PASSWORD={{ db_vals.admin_password }}
-
 # choose database username
 DB_USERNAME={{ db_vals.username }}
 # choose database password

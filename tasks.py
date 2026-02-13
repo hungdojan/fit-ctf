@@ -78,8 +78,6 @@ def db_deploy(
 @task
 def generate_env(
     _: Context,
-    db_admin_username: str,
-    db_admin_password: str,
     db_username: str,
     db_password: str,
     db_name: str,
@@ -93,8 +91,6 @@ def generate_env(
         f.write(
             template.render(
                 db_vals={
-                    "admin_username": db_admin_username,
-                    "admin_password": db_admin_password,
                     "username": db_username,
                     "password": db_password,
                     "name": db_name,

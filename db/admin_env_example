@@ -1,0 +1,3 @@
+# set default admin values
+DB_ADMIN_USERNAME={{ admin_username }}
+DB_ADMIN_PASSWORD={{ admin_password }}
