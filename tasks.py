@@ -58,6 +58,7 @@ def db_deploy(
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("mongodb.container.j2")
     container_systemd_dir = Path.home() / ".config" / "containers" / "systemd"
+    container_systemd_dir.mkdir(mode=0o755, parents=True, exist_ok=True)
     with open(container_systemd_dir / "mongodb.container", "w") as f:
         f.write(
             template.render(
