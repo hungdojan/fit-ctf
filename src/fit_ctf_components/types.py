@@ -1,7 +1,10 @@
 import pathlib
 from datetime import datetime
 from enum import Enum
-from typing import TypedDict
+from typing import TypeAlias, TypedDict
+
+ErrorCode: TypeAlias = int
+TaskSuccess: TypeAlias = bool
 
 
 class UserRole(str, Enum):

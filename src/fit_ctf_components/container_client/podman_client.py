@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import fit_ctf_components.container_client.container_client_interface as c_client
-from fit_ctf_components.types import HealthCheckDict
+from fit_ctf_components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class PodmanClient(c_client.ContainerClientInterface):
@@ -67,7 +67,7 @@ class PodmanClient(c_client.ContainerClientInterface):
 
     async def compose_down(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:
+    ) -> tuple[ErrorCode, TaskSuccess]:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = ["podman-compose", "-f", file, "ps", "-q"]
@@ -76,14 +76,19 @@ class PodmanClient(c_client.ContainerClientInterface):
         )
         stdout, _ = await proc.communicate()
         if not stdout.decode().strip():
-            return 0
+            return 0, False
         cmd = ["podman-compose", "-f", file, "down"]
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
         await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
         await proc.wait()
-        return proc.returncode if proc.returncode is not None else 255
+        if proc.returncode is None:
+            return 255, False
+        if proc.returncode:
+            return proc.returncode, False
+        # return code 0 means correct clear
+        return proc.returncode, not proc.returncode
 
     async def compose_ps(self, file: str | Path) -> list[str]:
         if isinstance(file, Path):

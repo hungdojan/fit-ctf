@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Any
 
 import fit_ctf_components.container_client.container_client_interface as c_client
-from fit_ctf_components.types import HealthCheckDict
+from fit_ctf_components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class MockClient(c_client.ContainerClientInterface):
@@ -23,23 +23,23 @@ class MockClient(c_client.ContainerClientInterface):
 
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         return 0
 
     async def rm_networks(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         return 0
 
     async def compose_up(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         return 0
 
     async def compose_down(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
-        return 0
+    ) -> tuple[ErrorCode, TaskSuccess]:  # pragma: no cover
+        return 0, True
 
     async def compose_ps(self, file: str | Path) -> list[str]:  # pragma: no cover
         return []
@@ -51,7 +51,7 @@ class MockClient(c_client.ContainerClientInterface):
 
     async def compose_build(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         return 0
 
     def compose_shell(

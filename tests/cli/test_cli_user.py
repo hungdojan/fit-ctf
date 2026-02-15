@@ -6,10 +6,12 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
+import pytest
 
 from fit_ctf.cli import cli
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
+from fit_ctf_components.exceptions import LoginException
 from tests import CLIData
 
 
@@ -129,14 +131,13 @@ def test_cli_change_password(cli_data: CLIData):
     assert result.exit_code == 1
     assert re.search("not exist.$", result.output)
 
-    assert LocalAuth(ctf_app.user_mgr).validate_credentials("user2", "user2Password")
+    LocalAuth(ctf_app.user_mgr).validate_credentials("user2", "user2Password")
     cmd = "user change-password -u user2 -p newPassword1".split()
     result = cli_runner.invoke(cli, cmd)
     assert result.exit_code == 0
-    assert not LocalAuth(ctf_app.user_mgr).validate_credentials(
-        "user2", "user2Password"
-    )
-    assert LocalAuth(ctf_app.user_mgr).validate_credentials("user2", "newPassword1")
+    with pytest.raises(LoginException):
+        LocalAuth(ctf_app.user_mgr).validate_credentials("user2", "user2Password")
+    LocalAuth(ctf_app.user_mgr).validate_credentials("user2", "newPassword1")
 
 
 def test_cli_delete_user(cli_data: CLIData):

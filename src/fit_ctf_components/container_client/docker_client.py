@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import fit_ctf_components.container_client.container_client_interface as c_client
-from fit_ctf_components.types import HealthCheckDict
+from fit_ctf_components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class DockerClient(c_client.ContainerClientInterface):
@@ -25,7 +25,7 @@ class DockerClient(c_client.ContainerClientInterface):
 
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:
+    ) -> ErrorCode:
         images = await self.get_images(contains)
         if not images:
             return -1
@@ -39,7 +39,7 @@ class DockerClient(c_client.ContainerClientInterface):
 
     async def rm_networks(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:
+    ) -> ErrorCode:
         network_names = await self.get_networks(contains)
         if not network_names:
             return -1
@@ -53,7 +53,7 @@ class DockerClient(c_client.ContainerClientInterface):
 
     async def compose_up(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:
+    ) -> ErrorCode:
         # TODO: eliminate whitespaces
         if isinstance(file, Path):
             file = str(file.resolve())
@@ -69,14 +69,14 @@ class DockerClient(c_client.ContainerClientInterface):
 
     async def compose_down(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:
+    ) -> tuple[ErrorCode, TaskSuccess]:
         if isinstance(file, Path):
             file = str(file.resolve())
         res = subprocess.check_output(
             ["docker compose", "-f", file, "ps", "-q"], text=True
         )
         if not res.strip():
-            return 0
+            return 0, False
         proc = await asyncio.create_subprocess_exec(
             *["docker compose", "-f", file, "down"],
             stdout=asyncio.subprocess.PIPE,
@@ -85,7 +85,12 @@ class DockerClient(c_client.ContainerClientInterface):
 
         await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
         await proc.wait()
-        return proc.returncode if proc.returncode is not None else 255
+        if proc.returncode is None:
+            return 255, False
+        if proc.returncode:
+            return proc.returncode, False
+        # return code 0 means correct clear
+        return proc.returncode, not proc.returncode
 
     async def compose_ps(self, file: str | Path) -> list[str]:
         if isinstance(file, Path):
@@ -110,7 +115,7 @@ class DockerClient(c_client.ContainerClientInterface):
 
     async def compose_build(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:
+    ) -> ErrorCode:
         if isinstance(file, Path):
             file = str(file.resolve())
         cmd = f"docker compose -f {file} build"

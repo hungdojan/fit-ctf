@@ -8,7 +8,6 @@ from fit_ctf_models.utils.exceptions import (
     ProjectNamingFormatException,
     ProjectNotExistException,
 )
-
 from tests import FixtureData
 
 

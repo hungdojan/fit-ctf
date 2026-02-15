@@ -9,6 +9,7 @@ import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
 from fit_ctf_components.types import (
+    ErrorCode,
     HealthCheckDict,
     LeaderBoardItem,
     ModuleCountDict,
@@ -28,6 +29,7 @@ from fit_ctf_models.utils.exceptions import (
     UserNotExistsException,
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_models.utils.sessions import ProgressSession
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
 log = logging.getLogger()
@@ -263,7 +265,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         try:
             self.get_user_enrollment(user, project)
         except UserNotEnrolledToProjectException as e:
-            raise UserNotEnrolledToProjectException(e)
+            raise e
 
         compose_file = (
             self.paths.enrolled_user_path(user, project)
@@ -988,11 +990,14 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         :rtype: int
         """
         user, project = self._get_user_and_project(user_or_username, project_or_name)
+        if not await self.ctf_base.prj_mgr.project_is_running(project):
+            await self.ctf_base.prj_mgr.start_project_cluster(project)
         try:
-            _ = self.get_user_enrollment(user, project)
+            ue = self.get_user_enrollment(user, project)
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
+        self.record_session(ue, ProgressSession.State.START)
 
         return await self.c_client.compose_up(project.name, compose_file)
 
@@ -1000,7 +1005,7 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         self,
         user_or_username: "str | _user.User",
         project_or_name: "str | _project.Project",
-    ) -> int:
+    ) -> ErrorCode:
         """Stop user cluster.
 
         :param user_or_username: User username or `User` object.
@@ -1016,12 +1021,17 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         """
         user, project = self._get_user_and_project(user_or_username, project_or_name)
         try:
-            _ = self.get_user_enrollment(user, project)
+            ue = self.get_user_enrollment(user, project)
         except UserNotEnrolledToProjectException as e:
             raise UserNotEnrolledToProjectException(e)
         compose_file = self.get_compose_file(user, project)
 
-        return await self.c_client.compose_down(project.name, compose_file)
+        error_code, success = await self.c_client.compose_down(
+            project.name, compose_file
+        )
+        if success:
+            self.record_session(ue, ProgressSession.State.STOP)
+        return error_code
 
     async def user_cluster_is_running(
         self,
@@ -1122,15 +1132,11 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         :param project: A project object.
         :type project: _project.Project
         """
-        compose_files = []
         for user in users:
             try:
-                compose_files.append(self.get_compose_file(user, project))
+                await self.stop_user_cluster(user, project)
             except UserNotEnrolledToProjectException:
                 pass
-
-        for cfile in compose_files:
-            await self.c_client.compose_down(project.name, cfile)
 
     async def stop_all_user_clusters(self, project: "_project.Project"):
         """Stop all user clusters in the project.
@@ -1138,11 +1144,8 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         :param project: A project object.
         :type project: _project.Project
         """
-        lof_users = self.get_user_enrollments_for_project(project)
-
-        compose_files = [self.get_compose_file(user, project) for user in lof_users]
-        for cfile in compose_files:
-            await self.c_client.compose_down(project.name, cfile)
+        for user in self.get_user_enrollments_for_project(project):
+            await self.stop_user_cluster(user, project)
 
     async def stop_all_clusters_of_a_user(self, user: "_user.User"):
         """Stop all running clusters of a user.
@@ -1150,8 +1153,5 @@ class UserEnrollmentManager(ClusterConfigManager[UserEnrollment], UserProgressMa
         :param project: A project object.
         :type project: _project.Project
         """
-        lof_projects = self.get_enrolled_projects(user)
-
-        compose_files = [self.get_compose_file(user, prj) for prj in lof_projects]
-        for cfile in compose_files:
-            await self.c_client.compose_down(__name__, cfile)
+        for project in self.get_enrolled_projects(user):
+            await self.stop_user_cluster(user, project)

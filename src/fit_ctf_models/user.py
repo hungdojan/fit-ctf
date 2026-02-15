@@ -1,5 +1,8 @@
 import shutil
+from datetime import datetime
 
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from passlib.hash import sha512_crypt
@@ -8,7 +11,6 @@ from pymongo.database import Database
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.auth.auth_interface import AuthInterface
-from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
 from fit_ctf_models.base import Base, BaseManagerInterface
@@ -18,6 +20,7 @@ from fit_ctf_models.utils.exceptions import (
     UserNotExistsException,
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_models.utils.sessions import LoginSession
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
 
 
@@ -42,6 +45,19 @@ class User(Base):
     password: str
     role: UserRole
     email: str = ""
+    sessions: list[LoginSession] = []
+
+    def record_login_session(self):
+        session = LoginSession(
+            timestamp=datetime.now().astimezone(), state=LoginSession.State.LOGIN
+        )
+        self.sessions.append(session)
+
+    def record_logout_session(self):
+        session = LoginSession(
+            timestamp=datetime.now().astimezone(), state=LoginSession.State.LOGOUT
+        )
+        self.sessions.append(session)
 
 
 class UserManager(BaseManagerInterface[User]):
@@ -131,6 +147,29 @@ class UserManager(BaseManagerInterface[User]):
             f.write(template.render(hash=crypt_hash))
         return crypt_hash
 
+    @staticmethod
+    def generate_password_hash(password):
+        ph = PasswordHasher()
+        hash = ph.hash(password)
+        return hash
+
+    @staticmethod
+    def validate_password(user: User, password: str) -> bool:
+        try:
+            ph = PasswordHasher()
+            ph.verify(user.password, password)
+        except VerifyMismatchError:
+            return False
+        return True
+
+    def record_login(self, user: User):
+        user.record_login_session()
+        self.update_doc(user)
+
+    def record_logout(self, user: User):
+        user.record_logout_session()
+        self.update_doc(user)
+
     def change_password(self, username: str, password: str) -> User:
         """Change password for a user.
 
@@ -152,7 +191,7 @@ class UserManager(BaseManagerInterface[User]):
         self._generate_shadow(user.username, password, str(shadow_path.resolve()))
 
         # calculate hash to store to the database
-        user.password = LocalAuth(self).register(user.username, password)
+        user.password = self.generate_password_hash(password)
 
         self.update_doc(user)
         return user
@@ -198,9 +237,10 @@ class UserManager(BaseManagerInterface[User]):
 
         user = self.create_and_insert_doc(
             username=username,
-            password=LocalAuth(self).register(username, password),
+            password=self.generate_password_hash(password),
             role=role,
             email=email,
+            sessions=[],
         )
         return user, {"username": username, "password": password}
 

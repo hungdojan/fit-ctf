@@ -1,10 +1,7 @@
 import asyncio
-
 import os
-
 import tempfile
 from asyncio.subprocess import Process
-
 from subprocess import call
 
 from termcolor import colored
@@ -18,7 +15,9 @@ def document_editor(
     doc: dict, read_only_fields: set = set(), validator_name: str | None = None
 ) -> dict:
     """Allows user to edit configuration files in the system editor."""
-    editor = os.getenv("EDITOR", "vim")
+    editor = os.getenv("EDITOR")
+    if not editor:
+        raise ValueError("$EDITOR not set.")
     excluded_data = {k: doc.pop(k) for k in read_only_fields if k in doc}
 
     with tempfile.NamedTemporaryFile(suffix=".tmp.yaml", mode="w+") as tf:

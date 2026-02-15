@@ -16,9 +16,29 @@ properties:
     type: string
   active:
     type: boolean
+  sessions:
+    type: array
+    items:
+      $ref: "#/$def/login_session"
+
 
 required:
   - _id
   - username
   - password
   - role
+
+$defs:
+  login_session:
+    type: object
+    properties:
+      timestamp:
+        type: string
+        format: date-time
+      state:
+        enum:
+          - LOGIN
+          - LOGOUT
+      info:
+        type: object
+        additionalProperties: true

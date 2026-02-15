@@ -8,7 +8,7 @@ from typing import Any
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_components.base as base_component
 import fit_ctf_components.utils
-from fit_ctf_components.types import HealthCheckDict
+from fit_ctf_components.types import HealthCheckDict, ErrorCode, TaskSuccess
 
 
 class ContainerClientInterface(ABC, base_component.BaseComponent):
@@ -80,7 +80,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     @abstractmethod
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         """Remove container images from the system using container engine command.
 
         :param logger: A logger handler to write output to.
@@ -97,7 +97,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     @abstractmethod
     async def rm_networks(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         """Remove container networks from the system using container engine command.
 
         :param logger: A logger handler to write output to.
@@ -114,7 +114,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     @abstractmethod
     async def compose_up(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         """Run compose up for the given file.
 
         :param logger: A logger handler to write output to.
@@ -131,7 +131,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     @abstractmethod
     async def compose_down(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> tuple[ErrorCode, TaskSuccess]:  # pragma: no cover
         """Run compose down for the given file.
 
         :param logger: A logger handler to write output to.
@@ -172,7 +172,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     @abstractmethod
     async def compose_build(
         self, logger_name: str, file: str | Path, to_stdout: bool = False
-    ) -> int:  # pragma: no cover
+    ) -> ErrorCode:  # pragma: no cover
         """Build container images using `podman-compose` command.
 
         :param logger: A logger handler to write output to.

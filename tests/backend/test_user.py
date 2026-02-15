@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
 from fit_ctf_components.auth.local_auth import LocalAuth
+from fit_ctf_components.exceptions import LoginException
 from fit_ctf_models.utils.exceptions import (
     PublicKeyUploadFail,
     UserExistsException,
@@ -61,7 +62,7 @@ def test_get_user_raw(user_data: FixtureData):
         user = ctf_app.user_mgr.get_user_raw("user10")
 
     user = ctf_app.user_mgr.get_user_raw("user1")
-    assert {"username", "active", "email", "role"} == set(list(user.keys()))
+    assert {"username", "active", "email", "role", "sessions"} == set(list(user.keys()))
     assert user["username"] == "user1"
     assert user["active"]
 
@@ -122,10 +123,11 @@ def test_change_password(user_data: FixtureData):
     ctf_app, _ = user_data
     local_auth = LocalAuth(ctf_app.user_mgr)
 
-    assert local_auth.validate_credentials("user1", "user1Password")
+    local_auth.validate_credentials("user1", "user1Password")
     ctf_app.user_mgr.change_password("user1", "newStrongPassw0rd")
-    assert not local_auth.validate_credentials("user1", "user1Password")
-    assert local_auth.validate_credentials("user1", "newStrongPassw0rd")
+    with pytest.raises(LoginException):
+        local_auth.validate_credentials("user1", "user1Password")
+    local_auth.validate_credentials("user1", "newStrongPassw0rd")
 
 
 def test_user_errors(connected_data: FixtureData):

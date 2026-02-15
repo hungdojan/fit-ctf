@@ -5,7 +5,7 @@ from fit_ctf.ctf_base import CTFBase
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_components.exceptions import CTFBaseException
+from fit_ctf_components.exceptions import CTFBaseException, LoginException
 from fit_ctf_models.project import Project
 from fit_ctf_models.user import User
 from fit_ctf_models.user_enrollment import UserEnrollment
@@ -16,6 +16,7 @@ from fit_ctf_models.utils.exceptions import (
 )
 from fit_ctf_rendezvous.exceptions import (
     CannotChangePassword,
+    IncorrectCredentials,
     InvalidAction,
     SecretSubmitFail,
     UserNotLoggedIn,
@@ -85,7 +86,7 @@ class CoreManager(_VariableRegistry):
     def ctf_base(self) -> CTFBase:
         return self._ctf_base
 
-    def validate_login(self, username: str, password: str) -> bool:
+    def validate_login(self, username: str, password: str):
         """Validate user's login attempt.
 
         :param username: Given username.
@@ -95,11 +96,12 @@ class CoreManager(_VariableRegistry):
         :return: `True` if given credentials are valid; False otherwise.
         :rtype: bool
         """
-        if not self.auth_client.validate_credentials(username, password):
-            return False
-
-        self._active_user = self.ctf_base.user_mgr.get_doc_by_filter(username=username)
-        return True
+        try:
+            user = self.auth_client.validate_credentials(username, password)
+            self._active_user = user
+            self.ctf_base.user_mgr.record_login(user)
+        except LoginException as e:
+            raise IncorrectCredentials(str(e))
 
     @staticmethod
     def check_password_strength(password: str) -> bool:
@@ -256,3 +258,4 @@ class CoreManager(_VariableRegistry):
         if self.active_user is None:
             return
         await self.ctf_base.ue_mgr.stop_all_clusters_of_a_user(self.active_user)
+        # TODO: log out sessions

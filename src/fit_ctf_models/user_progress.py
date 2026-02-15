@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -13,12 +14,14 @@ from fit_ctf_models.utils.exceptions import (
     SecretNotFoundException,
     SecretValueCollision,
 )
+from fit_ctf_models.utils.sessions import ProgressSession
 
 
 class UserProgress(BaseModel):
     secrets: dict[str, Secret] = {}
     found_secrets: int = 0
     last_submit_time: datetime | None = None
+    sessions: list[ProgressSession] = []
 
     def get_secret_by_value(self, value: str) -> Secret | None:
         """Retrieve a secret object from the document.
@@ -195,4 +198,16 @@ class UserProgressManager(BaseComponent):
         if secret.submitted is not None:
             progress.found_secrets -= 1
             progress.last_submit_time = progress.get_last_submit()
+        self.ctf_base.ue_mgr.update_doc(ue)
+
+    def record_session(
+        self,
+        ue: "_ue.UserEnrollment",
+        state: ProgressSession.State,
+        info: dict[str, Any] = {},
+    ):
+        timestamp = datetime.now().astimezone()
+        ue.progress.sessions.append(
+            ProgressSession(timestamp=timestamp, state=state, info=info)
+        )
         self.ctf_base.ue_mgr.update_doc(ue)

@@ -7,11 +7,13 @@ import pytest
 from _pytest.fixtures import FixtureRequest
 from click.testing import CliRunner
 from dotenv import load_dotenv
+from textual.app import App
 
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.constants import get_env_info
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.types import PathDict
+from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
 from . import CLIData, FixtureData, fixture_path
 
@@ -202,6 +204,12 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
         }
     )
     return ctf_app, tmp_path, CliRunner()
+
+
+@pytest.fixture
+def tui_app(connected_data: FixtureData) -> App:
+    ctf_app, _ = connected_data
+    return RendezvousApp(ctf_app)
 
 
 # @pytest.fixture

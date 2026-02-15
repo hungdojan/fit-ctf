@@ -63,6 +63,7 @@ pre-commit = "^4.1.0"
 textual-dev = "^1.7.0"
 pytest-asyncio = "^1.0.0"
 debugpy = "^1.8.17"
+freezegun = "^1.5.5"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

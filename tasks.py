@@ -40,7 +40,8 @@ def db_shell(_: Context):
         "-it ctf-database-mongo mongosh "
         f"-u {os.getenv('DB_USERNAME')} "
         f"-p {os.getenv('DB_PASSWORD')} "
-        f"{os.getenv("DB_NAME")}"
+        f"{os.getenv("DB_NAME")} "
+        "--authenticationDatabase admin"
     )
     subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
 

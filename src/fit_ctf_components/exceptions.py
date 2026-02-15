@@ -35,3 +35,7 @@ class ConfigurationFileNotEditedException(CTFBaseException):
     """The configuration data were not edited in the editor."""
 
     pass
+
+
+class LoginException(CTFBaseException):
+    pass

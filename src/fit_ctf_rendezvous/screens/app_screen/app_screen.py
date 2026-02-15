@@ -84,6 +84,7 @@ class AppScreen(BaseScreen):
         if worker.state == WorkerState.SUCCESS:
             if worker.name == "logout-cleanup":
                 self.notify("Cleanup done!", timeout=3)
+                self.core_mgr.ctf_base.user_mgr.record_logout(self.core_mgr.active_user)
                 self.core_mgr.active_user = None
                 self.core_mgr.selected_project = None
                 self.on_exit()

@@ -3,6 +3,8 @@ import secrets
 import string
 from abc import ABC, abstractmethod
 
+import fit_ctf_models.user as user
+
 
 class AuthInterface(ABC):
 
@@ -57,8 +59,7 @@ class AuthInterface(ABC):
         """
         return re.search(r"^[a-z0-9]{4,}$", username) is not None
 
-    @abstractmethod
-    def register(self, username: str, password: str) -> str:
+    def register(self, username: str, password: str) -> "user.User":
         """Register user.
 
         :param username: Account's username.
@@ -71,7 +72,7 @@ class AuthInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def validate_credentials(self, username: str, password: str) -> bool:
+    def validate_credentials(self, username: str, password: str) -> "user.User":
         """Validate user credentials.
 
         :param username: Account's username.
