@@ -2,7 +2,7 @@ import asyncio
 
 import click
 
-from fit_ctf.cli.utils import format_option, project_option
+from fit_ctf.cli.utils import format_option, project_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
@@ -17,6 +17,7 @@ from fit_ctf_models.project import ProjectManager
 
 @click.group(name="project")
 @click.pass_context
+@requires_database
 def project(
     ctx: click.Context,
 ):

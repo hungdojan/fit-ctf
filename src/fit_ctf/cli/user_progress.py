@@ -1,6 +1,6 @@
 import click
 
-from fit_ctf.cli.utils import format_option, project_option, user_option
+from fit_ctf.cli.utils import format_option, project_option, user_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_view import get_view
 from fit_ctf_models.user_enrollment import UserEnrollment
@@ -15,6 +15,7 @@ from fit_ctf_models.utils.exceptions import (
 @user_option
 @project_option
 @click.pass_context
+@requires_database
 def user_progress(ctx: click.Context, username: str, project_name: str):
     """A command to display progresses of users"""
     ctx.obj = ctx.parent.obj  # pyright: ignore

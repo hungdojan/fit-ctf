@@ -1,27 +1,53 @@
+import importlib
 import pathlib
 
 import click
-import pymongo.errors
 
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf_components.constants import get_env_info, get_paths
+from fit_ctf_components.constants import get_paths
 from fit_ctf_components.types import PathDict
 
-from . import (
-    completion,
-    data_mgmt,
-    enrollment,
-    module,
-    project,
-    project_cluster,
-    system,
-    user,
-    user_cluster,
-    user_progress,
-)
 
+class LazyGroup(click.Group):
+    """A Click Group that lazy-loads subcommands for better performance."""
 
-@click.group("cli")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Define lazy subcommands with their import paths
+        self._lazy_subcommands = {
+            "project": ("fit_ctf.cli.project", "project"),
+            "user": ("fit_ctf.cli.user", "user"),
+            "completion": ("fit_ctf.cli.completion", "completion"),
+            "enrollment": ("fit_ctf.cli.enrollment", "enrollment"),
+            "user-cluster": ("fit_ctf.cli.user_cluster", "user_cluster"),
+            "project-cluster": ("fit_ctf.cli.project_cluster", "project_cluster"),
+            "module": ("fit_ctf.cli.module", "module"),
+            "system": ("fit_ctf.cli.system", "system"),
+            "data-mgmt": ("fit_ctf.cli.data_mgmt", "data_mgmt"),
+            "user-progress": ("fit_ctf.cli.user_progress", "user_progress"),
+        }
+
+    def list_commands(self, ctx: click.Context):
+        base = super().list_commands(ctx)
+        curr = sorted(self._lazy_subcommands.keys())
+        return base + curr
+
+    def get_command(self, ctx: click.Context, cmd_name: str):
+        if cmd_name in self._lazy_subcommands:
+            return self._lazy_load(cmd_name)
+        return super().get_command(ctx, cmd_name)
+
+    def _lazy_load(self, cmd_name: str):
+        modname, cmd_obj_name = self._lazy_subcommands[cmd_name]
+        mod = importlib.import_module(modname)
+        cmd_object = getattr(mod, cmd_obj_name)
+        if not isinstance(cmd_object, click.Command):
+            raise ValueError(
+                f"Lazy loading of {modname}.{cmd_obj_name} failed by returning "
+                "a non-command object"
+            )
+        return cmd_object
+
+@click.command("cli", cls=LazyGroup)
 @click.option(
     "-pd",
     "--project-dir",
@@ -62,39 +88,6 @@ def cli(
     if module_dir:  # pragma: no cover
         paths["modules"] = module_dir
 
-    # system commands are offline commands that do not require database to be running
-    # some commands like `start a database`, or `uninstall`
-    # will be located in system group
-    if ctx.invoked_subcommand == "system":  # pragma: no cover
-        ctx.obj["paths"] = paths
-        return
-
-    env_info = get_env_info()
-    try:
-        ctf_app = CTFApp(env_info, paths)
-
-        ctx.obj = {
-            "ctf_app": ctf_app,
-        }
-    except pymongo.errors.ServerSelectionTimeoutError:  # pragma: no cover
-        click.echo(
-            "Could not connect to the database. Make sure that the mongo database is running.\n"
-            "Use the given script `./manage_db.sh` to manage the database.\n"
-            "\n"
-            "./manage_db.sh start - start the database.\n"
-            "./manage_db.sh stop  - stop the database.\n"
-            "./manage_db.sh       - print help"
-        )
-        exit(1)
-
-
-cli.add_command(project.project)
-cli.add_command(user.user)
-cli.add_command(completion.completion)
-cli.add_command(enrollment.enrollment)
-cli.add_command(user_cluster.user_cluster)
-cli.add_command(project_cluster.project_cluster)
-cli.add_command(module.module)
-cli.add_command(system.system)
-cli.add_command(data_mgmt.data_mgmt)
-cli.add_command(user_progress.user_progress)
+    # Store paths in context object for lazy initialization
+    # Database connection will be initialized only when needed via @requires_database decorator
+    ctx.obj = {"paths": paths}

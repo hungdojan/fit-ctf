@@ -3,7 +3,7 @@ import pathlib
 
 import click
 
-from fit_ctf.cli.utils import format_option, user_option
+from fit_ctf.cli.utils import format_option, user_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.auth.auth_interface import AuthInterface
@@ -21,6 +21,7 @@ from fit_ctf_models.utils.exceptions import PublicKeyUploadFail, UserExistsExcep
 
 @click.group(name="user")
 @click.pass_context
+@requires_database
 def user(ctx: click.Context):
     """A command for user management."""
     ctx.obj = ctx.parent.obj  # pyright: ignore

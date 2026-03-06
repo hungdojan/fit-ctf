@@ -1,7 +1,7 @@
 import asyncio
 import click
 
-from fit_ctf.cli.utils import format_option, module_name_option
+from fit_ctf.cli.utils import format_option, module_name_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_view import get_view
 from fit_ctf_models.utils.exceptions import (
@@ -13,6 +13,7 @@ from fit_ctf_models.utils.exceptions import (
 
 @click.group(name="module")
 @click.pass_context
+@requires_database
 def module(ctx: click.Context):
     """Manage local modules."""
     ctx.obj = ctx.parent.obj  # pyright: ignore

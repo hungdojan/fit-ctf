@@ -3,7 +3,7 @@ import pathlib
 
 import click
 
-from fit_ctf.cli.utils import project_option, user_option
+from fit_ctf.cli.utils import project_option, user_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf.exceptions import CTFBaseException
@@ -11,6 +11,7 @@ from fit_ctf.exceptions import CTFBaseException
 
 @click.group(name="enrollment")
 @click.pass_context
+@requires_database
 def enrollment(ctx: click.Context):
     """Manage all user enrollments."""
     ctx.obj = ctx.parent.obj  # pyright: ignore

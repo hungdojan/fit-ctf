@@ -1,12 +1,19 @@
+import os
+
 from dotenv import load_dotenv
 
 from fit_ctf.cli import cli
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 
-load_dotenv()
-
 
 def main():
+    # Skip initialization during shell completion for performance
+    if "_FIT_CTF_COMPLETE" in os.environ:
+        cli()
+        return
+
+    load_dotenv()
+
     # initialize validators
     YamlParser.init_parser()
 

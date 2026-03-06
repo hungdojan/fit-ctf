@@ -6,6 +6,7 @@ from fit_ctf.cli.utils import (
     format_option,
     project_option,
     yaml_suffix_validation,
+    requires_database,
 )
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
@@ -14,6 +15,7 @@ from fit_ctf_components.data_view import get_view
 
 @click.group(name="data-mgmt")
 @click.pass_context
+@requires_database
 def data_mgmt(ctx: click.Context):
     """Manage data with config files."""
     ctx.obj = ctx.parent.obj  # pyright: ignore
