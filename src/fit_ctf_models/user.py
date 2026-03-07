@@ -1,20 +1,15 @@
 import shutil
 import warnings
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
-
-# suppress deprecation warning for `crypt` module used by `passlib` when generating shadow
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
-
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
-import fit_ctf.ctf_base as ctf_base
-import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
@@ -27,6 +22,13 @@ from fit_ctf_models.utils.exceptions import (
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_models.utils.sessions import LoginSession
 from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
+
+# suppress deprecation warning for `crypt` module used by `passlib` when generating shadow
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
+
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as ctf_base
+    import fit_ctf_models.user_enrollment as _ue
 
 
 class User(Base):

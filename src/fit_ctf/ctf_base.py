@@ -1,20 +1,22 @@
 import os
-from typing import overload
+from typing import TYPE_CHECKING, overload
 
 import pymongo
 from pymongo.database import Database
 
 import fit_ctf_components.container_client.container_client_interface as c_client_interface
-import fit_ctf_models.module_manager as module_mgr
-import fit_ctf_models.project as prj
-import fit_ctf_models.user as user
-import fit_ctf_models.user_enrollment as user_enroll
 from fit_ctf.exceptions import ManagerNotFound
 from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.base import BaseComponent, ComponentType
 from fit_ctf_components.logger.default_logger import DefaultLogger
 from fit_ctf_components.logger.logger_interface import LoggerInterface
 from fit_ctf_components.types import EnvInfo, PathDict
+
+if TYPE_CHECKING:
+    import fit_ctf_models.module_manager as module_manager
+    import fit_ctf_models.project as prj
+    import fit_ctf_models.user as user
+    import fit_ctf_models.user_enrollment as user_enroll
 
 
 class CTFBase:
@@ -25,34 +27,41 @@ class CTFBase:
         _c_client: type["c_client_interface.ContainerClientInterface"],
         logger_cls: type[LoggerInterface] = DefaultLogger,
     ) -> None:
-        db_uri = (
+        self._env_info = env_info
+        self._db_uri = (
             f"mongodb://{env_info['db_username']}:"
             f"{env_info['db_password']}@{env_info['db_host']}:{env_info['db_port']}/"
         )
         if env_info["db_name"]:
-            db_uri += f"{env_info['db_name']}"
-        db_uri += "?authSource=admin"
-        self._client = pymongo.MongoClient(
-            db_uri,
-            serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
-            tz_aware=True,
-        )
-        # test connection
-        self._client.server_info()
+            self._db_uri += f"{env_info['db_name']}"
+        # FIX: remove hardcoded parameter
+        self._db_uri += "?authSource=admin"
 
-        self._ctf_db: Database = self._client[env_info["db_name"]]
-
+        self._mongo_client: pymongo.MongoClient | None = None
+        self._ctf_db: Database | None = None
         self._c_client = _c_client(self)
-        self._managers = {
-            "project": prj.ProjectManager(self, self._ctf_db),
-            "user": user.UserManager(self, self._ctf_db),
-            "user_enrollment": user_enroll.UserEnrollmentManager(self, self._ctf_db),
-            "module": module_mgr.ModuleManager(self),
-        }
+        self._managers = {}
         self._path_mgmt = PathManagement(paths)
         self._components: dict[str, BaseComponent] = {
             "logger": logger_cls(self),
         }
+
+    @property
+    def mongo_client(self) -> pymongo.MongoClient:
+        if not self._mongo_client:
+            self._mongo_client = pymongo.MongoClient(
+                self._db_uri,
+                serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
+                tz_aware=True,
+            )
+            self._mongo_client.server_info()
+        return self._mongo_client
+
+    @property
+    def ctf_db(self) -> Database:
+        if self._ctf_db is None:
+            self._ctf_db = self.mongo_client[self._env_info["db_name"]]
+        return self._ctf_db
 
     @property
     def prj_mgr(self) -> "prj.ProjectManager":
@@ -61,6 +70,10 @@ class CTFBase:
         :return: A project manager initialized in CTFApp.
         :rtype: ProjectManager
         """
+        from fit_ctf_models.project import ProjectManager
+
+        if self._managers.get("project", None) is None:
+            self._managers["project"] = ProjectManager(self, self.ctf_db)
         return self._managers["project"]
 
     @property
@@ -70,6 +83,10 @@ class CTFBase:
         :return: A user manager initialized in CTFApp.
         :rtype: UserManager
         """
+        from fit_ctf_models.user import UserManager
+
+        if self._managers.get("user", None) is None:
+            self._managers["user"] = UserManager(self, self.ctf_db)
         return self._managers["user"]
 
     @property
@@ -79,15 +96,23 @@ class CTFBase:
         :return: A user enrollment manager initialized in CTFApp.
         :rtype: UserEnrollmentManager
         """
+        from fit_ctf_models.user_enrollment import UserEnrollmentManager
+
+        if self._managers.get("user_enrollment", None) is None:
+            self._managers["user_enrollment"] = UserEnrollmentManager(self, self.ctf_db)
         return self._managers["user_enrollment"]
 
     @property
-    def module_mgr(self) -> "module_mgr.ModuleManager":
+    def module_mgr(self) -> "module_manager.ModuleManager":
         """Returns a user enrollment manager.
 
         :return: A user enrollment manager initialized in CTFApp.
         :rtype: UserEnrollmentManager
         """
+        from fit_ctf_models.module_manager import ModuleManager
+
+        if self._managers.get("module", None) is None:
+            self._managers["module"] = ModuleManager(self)
         return self._managers["module"]
 
     @property

@@ -2,11 +2,10 @@ import os
 import re
 import shutil
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from pymongo.database import Database
 
-import fit_ctf.ctf_base as ctf_base
-import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.constants import DEFAULT_STARTING_PORT
 from fit_ctf_components.types import (
     HealthCheckDict,
@@ -26,6 +25,10 @@ from fit_ctf_templates import (
     JINJA_TEMPLATE_DIRPATHS,
     get_template,
 )
+
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as ctf_base
+    import fit_ctf_models.user_enrollment as _ue
 
 
 class Project(ClusterConfig):
@@ -355,9 +358,10 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: int
         """
         project = self.get_project(project_or_name)
-        return await self.c_client.compose_down(
+        err_code, _ = await self.c_client.compose_down(
             project.name, self.get_compose_file(project)
         )
+        return err_code
 
     async def project_is_running(self, project_or_name: str | Project) -> bool:
         """Check if the project server is running.

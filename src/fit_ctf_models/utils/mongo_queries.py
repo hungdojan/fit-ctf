@@ -1,5 +1,8 @@
-import fit_ctf_models.project as prj
-import fit_ctf_models.user as user
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import fit_ctf_models.project as prj
+    import fit_ctf_models.user as user
 
 
 class MongoQueries:

@@ -3,7 +3,7 @@ import pathlib
 
 import click
 
-from fit_ctf.cli.utils import format_option, user_option, requires_database
+from fit_ctf.cli.utils import format_option, requires_database, user_option
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.auth.auth_interface import AuthInterface

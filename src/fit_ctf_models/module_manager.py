@@ -1,10 +1,8 @@
 import pathlib
 from shutil import copytree, rmtree
+from typing import TYPE_CHECKING
 
-import fit_ctf.ctf_base as ctf_base
 from fit_ctf.path_mgmt import PathManagement
-import fit_ctf_models.project as prj
-import fit_ctf_models.user_enrollment as user_enroll
 from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.container_client.container_client_interface import (
     ContainerClientInterface,
@@ -15,6 +13,11 @@ from fit_ctf_models.utils.exceptions import (
     ModuleNotExistsException,
 )
 from fit_ctf_templates import TEMPLATE_DIRNAME
+
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as ctf_base
+    import fit_ctf_models.project as prj
+    import fit_ctf_models.user_enrollment as user_enroll
 
 
 class ModuleManager(BaseComponent):

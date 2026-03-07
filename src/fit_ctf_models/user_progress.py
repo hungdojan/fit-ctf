@@ -1,10 +1,8 @@
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-import fit_ctf.ctf_base as ctf_base
-import fit_ctf_models.user_enrollment as _ue
 from fit_ctf_components.base import BaseComponent
 from fit_ctf_components.types import SecretInfo
 from fit_ctf_models.secret import Secret
@@ -15,6 +13,10 @@ from fit_ctf_models.utils.exceptions import (
     SecretValueCollision,
 )
 from fit_ctf_models.utils.sessions import ProgressSession
+
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as ctf_base
+    import fit_ctf_models.user_enrollment as _ue
 
 
 class UserProgress(BaseModel):

@@ -2,8 +2,10 @@ import re
 import secrets
 import string
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-import fit_ctf_models.user as user
+if TYPE_CHECKING:
+    import fit_ctf_models.user as user
 
 
 class AuthInterface(ABC):
