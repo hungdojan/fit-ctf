@@ -79,7 +79,7 @@ class CTFApp(CTFBase):
 
         self.init_tool()
 
-    def init_tool(self, base_image_os: Literal["rhel", "ubuntu"] = "rhel"):
+    def init_tool(self, base_image_os: Literal["ubi", "debian"] = "ubi"):
         """Initialize base images."""
         for module_name in {"base", "base_ssh"}:
             if not (self._paths["modules"] / module_name).exists():
@@ -90,7 +90,7 @@ class CTFApp(CTFBase):
                     / "base_images"
                 )
 
-                if base_image_os not in {"rhel", "ubuntu"}:
+                if base_image_os not in {"ubi", "debian"}:
                     raise ValueError(
                         "The only supported base image OS are `rhel` or `ubuntu`."
                     )

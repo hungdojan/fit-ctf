@@ -1,10 +1,15 @@
 import shutil
+import warnings
 from datetime import datetime
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
+
+# suppress deprecation warning for `crypt` module used by `passlib` when generating shadow
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
+
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
@@ -141,7 +146,7 @@ class UserManager(BaseManagerInterface[User]):
         :return: Calculated shadow hash.
         :rtype: str
         """
-        crypt_hash = sha512_crypt.using(salt=username).hash(password)
+        crypt_hash = sha512_crypt.using(rounds=20000).hash(password)
         template = get_template("shadow.j2", str(JINJA_TEMPLATE_DIRPATHS["v1"]))
         with open(f"{shadow_path}", "w") as f:
             f.write(template.render(hash=crypt_hash))
