@@ -24,7 +24,7 @@ def test_create_user(empty_data: FixtureData):
     user_mgr = ctf_app.user_mgr
 
     assert len(user_mgr.get_users_info(True)) == 0
-    assert not [i for i in ctf_app._paths["users"].iterdir()]
+    assert not [i for i in ctf_app.paths.user_global.iterdir()]
 
     user_data: dict = {"username": "user1", "password": "StrongPassword12"}
     user_doc, credentials = user_mgr.create_new_user(**user_data)
@@ -32,8 +32,8 @@ def test_create_user(empty_data: FixtureData):
     assert len(user_mgr.get_users_info(True)) == 1
     assert credentials["password"] == user_data["password"]
     assert user_mgr.get_user(user_doc.username)
-    assert len(list(ctf_app._paths["users"].iterdir())) == 1
-    assert (ctf_app._paths["users"] / user_data["username"]).is_dir()
+    assert len(list(ctf_app.paths.user_global.iterdir())) == 1
+    assert (ctf_app.paths.user_global / user_data["username"]).is_dir()
 
 
 def test_create_multiple_users(user_data: FixtureData):
@@ -44,8 +44,8 @@ def test_create_multiple_users(user_data: FixtureData):
     users = user_mgr.create_multiple_users([f"user{i+1}" for i in range(5)])
     assert len(user_mgr.get_docs()) == 5
     assert {"user4", "user5"} == set([u["username"] for u in users])
-    assert (ctf_app._paths["users"] / "user4").is_dir() and (
-        ctf_app._paths["users"] / "user5"
+    assert (ctf_app.paths.user_global / "user4").is_dir() and (
+        ctf_app.paths.user_global / "user5"
     ).is_dir()
 
 
@@ -71,12 +71,12 @@ async def test_disable_user(connected_data: FixtureData):
     ctf_app, _ = connected_data
 
     assert len(ctf_app.user_mgr.get_docs()) == 3
-    assert len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj2")) == 2
+    assert len(ctf_app.enroll_mgr.get_enrollments_for_project("prj2")) == 2
 
     await ctf_app.user_mgr.disable_user("user1")
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert len(ctf_app.user_mgr.get_users_info(True)) == 2
-    assert len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj2")) == 1
+    assert len(ctf_app.enroll_mgr.get_enrollments_for_project("prj2")) == 1
 
 
 async def test_flush_user(connected_data: FixtureData):
@@ -88,35 +88,35 @@ async def test_flush_user(connected_data: FixtureData):
 
     await ctf_app.user_mgr.disable_user("user1")
     assert len(ctf_app.user_mgr.get_docs()) == 3
-    assert (ctf_app._paths["users"] / "user1").is_dir()
+    assert (ctf_app.paths.user_global / "user1").is_dir()
 
     ctf_app.user_mgr.flush_user("user1")
     assert len(ctf_app.user_mgr.get_docs()) == 2
-    assert not (ctf_app._paths["users"] / "user1").is_dir()
+    assert not (ctf_app.paths.user_global / "user1").is_dir()
 
 
 async def test_delete_user(connected_data: FixtureData):
     ctf_app, _ = connected_data
 
     assert len(ctf_app.user_mgr.get_docs()) == 3
-    assert (ctf_app._paths["users"] / "user1").is_dir()
+    assert (ctf_app.paths.user_global / "user1").is_dir()
 
     await ctf_app.user_mgr.delete_a_user("user1")
 
     assert len(ctf_app.user_mgr.get_docs()) == 2
-    assert not (ctf_app._paths["users"] / "user1").is_dir()
+    assert not (ctf_app.paths.user_global / "user1").is_dir()
 
 
 async def test_delete_multiple_users(connected_data: FixtureData):
     ctf_app, _ = connected_data
 
     assert len(ctf_app.user_mgr.get_docs()) == 3
-    assert len(list(ctf_app._paths["users"].iterdir())) == 3
+    assert len(list(ctf_app.paths.user_global.iterdir())) == 3
 
     await ctf_app.user_mgr.delete_users(["user1", "user2", "user4"])
 
     assert len(ctf_app.user_mgr.get_docs()) == 1
-    assert len(list(ctf_app._paths["users"].iterdir())) == 1
+    assert len(list(ctf_app.paths.user_global.iterdir())) == 1
 
 
 def test_change_password(user_data: FixtureData):

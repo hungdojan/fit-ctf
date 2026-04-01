@@ -13,10 +13,11 @@ from fit_ctf_components.logger.logger_interface import LoggerInterface
 from fit_ctf_components.types import EnvInfo, PathDict
 
 if TYPE_CHECKING:
+    import fit_ctf_models.clusters as clusters
+    import fit_ctf_models.enrollment as enroll
     import fit_ctf_models.module_manager as module_manager
     import fit_ctf_models.project as prj
     import fit_ctf_models.user as user
-    import fit_ctf_models.user_enrollment as user_enroll
 
 
 class CTFBase:
@@ -90,30 +91,54 @@ class CTFBase:
         return self._managers["user"]
 
     @property
-    def ue_mgr(self) -> "user_enroll.UserEnrollmentManager":
-        """Returns a user enrollment manager.
+    def enroll_mgr(self) -> "enroll.EnrollmentManager":
+        """Returns an enrollment manager.
 
-        :return: A user enrollment manager initialized in CTFApp.
-        :rtype: UserEnrollmentManager
+        :return: An enrollment manager initialized in CTFApp.
+        :rtype: EnrollmentManager
         """
-        from fit_ctf_models.user_enrollment import UserEnrollmentManager
+        from fit_ctf_models.enrollment import EnrollmentManager
 
-        if self._managers.get("user_enrollment", None) is None:
-            self._managers["user_enrollment"] = UserEnrollmentManager(self, self.ctf_db)
-        return self._managers["user_enrollment"]
+        if self._managers.get("enrollment", None) is None:
+            self._managers["enrollment"] = EnrollmentManager(self, self.ctf_db)
+        return self._managers["enrollment"]
 
     @property
     def module_mgr(self) -> "module_manager.ModuleManager":
-        """Returns a user enrollment manager.
+        """Returns an enrollment manager.
 
-        :return: A user enrollment manager initialized in CTFApp.
-        :rtype: UserEnrollmentManager
+        :return: An enrollment manager initialized in CTFApp.
+        :rtype: EnrollmentManager
         """
         from fit_ctf_models.module_manager import ModuleManager
 
         if self._managers.get("module", None) is None:
             self._managers["module"] = ModuleManager(self)
         return self._managers["module"]
+
+    @property
+    def user_cluster_mgr(self) -> "clusters.UserClusterManager":
+        from fit_ctf_models.clusters import UserClusterManager
+
+        if self._managers.get("user_cluster", None) is None:
+            self._managers["user_cluster"] = UserClusterManager(self, self.ctf_db)
+        return self._managers["user_cluster"]
+
+    @property
+    def project_cluster_mgr(self) -> "clusters.ProjectClusterManager":
+        from fit_ctf_models.clusters import ProjectClusterManager
+
+        if self._managers.get("project_cluster", None) is None:
+            self._managers["project_cluster"] = ProjectClusterManager(self, self.ctf_db)
+        return self._managers["project_cluster"]
+
+    @property
+    def scenario_mgr(self) -> "clusters.ScenarioManager":
+        from fit_ctf_models.clusters import ScenarioManager
+
+        if self._managers.get("scenario", None) is None:
+            self._managers["scenario"] = ScenarioManager(self)
+        return self._managers["scenario"]
 
     @property
     def c_client(self) -> "c_client_interface.ContainerClientInterface":

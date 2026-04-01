@@ -9,8 +9,23 @@ users:
 projects:
   - name: prj1
     max_nof_users: 3
+    cluster.scenario_configs:
+      template:
+        service_configs:
+          template_service:
+            port_map:
+              mongodb: 27017
+            env_map:
+              ADMIN: admin
+              PASSWORD: password
+            volume_map:
+              example_map:
+                src_path: "{{ scenario_dir }}/volumes/file_example"
+                template_params: {}
+
   - name: prj2
     max_nof_users: 3
+    cluster.scenario_configs: {}
 
 enrollments:
   - user: user1
@@ -18,34 +33,87 @@ enrollments:
     progress:
       secrets:
         key1:
-          flag: value1
-          submitted: '2025-09-27T18:09:25.594Z'
+          value: value1
+          submitted: "2025-09-27T18:09:25.594Z"
           user: user1
         key2:
-          flag: value2
+          value: value2
           submitted: null
           user: null
       found_secrets: 1
-      last_submit_time: '2025-09-27T18:09:25.594Z'
+      last_submit_time: "2025-09-27T18:09:25.594Z"
+    cluster.scenario_configs:
+      login_node:
+        service_configs:
+          login_node:
+            port_map:
+              ssh: 10000
+            volume_map:
+              home:
+                src_path: "{{ paths__users }}/{{ username }}/home/"
+                template_params: {}
+              shadow:
+                src_path: "{{ paths__users }}/{{ username }}/shadow"
+                template_params: {}
+
   - user: user2
     project: prj1
     progress:
       secrets:
         key3:
-          flag: value3
+          value: value3
           submitted: null
           user: null
       found_secrets: 0
       last_submit_time: null
+    cluster.scenario_configs:
+      login_node:
+        service_configs:
+          login_node:
+            port_map:
+              ssh: 11001
+            volume_map:
+              home:
+                src_path: "{{ paths__users }}/{{ username }}/home/"
+                template_params: {}
+              shadow:
+                src_path: "{{ paths__users }}/{{ username }}/shadow"
+                template_params: {}
   - user: user2
     project: prj2
     progress:
       secrets: {}
       found_secrets: 0
       last_submit_time: null
+    cluster.scenario_configs:
+      login_node:
+        service_configs:
+          login_node:
+            port_map:
+              ssh: 10001
+            volume_map:
+              home:
+                src_path: "{{ paths__users }}/{{ username }}/home/"
+                template_params: {}
+              shadow:
+                src_path: "{{ paths__users }}/{{ username }}/shadow"
+                template_params: {}
   - user: user3
     project: prj1
     progress:
       secrets: {}
       found_secrets: 0
       last_submit_time: null
+    cluster.scenario_configs:
+      login_node:
+        service_configs:
+          login_node:
+            port_map:
+              ssh: 11001
+            volume_map:
+              home:
+                src_path: "{{ paths__users }}/{{ username }}/home/"
+                template_params: {}
+              shadow:
+                src_path: "{{ paths__users }}/{{ username }}/shadow"
+                template_params: {}

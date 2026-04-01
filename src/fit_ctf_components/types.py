@@ -1,7 +1,7 @@
 import pathlib
 from datetime import datetime
 from enum import Enum
-from typing import TypeAlias, TypedDict
+from typing import NotRequired, TypeAlias, TypedDict
 
 ErrorCode: TypeAlias = int
 TaskSuccess: TypeAlias = bool
@@ -18,6 +18,7 @@ class PathDict(TypedDict):
     projects: pathlib.Path
     users: pathlib.Path
     modules: pathlib.Path
+    scenarios: pathlib.Path
 
 
 class ProjectPortListingDict(TypedDict):
@@ -50,6 +51,9 @@ class DatabaseDumpDict(TypedDict):
     users: list
     modules: list
     enrollments: list
+    project_cluster: NotRequired[dict | None]
+    clusters: NotRequired[list]
+    scenarios: NotRequired[list]
 
 
 class SetupDict(TypedDict):
@@ -99,3 +103,13 @@ class LeaderBoardItem(TypedDict):
     found_secrets: int
     total_secrets: int
     last_submit_time: datetime | None
+
+
+class UserNetworkMap(TypedDict):
+    shared: str
+    private: str
+
+
+class ProjectNetworkMap(TypedDict):
+    shared: str
+    operational: str

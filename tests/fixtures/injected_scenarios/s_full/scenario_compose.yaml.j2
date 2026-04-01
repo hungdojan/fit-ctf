@@ -1,0 +1,14 @@
+---
+name: "{{ project_name }}_full"
+services:
+  web:
+    image: nginx
+    ports:
+      - "{{ web__port_map__http }}:80"
+    environment:
+      - "FLAG={{ web__env_map__FLAG }}"
+    volumes:
+      - "{{ web__volume_map__blob }}:/blob:ro"
+networks:
+  {{ network_map__shared }}:
+    external: true

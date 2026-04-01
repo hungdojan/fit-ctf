@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 
 class Secret(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
-    flag: str
+    value: str
     submitted: datetime | None = None
     user_id: ObjectId | None = None
 

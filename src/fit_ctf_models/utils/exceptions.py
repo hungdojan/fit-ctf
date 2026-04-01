@@ -155,3 +155,39 @@ class PublicKeyUploadFail(CTFModelException):
     """Cannot upload the public key."""
 
     pass
+
+
+class ScenarioExistException(CTFModelException):
+    pass
+
+
+class ScenarioNotExistException(CTFModelException):
+    pass
+
+
+class UserClusterExistException(CTFModelException):
+    pass
+
+
+class UserClusterNotExistException(CTFModelException):
+    pass
+
+
+class ProjectClusterExistException(CTFModelException):
+    pass
+
+
+class ProjectClusterNotExistException(CTFModelException):
+    pass
+
+
+class EnrollmentNotExistException(CTFModelException):
+    pass
+
+
+class MissingJinjaVariableException(CTFModelException):
+    pass
+
+
+class ScenarioConfigNotExistException(CTFModelException):
+    pass

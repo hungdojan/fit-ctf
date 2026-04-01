@@ -71,7 +71,7 @@ def test_enrolled_users(cli_data: CLIData):
 
     f = StringIO(result.output)
     rows = [i for i in csv.reader(f)]
-    assert len(rows[1:]) == len(ctf_app.ue_mgr.get_user_enrollments_for_project("prj1"))
+    assert len(rows[1:]) == len(ctf_app.enroll_mgr.get_enrollments_for_project("prj1"))
 
     cmd = "project enrolled-users -pn prj10 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -152,11 +152,11 @@ def test_leaderboard(cli_data: CLIData):
 def test_delete(cli_data: CLIData):
     ctf_app, _, cli_runner = cli_data
     assert len(ctf_app.prj_mgr.get_docs()) == 2
-    assert (ctf_app._paths["projects"] / "prj1").is_dir()
+    assert (ctf_app.paths.project_global / "prj1").is_dir()
 
     cmd = "project delete -pn prj1".split()
     result = cli_runner.invoke(cli, cmd)
 
     assert re.search("deleted successfully.$", result.output)
     assert len(ctf_app.prj_mgr.get_docs()) == 1
-    assert not (ctf_app._paths["projects"] / "prj1").is_dir()
+    assert not (ctf_app.paths.project_global / "prj1").is_dir()

@@ -1,0 +1,40 @@
+{%- macro render_raw(str_value) -%}
+{{ '{{ ' ~ str_value ~ ' }}' }}
+{%- endmacro -%}
+---
+name: "{{ render_raw('project_name') }}_{{ render_raw('username') }}_{{ name }}"
+
+services:
+  # example service named 'template_service'
+  # create additional services
+  template_service:
+    build:
+      context: {{ render_raw('paths__modules') }}/template
+      dockerfile: Containerfile
+    image: fit-ctf/template:latest
+    restart: unless-stopped
+    # use shared or private mode
+    networks:
+      {{ render_raw('network_map__shared') }}:
+      # {{ render_raw('network_map__operational') }}:
+    # example port usage
+    ports:
+      - "{{ render_raw('template_service__port_map__dns') }}:53"
+    # example environment variable usage
+    environment:
+      - "EXAMPLE_VARIABLE={{ render_raw('template_service__env_map__EXAMPLE_VARIABLE') }}"
+    # example volume usage
+    volumes:
+      - "{{ render_raw('template_service__volume_map__readonly_file') }}:/var/file/readonly:ro"
+      - "{{ render_raw('template_service__volume_map__readwrite_file') }}:/var/file/readwrite"
+      - "{{ render_raw('template_service__volume_map__dir') }}:/var/dir"
+      - "{{ render_raw('paths__scenarios') }}/example_scenario/volume/static_file:/var/file/static_file:ro"
+
+# set networks as external
+networks:
+  {{ render_raw('network_map__shared') }}:
+    external: true
+  # {{ render_raw('network_map__private') }}:
+  #   external: true
+  # {{ render_raw('network_map__operational') }}:
+  #   external: true

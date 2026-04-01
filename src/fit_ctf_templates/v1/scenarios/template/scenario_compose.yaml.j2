@@ -1,0 +1,24 @@
+---
+name: "{{ project_name }}_template"
+
+services:
+  template_service:
+    build:
+      context: {{ paths__modules }}/template
+      dockerfile: Containerfile
+    image: fit-ctf/template:latest
+    networks:
+      {{ network_map__shared }}:
+    ports:
+      - "{{ template_service__port_map__mongodb }}:27017"
+    environment:
+      - "ADMIN={{ template_service__env_map__ADMIN }}"
+      - "PASSWORD={{ template_service__env_map__PASSWORD }}"
+    volumes:
+      - "{{ template_service__volume_map__example_map }}:/data:ro"
+
+networks:
+  {{ network_map__shared }}:
+    external: true
+  {{ network_map__operational }}:
+    external: true

@@ -16,10 +16,20 @@ class MockClient(c_client.ContainerClientInterface):
     ) -> list[str]:  # pragma: no cover
         return []
 
+    def create_network(
+        self, logger_name: str, name: str, to_stdout: bool = False
+    ) -> ErrorCode:  # pragma: no cover
+        return 0
+
     async def get_networks(
         self, contains: str | list[str] | None = None
     ) -> list[str]:  # pragma: no cover
         return []
+
+    def rm_network(
+        self, logger_name: str, name: str, to_stdout: bool = False
+    ) -> ErrorCode:  # pragma: no cover
+        return 0
 
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
@@ -32,30 +42,30 @@ class MockClient(c_client.ContainerClientInterface):
         return 0
 
     async def compose_up(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:  # pragma: no cover
         return 0
 
     async def compose_down(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> tuple[ErrorCode, TaskSuccess]:  # pragma: no cover
         return 0, True
 
-    async def compose_ps(self, file: str | Path) -> list[str]:  # pragma: no cover
+    async def compose_ps(self, files: list[Path]) -> list[str]:  # pragma: no cover
         return []
 
     async def compose_ps_json(
-        self, file: str | Path
+        self, files: list[Path]
     ) -> list[dict[str, Any]]:  # pragma: no cover
         return []
 
     async def compose_build(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:  # pragma: no cover
         return 0
 
     def compose_shell(
-        self, file: str | Path, service: str, command: str
+        self, files: list[Path], service: str, command: str
     ) -> subprocess.CompletedProcess:  # pragma: no cover
         return subprocess.CompletedProcess(
             args=["compose", "exec", "bash"], returncode=0
@@ -80,5 +90,15 @@ class MockClient(c_client.ContainerClientInterface):
     async def project_stats(self, project_name: str) -> list[dict]:  # pragma: no cover
         return []
 
-    async def compose_states(self, file: str | Path) -> list[HealthCheckDict]:
+    async def build_image(
+        self,
+        logger_name: str,
+        context_path: Path,
+        image_name: str,
+        containerfile: str = "Containerfile",
+        to_stdout: bool = False,
+    ) -> ErrorCode:  # pragma: no cover
+        return 0
+
+    async def compose_states(self, files: list[Path]) -> list[HealthCheckDict]:
         return []

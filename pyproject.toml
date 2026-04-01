@@ -82,10 +82,15 @@ directory = "tests/reports/htmlcov"
 [tool.coverage.run]
 omit = [
     "tests/*",
-    "/tmp/*",
     "src/fit_ctf_components/*.py",
     "src/fit_ctf_components/container_client/*",
     "**/__init__.py",
+    "src/fit_ctf_templates/v1/*",
+
+    # system dirs
+    "/opt/*",
+    "/tmp/*",
+    "/private/*",
 ]
 command_line = "-m pytest -vv"
 

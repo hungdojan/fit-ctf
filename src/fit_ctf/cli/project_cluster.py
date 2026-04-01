@@ -1,24 +1,21 @@
+"""CLI commands for project cluster management."""
+
 import asyncio
 
 import click
 
 from fit_ctf.cli.utils import (
     format_option,
-    module_name_option,
     project_option,
-    service_name_option,
     requires_database,
 )
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
-from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
-from fit_ctf_components.utils import color_state, document_editor
-from fit_ctf_models.cluster import Service
+from fit_ctf_components.utils import color_state
 from fit_ctf_models.utils.exceptions import (
+    ProjectClusterNotExistException,
     ProjectNotExistException,
-    ServiceNotExistException,
 )
 
 
@@ -27,15 +24,17 @@ from fit_ctf_models.utils.exceptions import (
 @click.pass_context
 @requires_database
 def project_cluster(ctx: click.Context, project_name: str):
-    """Manage services of an project server cluster."""
+    """Manage project-level cluster (shared infrastructure)."""
     ctx.obj = ctx.parent.obj  # pyright: ignore
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         project = ctf_app.prj_mgr.get_project(project_name)
+        cluster = ctf_app.project_cluster_mgr.get_cluster(project)
     except CTFBaseException as e:
         click.echo(e)
         ctx.exit(1)
     ctx.obj["project"] = project
+    ctx.obj["cluster"] = cluster
 
 
 @project_cluster.command(name="start")
@@ -43,8 +42,16 @@ def project_cluster(ctx: click.Context, project_name: str):
 def start_cluster(ctx: click.Context):
     """Start project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    asyncio.run(ctf_app.prj_mgr.start_project_cluster(project))
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    click.echo(f"Starting project cluster '{cluster.name}'...")
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.start_cluster(cluster))
+
+    if error_code == 0:
+        click.echo("Project cluster started successfully.")
+    else:
+        click.echo(f"Error starting cluster (exit code: {error_code})")
+        ctx.exit(error_code)
 
 
 @project_cluster.command(name="stop")
@@ -52,21 +59,60 @@ def start_cluster(ctx: click.Context):
 def stop_cluster(ctx: click.Context):
     """Stop project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    asyncio.run(ctf_app.prj_mgr.stop_project_cluster(project))
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    click.echo(f"Stopping project cluster '{cluster.name}'...")
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.stop_cluster(cluster))
+
+    if error_code == 0:
+        click.echo("Project cluster stopped successfully.")
+    else:
+        click.echo(f"Error stopping cluster (exit code: {error_code})")
+        ctx.exit(error_code)
 
 
-@project_cluster.command(name="health-check")
+@project_cluster.command(name="restart")
+@click.pass_context
+def restart_cluster(ctx: click.Context):
+    """Restart project cluster."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    click.echo(f"Restarting project cluster '{cluster.name}'...")
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.restart_cluster(cluster))
+
+    if error_code == 0:
+        click.echo("Project cluster restarted successfully.")
+    else:
+        click.echo(f"Error restarting cluster (exit code: {error_code})")
+        ctx.exit(error_code)
+
+
+@project_cluster.command(name="status")
+@click.pass_context
+def cluster_status(ctx: click.Context):
+    """Check if project cluster is running."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    is_running = asyncio.run(ctf_app.project_cluster_mgr.cluster_is_running(cluster))
+    status = "RUNNING" if is_running else "STOPPED"
+    click.echo(f"Project cluster '{cluster.name}': {status}")
+
+
+@project_cluster.command(name="health")
 @format_option
 @click.pass_context
 def health_check(ctx: click.Context, format: str):
-    """Display the health check of all the services of the project cluster.
-
-    When tabulate format is used then the states are all colored.
-    """
+    """Display health check of all services in project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    cluster_data = asyncio.run(ctf_app.prj_mgr.health_check(project))
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    cluster_data = asyncio.run(ctf_app.project_cluster_mgr.cluster_health_check(cluster))
+
+    if not cluster_data:
+        click.echo("No services running in project cluster")
+        return
 
     header = ["Name", "Image", "State"]
     values = [
@@ -80,147 +126,72 @@ def health_check(ctx: click.Context, format: str):
     get_view(format).print_data(header, values)
 
 
-@project_cluster.command(name="resources")
-@click.pass_context
-def resources(ctx: click.Context):
-    """Display the resource usage of the project cluster."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    click.echo(ctf_app.prj_mgr.get_resource_usage(project))
-
-
-@project_cluster.command(name="restart")
-@click.pass_context
-def restart_cluster(ctx: click.Context):
-    """Restart project cluster."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    asyncio.run(ctf_app.prj_mgr.restart_project_cluster(project))
-
-
-@project_cluster.command(name="is-running")
-@click.pass_context
-def project_cluster_is_running(ctx: click.Context):
-    """Check if project cluster is running."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    click.echo(asyncio.run(ctf_app.prj_mgr.project_is_running(project)))
-
-
-@project_cluster.command(name="compile")
-@click.pass_context
-def compile_compose_file(ctx: click.Context):
-    """Compiles project's `compose.yaml` file.
-
-    This step is usually done after editing its list of modules."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctf_app.prj_mgr.get_project(ctx.parent.obj["project"])  # pyright: ignore
-    ctf_app.prj_mgr.compile_compose_file(project)
-
-
 @project_cluster.command(name="build")
+@click.option("-v", "--verbose", is_flag=True, help="Show build output")
 @click.pass_context
-def build_images(ctx: click.Context):
-    """Update images from project's `compose.yaml` file.
-
-    This step is usually done after compiling the YAML file."""
+def build_images(ctx: click.Context, verbose: bool):
+    """Build/rebuild project cluster images."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    asyncio.run(ctf_app.prj_mgr.build_project_cluster_images(project))
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
+    click.echo(f"Building images for project cluster '{cluster.name}'...")
+    error_code = asyncio.run(
+        ctf_app.project_cluster_mgr.build_cluster_images(cluster)
+    )
 
-@project_cluster.group(name="services")
-@click.pass_context
-def services(ctx: click.Context):
-    """Manages services of the particular enrollment service."""
-    ctx.obj = ctx.parent.obj  # pyright: ignore
-
-
-@services.command(name="register")
-@service_name_option
-@module_name_option
-@click.option(
-    "-L",
-    "--is-not-local",
-    is_flag=True,
-    type=bool,
-    help="Set this flag if the module-name refer to a image that will be pulled from the"
-    " internet (such as docker.io or similar).",
-)
-@click.pass_context
-def register_service(
-    ctx: click.Context, service_name: str, module_name: str, is_not_local: bool
-):
-    """Register a new services to the project cluster."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    try:
-        service = ctf_app.prj_mgr.get_service(project, service_name)
-        if service:
-            click.echo(f"Service {service.service_name} already exists.")
-    except ServiceNotExistException:
-        pass
-
-    try:
-        doc = document_editor(
-            ctf_app.prj_mgr.create_template_project_service(
-                project, service_name, module_name, not is_not_local
-            ).model_dump(),
-            {"service_name"},
-            "service_editor",
-        )
-        ctf_app.prj_mgr.register_service(project, service_name, Service(**doc))
-    except ConfigurationFileNotEditedException:
-        click.echo("Aborting action.")
-
-
-@services.command(name="ls")
-@click.pass_context
-def list_services(ctx: click.Context):
-    """Display a list of services of the project cluster."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    try:
-        services = ctf_app.prj_mgr.list_services(project)
-    except ProjectNotExistException as e:
-        click.echo(e)
-        ctx.exit(1)
-
-    services_raw = {k: v.model_dump() for k, v in services.items()}
-    click.echo(YamlParser.dump_data(services_raw))
-
-
-@services.command(name="update")
-@service_name_option
-@click.pass_context
-def update_service(ctx: click.Context, service_name: str):
-    """Update a particular"""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-    try:
-        service = ctf_app.prj_mgr.get_service(project, service_name)
-    except ServiceNotExistException as e:
-        click.echo(e)
-        ctx.exit(1)
-
-    try:
-        doc = document_editor(service.model_dump(), {"service_name"}, "service_editor")
-        ctf_app.prj_mgr.update_service(project, service_name, Service(**doc))
-    except ConfigurationFileNotEditedException:
-        click.echo("Aborting action.")
-
-
-@services.command(name="rm")
-@service_name_option
-@click.pass_context
-def remove_service(ctx: click.Context, service_name: str):
-    """Remove the registered service from the project cluster."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    project = ctx.parent.obj["project"]  # pyright: ignore
-
-    service = ctf_app.prj_mgr.remove_service(project, service_name)
-    if not service:
-        click.echo("Nothing to remove.")
+    if error_code == 0:
+        click.echo("Images built successfully.")
     else:
-        click.echo(f"Removed service {service.service_name}")
-        click.echo(YamlParser.dump_data(service.model_dump()))
+        click.echo(f"Error building images (exit code: {error_code})")
+        ctx.exit(error_code)
+
+
+@project_cluster.command(name="info")
+@click.pass_context
+def cluster_info(ctx: click.Context):
+    """Show detailed project cluster information."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+    project = ctx.parent.obj["project"]  # pyright: ignore
+
+    network_map = ctf_app.project_cluster_mgr.get_network_map(cluster)
+
+    click.echo(f"Project Cluster: {cluster.name}")
+    click.echo(f"Project: {project.name}")
+    click.echo(f"Project ID: {cluster.project_id.id}")
+    click.echo(f"\nNetworks:")
+    click.echo(f"  SHARED: {network_map['shared']}")
+    click.echo(f"  OPERATIONAL: {network_map['operational']}")
+    click.echo(f"\nScenarios ({len(cluster.scenario_configs)}):")
+
+    for scenario_name, config in cluster.scenario_configs.items():
+        click.echo(f"  - {scenario_name}")
+        click.echo(f"    Services: {len(config.service_configs)}")
+        if config.dynamic_secrets:
+            click.echo(
+                f"    Dynamic Secrets: {', '.join(config.dynamic_secrets.keys())}"
+            )
+
+
+@project_cluster.command(name="list-scenarios")
+@format_option
+@click.pass_context
+def list_scenarios(ctx: click.Context, format: str):
+    """List all scenarios in project cluster."""
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    if not cluster.scenario_configs:
+        click.echo("No scenarios in project cluster")
+        return
+
+    headers = ["Scenario", "Services", "Dynamic Secrets"]
+    values = [
+        [
+            name,
+            len(config.service_configs),
+            len(config.dynamic_secrets),
+        ]
+        for name, config in cluster.scenario_configs.items()
+    ]
+
+    get_view(format).print_data(headers, values)

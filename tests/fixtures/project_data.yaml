@@ -1,5 +1,7 @@
 projects:
   - name: prj1
     max_nof_users: 3
+    cluster.scenario_configs: {}
   - name: prj2
     max_nof_users: 3
+    cluster.scenario_configs: {}

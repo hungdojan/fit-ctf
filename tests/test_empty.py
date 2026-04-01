@@ -6,7 +6,7 @@ def test_empty(empty_data: FixtureData):
     assert ctf_app
     assert len(ctf_app.prj_mgr.get_docs()) == 0
     assert len(ctf_app.user_mgr.get_docs()) == 0
-    assert len(ctf_app.ue_mgr.get_docs()) == 0
+    assert len(ctf_app.enroll_mgr.get_docs()) == 0
 
 
 def test_file_structure(empty_data: FixtureData):

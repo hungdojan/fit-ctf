@@ -1,0 +1,27 @@
+---
+name: "{{ project_name }}_admin_node"
+
+services:
+  # example service named 'template_service'
+  # create additional services
+  admin_node:
+    build:
+      context: {{ paths__modules }}/template
+      dockerfile: Containerfile
+    image: fit-ctf/template:latest
+    restart: unless-stopped
+    # use shared or private mode
+    networks:
+      {{ network_map__operational }}:
+    # example port usage
+    ports:
+    environment:
+    volumes:
+
+# set networks as external
+networks:
+  {{ network_map__shared }}:
+    external: true
+  {{ network_map__operational }}:
+    external: true
+

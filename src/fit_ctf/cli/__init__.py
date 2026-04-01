@@ -24,6 +24,8 @@ class LazyGroup(click.Group):
             "system": ("fit_ctf.cli.system", "system"),
             "data-mgmt": ("fit_ctf.cli.data_mgmt", "data_mgmt"),
             "user-progress": ("fit_ctf.cli.user_progress", "user_progress"),
+            "scenario": ("fit_ctf.cli.scenario", "scenario"),
+            "cluster": ("fit_ctf.cli.user_cluster", "user_cluster"),
         }
 
     def list_commands(self, ctx: click.Context):
@@ -78,7 +80,7 @@ def cli(
     paths = PathDict(
         **{
             key: value
-            for key, value in zip(["projects", "users", "modules"], get_paths())
+            for key, value in zip(["projects", "users", "modules", "scenarios"], get_paths())
         }
     )
     if project_dir:  # pragma: no cover

@@ -8,9 +8,7 @@ if TYPE_CHECKING:
 class MongoQueries:
 
     @staticmethod
-    def user_enrollment_port_collision(
-        forwarded_port: int, container_port: int
-    ) -> list:
+    def enrollment_port_collision(forwarded_port: int, container_port: int) -> list:
         return [
             {
                 "$match": {
@@ -28,7 +26,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_enrolled_users_raw(
+    def enrollment_get_enrolled_users_raw(
         project: "prj.Project", include_inactive: bool = False
     ) -> list:
         """Query for fetching raw data of active user enrolled to a project.
@@ -46,7 +44,7 @@ class MongoQueries:
             _filter["active"] = True
         return [
             {
-                # search only user_enrollment for the given user
+                # search only enrollment for the given user
                 "$match": _filter
             },
             {
@@ -77,7 +75,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_enrolled_users(
+    def enrollment_get_enrolled_users(
         project: "prj.Project", include_inactive: bool = False
     ) -> list:
         """Query for fetching users enrolled to the chosen project.
@@ -96,7 +94,7 @@ class MongoQueries:
             _filter["active"] = True
         return [
             {
-                # search only user_enrollment for the given user
+                # search only enrollment for the given user
                 "$match": _filter
             },
             {
@@ -122,7 +120,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_enrolled_projects(
+    def enrollment_get_enrolled_projects(
         user: "user.User", include_inactive: bool = False
     ) -> list:
         _filter: dict = {
@@ -132,7 +130,7 @@ class MongoQueries:
             _filter["active"] = True
         return [
             {
-                # search only user_enrollment for the given user
+                # search only enrollment for the given user
                 "$match": _filter
             },
             {
@@ -155,7 +153,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_enrolled_projects_raw(
+    def enrollment_get_enrolled_projects_raw(
         user: "user.User", include_inactive: bool = False
     ) -> list:
         # query to retrieve number or enrolled users
@@ -163,10 +161,10 @@ class MongoQueries:
             {"$match": {"active": True}},
             {
                 "$lookup": {
-                    "from": "user_enrollment",
+                    "from": "enrollment",
                     "localField": "_id",
                     "foreignField": "project_id.$id",
-                    "as": "user_enrollments",
+                    "as": "enrollments",
                 }
             },
             {
@@ -175,7 +173,7 @@ class MongoQueries:
                     "name": 1,
                     "active": 1,
                     "max_nof_users": 1,
-                    "active_users": {"$size": "$user_enrollments"},
+                    "active_users": {"$size": "$enrollments"},
                 }
             },
         ]
@@ -186,7 +184,7 @@ class MongoQueries:
             _filter["active"] = True
         return [
             {
-                # search only user_enrollment for the given user
+                # search only enrollment for the given user
                 "$match": _filter
             },
             {
@@ -220,10 +218,10 @@ class MongoQueries:
             {
                 # get all the projects that they are enrolled to
                 "$lookup": {
-                    "from": "user_enrollment",
+                    "from": "enrollment",
                     "localField": "_id",
                     "foreignField": "user_id.$id",
-                    "as": "user_enrollments",
+                    "as": "enrollments",
                     "pipeline": [
                         # get only enrolled projects and their names
                         # {"$match": {"active": True}},
@@ -235,7 +233,7 @@ class MongoQueries:
                 # look up the project information
                 "$lookup": {
                     "from": "project",
-                    "localField": "user_enrollments.project_id.$id",
+                    "localField": "enrollments.project_id.$id",
                     "foreignField": "_id",
                     "as": "projects",
                     "pipeline": [
@@ -268,7 +266,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_multiple_user_pipeline(
+    def enrollment_multiple_user_pipeline(
         project: "prj.Project", lof_usernames: list[str]
     ) -> list:
         """A multiple user pipeline query template.
@@ -313,7 +311,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_all_users_pipeline(project: "prj.Project") -> list:
+    def enrollment_all_users_pipeline(project: "prj.Project") -> list:
         """An all users pipeline query template.
 
         :param project: Project object.
@@ -348,7 +346,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_all_enrolled_projects(user: "user.User") -> list:
+    def enrollment_get_all_enrolled_projects(user: "user.User") -> list:
         return [
             {"$match": {"user_id.$id": user.id}},
             {
@@ -371,7 +369,7 @@ class MongoQueries:
             {"$match": _filter},
             {
                 "$lookup": {
-                    "from": "user_enrollment",
+                    "from": "enrollment",
                     "localField": "_id",
                     "foreignField": "project_id.$id",
                     "as": "user_enrolls",
@@ -404,7 +402,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_aggregate_pairs_user_project(
+    def enrollment_aggregate_pairs_user_project(
         user_project_pairs: list[tuple["user.User", "prj.Project"]],
     ) -> list:
         return [
@@ -437,28 +435,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def count_module_name_occurences() -> list[dict]:
-        # XXX: does not do matching
-        return [
-            {"$unwind": "$services"},
-            {
-                "$project": {
-                    "_id": 0,
-                    "services": {
-                        "$map": {
-                            "input": {"$objectToArray": "$services"},
-                            "as": "item",
-                            "in": "$$item.v",
-                        }
-                    },
-                }
-            },
-            {"$unwind": "$services"},
-            {"$group": {"_id": "$services.module_name", "count": {"$sum": 1}}},
-        ]
-
-    @staticmethod
-    def export_user_enrollments(
+    def export_enrollments(
         project: "prj.Project | None" = None, include_inactive: bool = False
     ) -> list[dict]:
         _filter = {}
@@ -491,7 +468,7 @@ class MongoQueries:
             {"$unwind": "$user"},
             {
                 "$project": {
-                    "_id": 0,
+                    "_id": 1,
                     "user": "$user.username",
                     "project": "$project.name",
                     "container_port": 1,
@@ -504,7 +481,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_get_forwarded_ports(
+    def enrollment_get_forwarded_ports(
         project: "prj.Project | None",
     ) -> list[dict]:
         _filter = {} if not project else {"project_id.$id": project.id}
@@ -522,7 +499,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def user_enrollment_fetch_leaderboard(project: "prj.Project") -> list[dict]:
+    def enrollment_fetch_leaderboard(project: "prj.Project") -> list[dict]:
         pipeline = [
             {"$match": {"project_id.$id": project.id}},
             {
@@ -579,5 +556,27 @@ class MongoQueries:
             },
             # pop username from the nested object
             {"$set": {"user": "$user.username"}},
+        ]
+        return pipeline
+
+    @staticmethod
+    def scenario_usage_overview():
+        pipeline = [
+            {
+                "$unwind": {
+                    "path": "$scenario_names",
+                    "preserveNullAndEmptyArrays": True,
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$scenario_names",
+                    "clusters": {
+                        "$push": {
+                            "cluster_name": "$cluster_name",
+                        }
+                    },
+                }
+            },
         ]
         return pipeline

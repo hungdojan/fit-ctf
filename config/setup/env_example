@@ -30,3 +30,7 @@ LOG_DEST="/tmp"
 # a path to a directory where all modules are stored
 # if not set, the default path is set to `$HOME/.local/share/FIT_CTF/modules`
 #MODULE_SHARE_DIR="$HOME/.local/share/FIT_CTF/modules"
+
+# a path to a directory where all modules are stored
+# if not set, the default path is set to `$HOME/.local/share/FIT_CTF/scenarios`
+#SCENARIO_SHARE_DIR="$HOME/.local/share/FIT_CTF/scenarios"

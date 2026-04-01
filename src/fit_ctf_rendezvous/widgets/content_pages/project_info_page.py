@@ -85,15 +85,15 @@ class ProjectInfoPage(Container, CoreWidget):
     def _get_port(self) -> int:
         if not self.active_user or not self.core_mgr.selected_project:
             raise InconsistentState("Missing active user or project is not selected.")
-        user_enrollment = self.core_mgr.ctf_base.ue_mgr.get_user_enrollment(
+        enrollment = self.core_mgr.ctf_base.enroll_mgr.get_enrollment(
             self.active_user, self.core_mgr.selected_project
         )
-        if not user_enrollment:
+        if not enrollment:
             raise InconsistentState(
                 f"User {self.active_user.username} is not enrolled "
                 f"in {self.core_mgr.selected_project.name}."
             )
-        return user_enrollment.forwarded_port
+        return enrollment.forwarded_port
 
     @on(Button.Pressed, "#projectinfo-toggle-instance-btn")
     async def toggle_instance(self):

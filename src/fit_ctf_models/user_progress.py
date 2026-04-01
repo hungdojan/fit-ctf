@@ -16,7 +16,7 @@ from fit_ctf_models.utils.sessions import ProgressSession
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
-    import fit_ctf_models.user_enrollment as _ue
+    import fit_ctf_models.enrollment as enroll
 
 
 class UserProgress(BaseModel):
@@ -34,7 +34,7 @@ class UserProgress(BaseModel):
         :rtype: Secret | None
         """
         for secret in self.secrets.values():
-            if secret.flag == value:
+            if secret.value == value:
                 return secret
         return None
 
@@ -54,7 +54,7 @@ class UserProgress(BaseModel):
             {
                 "name": name,
                 "submitted": secret.submitted,
-                "flag": secret.flag if show_flag else None,
+                "flag": secret.value if show_flag else None,
             }
             for name, secret in self.secrets.items()
         ]
@@ -77,11 +77,11 @@ class UserProgressManager(BaseComponent):
     def __init__(self, ctf_base: "ctf_base.CTFBase"):
         super().__init__(ctf_base)
 
-    def add_secret(self, ue: "_ue.UserEnrollment", name: str, value: str) -> Secret:
+    def add_secret(self, enrollment: "enroll.Enrollment", name: str, value: str) -> Secret:
         """Adds a secret to the list of secrets.
 
-        :param ue: Base User enrollment document.
-        :type ue: _ue.UserEnrollment
+        :param enrollment: Base User enrollment document.
+        :type enrollment: enroll.Enrollment
         :param name: The identification name of the secret.
         :type name: str
         :param value: The value of the secret.
@@ -93,7 +93,7 @@ class UserProgressManager(BaseComponent):
         :return: Created secret.
         :rtype: Secret
         """
-        progress = ue.progress
+        progress = enrollment.progress
         if progress.secrets.get(name):
             raise SecretNameAlreadyExistsException(
                 f"Secret with name `{name}` already exists."
@@ -103,26 +103,26 @@ class UserProgressManager(BaseComponent):
 
         secret = Secret(
             **{
-                "flag": value,
+                "value": value,
                 "submitted": None,
                 "user_id": None,
             }
         )
         progress.secrets[name] = secret
-        self.ctf_base.ue_mgr.update_doc(ue)
+        self.ctf_base.enroll_mgr.update_doc(enrollment)
         return secret
 
     def update_secret_value(
         self,
-        ue: "_ue.UserEnrollment",
+        enrollment: "enroll.Enrollment",
         name: str,
         value: str,
         override_submit: bool = False,
     ) -> None:
         """Update a secret value.
 
-        :param ue: Base User enrollment document.
-        :type ue: _ue.UserEnrollment
+        :param enrollment: Base User enrollment document.
+        :type enrollment: enroll.Enrollment
         :param name: The identification name of the secret.
         :type name: str
         :param value: The value of the secret.
@@ -134,13 +134,13 @@ class UserProgressManager(BaseComponent):
         :raises SecretValueCollision:
             The secret with the given value already exists in the progress doc.
         """
-        progress = ue.progress
+        progress = enrollment.progress
         if not progress.secrets.get(name):
             raise SecretNotFoundException(f"Secret `{name}` not found.")
         if progress.get_secret_by_value(value):
             raise SecretValueCollision("Secret with given value already exists.")
 
-        progress.secrets[name].flag = value
+        progress.secrets[name].value = value
 
         # nullify a secret stats if "updated" secret is changed
         if override_submit and progress.secrets[name].submitted:
@@ -148,21 +148,21 @@ class UserProgressManager(BaseComponent):
             progress.found_secrets -= 1
             progress.last_submit_time = progress.get_last_submit()
 
-        self.ctf_base.ue_mgr.update_doc(ue)
+        self.ctf_base.enroll_mgr.update_doc(enrollment)
 
-    def submit_secret(self, ue: "_ue.UserEnrollment", value: str):
+    def submit_secret(self, enrollment: "enroll.Enrollment", value: str):
         """Tries to submit a secret.
 
         Raises exceptions if the secret is not found or was already submitted.
         If the function passes, the document is saved.
-        :param ue: Base User enrollment document.
-        :type ue: _ue.UserEnrollment
+        :param enrollment: Base User enrollment document.
+        :type enrollment: enroll.Enrollment
         :param value: The value of the secret.
         :type value: str
         :raises SecretNotFoundException: When the secret was not found in the list.
         :raises SecretAlreadySubmittedException: When the secret was already submitted in the past.
         """
-        progress = ue.progress
+        progress = enrollment.progress
         secret = progress.get_secret_by_value(value)
         if not secret:
             raise SecretNotFoundException("Submitted secret not found.")
@@ -170,18 +170,18 @@ class UserProgressManager(BaseComponent):
             raise SecretAlreadySubmittedException("This secret was already submitted")
 
         secret.submitted = datetime.now().astimezone()
-        secret.user_id = ue.user_id.id
+        secret.user_id = enrollment.user_id.id
         progress.found_secrets += 1
         progress.last_submit_time = secret.submitted
-        self.ctf_base.ue_mgr.update_doc(ue)
+        self.ctf_base.enroll_mgr.update_doc(enrollment)
 
     def delete_secret(
-        self, ue: "_ue.UserEnrollment", name: str, ignore_missing: bool = True
+        self, enrollment: "enroll.Enrollment", name: str, ignore_missing: bool = True
     ) -> None:
         """Remove the secret from the list.
 
-        :param ue: Base User enrollment document.
-        :type ue: _ue.UserEnrollment
+        :param enrollment: Base User enrollment document.
+        :type enrollment: enroll.Enrollment
         :param name: The identification name of the secret.
         :type name: str
         :param ignore_missing: Does not raise Exception if secret is not found.
@@ -190,7 +190,7 @@ class UserProgressManager(BaseComponent):
         :raises SecretNotFoundException: If ignore_missing is `False` and
             secret name is not in the collection.
         """
-        progress = ue.progress
+        progress = enrollment.progress
         if not progress.get_secret_by_name(name):
             if not ignore_missing:
                 raise SecretNotFoundException(f"Secret `{name}` not found.")
@@ -200,16 +200,16 @@ class UserProgressManager(BaseComponent):
         if secret.submitted is not None:
             progress.found_secrets -= 1
             progress.last_submit_time = progress.get_last_submit()
-        self.ctf_base.ue_mgr.update_doc(ue)
+        self.ctf_base.enroll_mgr.update_doc(enrollment)
 
     def record_session(
         self,
-        ue: "_ue.UserEnrollment",
+        enrollment: "enroll.Enrollment",
         state: ProgressSession.State,
         info: dict[str, Any] = {},
     ):
         timestamp = datetime.now().astimezone()
-        ue.progress.sessions.append(
+        enrollment.progress.sessions.append(
             ProgressSession(timestamp=timestamp, state=state, info=info)
         )
-        self.ctf_base.ue_mgr.update_doc(ue)
+        self.ctf_base.enroll_mgr.update_doc(enrollment)

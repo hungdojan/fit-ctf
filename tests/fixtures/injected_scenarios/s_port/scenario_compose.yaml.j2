@@ -1,0 +1,9 @@
+---
+services:
+  web:
+    ports:
+      - "{{ web__port_map__http }}:80"
+    environment:
+      - "K={{ web__env_map__K }}"
+    volumes:
+      - "{{ web__volume_map__data }}:/data"

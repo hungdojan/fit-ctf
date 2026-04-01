@@ -1,19 +1,18 @@
 import os
 import re
 import shutil
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pymongo.database import Database
 
+from fit_ctf.exceptions import CTFBaseException
+import fit_ctf_models.clusters.project_cluster as prj_cluster
 from fit_ctf_components.constants import DEFAULT_STARTING_PORT
 from fit_ctf_components.types import (
-    HealthCheckDict,
-    ModuleCountDict,
     ProjectPortListingDict,
     RawProjectDict,
 )
-from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
+from fit_ctf_models.base import Base, BaseManagerInterface
 from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
@@ -21,17 +20,14 @@ from fit_ctf_models.utils.exceptions import (
     SSHPortOutOfRangeException,
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
-from fit_ctf_templates import (
-    JINJA_TEMPLATE_DIRPATHS,
-    get_template,
-)
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
-    import fit_ctf_models.user_enrollment as _ue
+    import fit_ctf_models.clusters.project_cluster as prj_cluster
+    import fit_ctf_models.enrollment as enroll
 
 
-class Project(ClusterConfig):
+class Project(Base):
     """A class that represents a project.
 
     :param name: Project's name.
@@ -62,7 +58,7 @@ class Project(ClusterConfig):
         return self.starting_port_bind + self.max_nof_users - 1
 
 
-class ProjectManager(ClusterConfigManager[Project]):
+class ProjectManager(BaseManagerInterface[Project]):
     """A manager class that handles operations with `Project` objects."""
 
     def __init__(
@@ -80,13 +76,22 @@ class ProjectManager(ClusterConfigManager[Project]):
         super().__init__(ctf_base, db, db["project"], Project)
 
     @property
-    def ue_mgr(self) -> "_ue.UserEnrollmentManager":
-        """Returns a user enrollment manager.
+    def enroll_mgr(self) -> "enroll.EnrollmentManager":
+        """Returns an enrollment manager.
 
-        :return: A user enrollment manager initialized in ProjectManager.
-        :rtype: _user_enroll.UserEnrollmentManager
+        :return: An enrollment manager initialized in ProjectManager.
+        :rtype: _enroll.EnrollmentManager
         """
-        return self.ctf_base.ue_mgr
+        return self.ctf_base.enroll_mgr
+
+    @property
+    def project_cluster_mgr(self) -> "prj_cluster.ProjectClusterManager":
+        """Returns project cluster manager.
+
+        :return: Project cluster manager from CTF base.
+        :rtype: ProjectClusterManager
+        """
+        return self.ctf_base.project_cluster_mgr
 
     def get_project(
         self, project_or_name: str | Project, active: bool | None = True
@@ -116,20 +121,20 @@ class ProjectManager(ClusterConfigManager[Project]):
             raise ProjectNotExistException(f"Project `{name}` does not exist.")
         return prj
 
-    def get_compose_file(self, project: Project) -> Path:
-        """Return a path to the project's compose file.
-
-        If the file does not exist it will be compiled.
-
-        :param project: The project in question.
-        :type project: Project
-        :return: A path to the compose file.
-        :rtype: Path
-        """
-        compose_file = self.paths.project_compose(project)
-        if not compose_file.exists():
-            self.compile_compose_file(project)
-        return compose_file
+    # def get_compose_files(self, project: Project) -> Path:
+    #     """Return a path to the project's compose file.
+    #
+    #     If the file does not exist it will be compiled.
+    #
+    #     :param project: The project in question.
+    #     :type project: Project
+    #     :return: A path to the compose file.
+    #     :rtype: Path
+    #     """
+    #     compose_file = self.paths.project_compose(project)
+    #     if not compose_file.exists():
+    #         self.compile_compose_file(project)
+    #     return compose_file
 
     def _get_available_starting_port(self) -> int:
         """A function that calculates an available starting SSH port.
@@ -170,61 +175,6 @@ class ProjectManager(ClusterConfigManager[Project]):
         :rtype: bool
         """
         return re.search(r"^[a-z0-9_]*$", project_name) is not None
-
-    def create_admin_service(self, project_name: str) -> Service:
-        """Generate a template admin service.
-
-        :param project_name: A project name that service will be added to.
-        :type project_name: str
-        :return: A created service object.
-        :rtype: Service
-        """
-        return Service(
-            service_name="admin",
-            module_name="base",
-            is_local=True,
-            networks={f"{project_name}_admin_net": {}},
-        )
-
-    def create_template_project_service(
-        self,
-        project: Project,
-        service_name: str,
-        module_name: str,
-        is_local: bool,
-    ) -> Service:
-        """Generate a general project template service.
-
-        :param project: A project object that service will be added to.
-        :type project: Project
-        :return: A created service object.
-        :rtype: Service
-        """
-        return Service(
-            service_name=service_name,
-            module_name=module_name,
-            is_local=is_local,
-            networks={f"{project.name}_main_net": {}, f"{project.name}_admin_net": {}},
-        )
-
-    def get_modules_count(
-        self, project_or_name: str | Project | None
-    ) -> list[ModuleCountDict]:
-        """Get usage count for each module used in project(s).
-
-        :param project_or_name: Project name or the instance.
-            If not defined, it will calculate the count from all the projects.
-        :type project_or_name: str | Project | None
-        :return: A list of module count object.
-        :rtype: list[ModuleCountDict]
-        """
-        _filter: dict = {"active": True}
-        if project_or_name:
-            project = self.get_project(project_or_name)
-            _filter["_id"] = project.id
-
-        pipeline = [{"$match": _filter}, *MongoQueries.count_module_name_occurences()]
-        return [i for i in self.collection.aggregate(pipeline)]
 
     def init_project(
         self,
@@ -283,8 +233,14 @@ class ProjectManager(ClusterConfigManager[Project]):
             max_nof_users=max_nof_users,
             starting_port_bind=starting_port_bind,
             description=description,
-            services={"admin": self.create_admin_service(name)},
         )
+
+        self.project_cluster_mgr.create_cluster(
+            prj_cluster.ProjectCluster.Builder(prj.name, prj).build()
+        )
+        n_map = self.project_cluster_mgr.get_network_map(prj)
+        for n_name in n_map.values():
+            self.c_client.create_network(prj.name, str(n_name))
 
         return prj
 
@@ -303,7 +259,7 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         prj = self.get_project(project_or_name)
 
-        lof_user_enrolls = self.ue_mgr.get_docs_raw(
+        lof_user_enrolls = self.enroll_mgr.get_docs_raw(
             filter={"project_id.$id": prj.id, "active": True},
             projection={"_id": 0, "container_port": 1, "forwarded_port": 1},
         )
@@ -324,132 +280,6 @@ class ProjectManager(ClusterConfigManager[Project]):
             f.write("firewall-cmd --zone=public --add-masquerade\n")
         os.chmod(filename, 0o755)
 
-    async def start_project_cluster(self, project_or_name: str | Project) -> int:
-        """Boot the project server cluster.
-
-        :param project_or_name: Project name or the instance.
-        :type name: str | Project
-        :return: An exit code.
-        :rtype: int
-        """
-        project = self.get_project(project_or_name)
-        return await self.c_client.compose_up(
-            project.name, self.get_compose_file(project)
-        )
-
-    async def restart_project_cluster(self, project_or_name: str | Project):
-        """Restart project server cluster.
-
-        :param project_or_name: Project name or the instance.
-        :type name: str | Project
-        :return: A completed process object.
-        :rtype: subprocess.CompletedProcess
-        """
-        project = self.get_project(project_or_name)
-        await self.stop_project_cluster(project)
-        await self.start_project_cluster(project)
-
-    async def stop_project_cluster(self, project_or_name: str | Project) -> int:
-        """Stop the project server cluster.
-
-        :param project_or_name: Project name or the instance.
-        :type name: str | Project
-        :return: An exit code.
-        :rtype: int
-        """
-        project = self.get_project(project_or_name)
-        err_code, _ = await self.c_client.compose_down(
-            project.name, self.get_compose_file(project)
-        )
-        return err_code
-
-    async def project_is_running(self, project_or_name: str | Project) -> bool:
-        """Check if the project server is running.
-
-        :param project_or_name: Project name or the instance.
-        :type name: str | Project
-        :return: Returns `True` if the server is running; `False` otherwise.
-        :rtype: bool
-        """
-        project = self.get_project(project_or_name)
-        return len(await self.c_client.compose_ps(self.get_compose_file(project))) > 0
-
-    async def build_project_cluster_images(self, project_or_name: str | Project) -> int:
-        """Rebuild project images.
-
-        :param project_or_name: Project name or the instance.
-        :type name: str | Project
-        :return: An exit code.
-        :rtype: int
-        """
-        project = self.get_project(project_or_name)
-        return await self.c_client.compose_build(
-            project.name, self.get_compose_file(project)
-        )
-
-    def compile_compose_file(self, project: Project):
-        """Compiles the compose file.
-
-        :param project: A project object.
-        :type project: Project.
-        """
-        compose_filepath = self.paths.project_compose(project)
-        with open(str(compose_filepath.resolve()), "w") as f:
-            template = get_template(
-                "server_compose.yaml.j2", str(JINJA_TEMPLATE_DIRPATHS["v1"].resolve())
-            )
-            f.write(
-                template.render(
-                    project=project.model_dump(),
-                    module_dir=self.paths.module_global,
-                    container_name_prefix=project.name,
-                )
-            )
-
-    def shell_admin(self, project: Project):  # pragma: no cover
-        """Shell user into the admin container.
-
-        :param project: A project object.
-        :type project: Project
-        """
-        self.c_client.compose_shell(self.get_compose_file(project), "admin", "bash")
-
-    async def get_resource_usage(
-        self, project_or_name: str | Project
-    ) -> list[dict[str, str]]:
-        """Get project resource usage using `podman-compose` command.
-
-        :param project_or_name: Project name or the instance.
-        :type project_or_name: str | Project
-        :raises ProjectNotExistException: Project data were not found in the database.
-        :return: List of each pod statistics.
-        :rtype: list[dict[str, str]]
-        """
-        prj = self.get_project(project_or_name)
-        return await self.c_client.stats(prj.name)
-
-    async def get_ps_data(self, project_or_name: str | Project) -> list[str]:
-        """Get running containers of a project using `podman` command.
-
-        :param project_or_name: Project name or the instance.
-        :type project_or_name: str | Project
-        :raises ProjectNotExistException: Project data were not found in the database.
-        :return: List of stdout.
-        :rtype: list[str]
-        """
-        prj = self.get_project(project_or_name)
-        return await self.c_client.ps(prj.name)
-
-    async def get_all_services_info(self, project_or_name: str | Project) -> list[dict]:
-        project = self.get_project(project_or_name)
-        return await self.c_client.project_stats(project.name)
-
-    async def health_check(
-        self, project_or_name: str | Project
-    ) -> list[HealthCheckDict]:
-        prj = self.get_project(project_or_name)
-        return await self.c_client.compose_states(self.get_compose_file(prj))
-
     async def disable_project(self, project_or_name: str | Project):
         """Set a project object to inactive.
 
@@ -460,20 +290,23 @@ class ProjectManager(ClusterConfigManager[Project]):
         """
         prj = self.get_project(project_or_name)
 
-        # cancel all services
-        await self.stop_project_cluster(prj)
-        await self.ue_mgr.stop_all_user_clusters(prj)
+        # Stop project cluster if exists
+        try:
+            cluster = self.project_cluster_mgr.get_cluster(prj)
+            await self.project_cluster_mgr.stop_cluster(cluster)
+            # Stop all user clusters
+            await self.ctf_base.user_cluster_mgr.stop_all_user_clusters(prj)
 
-        await self.c_client.rm_networks(prj.name, f"{prj.name}_main_net")
-        await self.c_client.rm_networks(prj.name, f"{prj.name}_admin_net")
-        await self.ue_mgr.disable_multiple_enrollments(
-            [(user, prj) for user in self.ue_mgr.get_user_enrollments_for_project(prj)]
+        except CTFBaseException: # pragma: no cover
+            pass  # No cluster exists
+        await self.enroll_mgr.disable_multiple_enrollments(
+            [(user, prj) for user in self.enroll_mgr.get_enrollments_for_project(prj)]
         )
 
         prj.active = False
         self.update_doc(prj)
 
-    def flush_project(self, project_or_name: str | Project):
+    async def flush_project(self, project_or_name: str | Project):
         """Removes the object document and all the associated files from the host machine.
 
         The project object must be inactive.
@@ -482,24 +315,27 @@ class ProjectManager(ClusterConfigManager[Project]):
         :type project_or_name: str | Project
         :raises ProjectExistsException: When the project is still active.
         """
-        try:
-            prj = self.get_project(project_or_name, None)
-            if prj.active:
-                raise ProjectExistsException("Cannot flush files of an active project.")
-        except ProjectNotExistException as e:
-            raise ProjectNotExistException(e)
+        prj = self.get_project(project_or_name, None)
+        if prj.active:
+            raise ProjectExistsException("Cannot flush files of an active project.")
 
         path = self.paths.project_path(prj)
         if path.exists():
             shutil.rmtree(path)
 
-        self.ue_mgr.flush_multiple_enrollments(
+        await self.enroll_mgr.flush_multiple_enrollments(
             [
                 (user, prj)
-                for user in self.ue_mgr.get_user_enrollments_for_project(prj, True)
+                for user in self.enroll_mgr.get_enrollments_for_project(prj, True)
             ]
         )
+        await self.project_cluster_mgr.delete_cluster(
+            self.project_cluster_mgr.get_cluster(prj)
+        )
         self.remove_doc_by_id(prj.id)
+        n_map = self.project_cluster_mgr.get_network_map(prj)
+        for n_name in n_map.values():
+            self.c_client.rm_network(prj.name, str(n_name))
 
     async def delete_project(self, project_or_name: str | Project):
         """Delete a project.
@@ -515,7 +351,7 @@ class ProjectManager(ClusterConfigManager[Project]):
             return
 
         await self.disable_project(prj)
-        self.flush_project(prj)
+        await self.flush_project(prj)
 
     def get_projects_raw(self, include_inactive: bool = False) -> list[RawProjectDict]:
         """Get list of all projects.

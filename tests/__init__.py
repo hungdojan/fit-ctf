@@ -1,4 +1,3 @@
-import os
 import pathlib
 from typing import TypeAlias
 
@@ -11,7 +10,7 @@ CLIData: TypeAlias = tuple["ctf_app.CTFApp", pathlib.Path, CliRunner]
 
 
 def fixture_path() -> pathlib.Path:
-    return pathlib.Path(os.path.dirname(os.path.realpath(__file__))) / "fixtures"
+    return pathlib.Path(__file__).parent / "fixtures"
 
 
 __all__ = ["FixtureData", "fixture_path"]

@@ -30,13 +30,21 @@ $defs:
         type: string
       max_nof_users:
         type: integer
-      starting_port_big:
+      starting_port_bind:
         type: integer
         default: -1
       description:
         type: string
         default: ""
-    required: ["name", "max_nof_users"]
+      "cluster.scenario_configs":
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "#/$defs/scenario_configs"
+    required:
+      - name
+      - max_nof_users
+      - "cluster.scenario_configs"
 
   user_item:
     type: object
@@ -73,10 +81,16 @@ $defs:
         type: string
       progress:
         $ref: "#/$defs/user_progress"
+      "cluster.scenario_configs":
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "#/$defs/scenario_configs"
     required:
       - project
       - user
       - progress
+      - "cluster.scenario_configs"
 
   user_progress:
     type: object
@@ -106,3 +120,52 @@ $defs:
         format: date-time
       user:
         type: ["string", "null"]
+
+  scenario_configs:
+    type: object
+    properties:
+      dynamic_secrets:
+        type: object
+        patternProperties:
+          ".*":
+            type: string
+      service_configs:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "#/$defs/service_config"
+    required:
+      - service_configs
+
+  service_config:
+    type: object
+    properties:
+      env_map:
+        type: object
+        patternProperties:
+          ".*":
+            type: string
+      port_map:
+        type: object
+        patternProperties:
+          ".*":
+            type: integer
+      volume_map:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "#/$defs/volume_map"
+
+  volume_map:
+    type: object
+    properties:
+      src_path:
+        type: string
+      template_params:
+        type: object
+        patternProperties:
+          "^(?!.*__)(?!.*_vmap_).+$":
+            type: string
+    required:
+      - src_path
+      - template_params

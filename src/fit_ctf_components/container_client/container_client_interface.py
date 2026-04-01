@@ -1,14 +1,14 @@
-from asyncio.subprocess import Process
 import pathlib
 import subprocess
 from abc import ABC, abstractmethod
+from asyncio.subprocess import Process
 from pathlib import Path
 from typing import Any
 
 import fit_ctf.ctf_base as ctf_base
 import fit_ctf_components.base as base_component
 import fit_ctf_components.utils
-from fit_ctf_components.types import HealthCheckDict, ErrorCode, TaskSuccess
+from fit_ctf_components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class ContainerClientInterface(ABC, base_component.BaseComponent):
@@ -65,6 +65,12 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
         raise NotImplementedError()
 
     @abstractmethod
+    def create_network(
+        self, logger_name: str, name: str, to_stdout: bool = False
+    ) -> ErrorCode:
+        raise NotImplementedError()
+
+    @abstractmethod
     async def get_networks(
         self, contains: str | list[str] | None = None
     ) -> list[str]:  # pragma: no cover
@@ -75,6 +81,12 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
         :return: A list of found network names.
         :rtype: list[str]
         """
+        raise NotImplementedError()
+
+    @abstractmethod
+    def rm_network(
+        self, logger_name: str, name: str, to_stdout: bool = False
+    ) -> ErrorCode:
         raise NotImplementedError()
 
     @abstractmethod
@@ -113,7 +125,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     async def compose_up(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:  # pragma: no cover
         """Run compose up for the given file.
 
@@ -130,7 +142,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     async def compose_down(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> tuple[ErrorCode, TaskSuccess]:  # pragma: no cover
         """Run compose down for the given file.
 
@@ -146,11 +158,11 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compose_ps(self, file: str | Path) -> list[str]:  # pragma: no cover
+    async def compose_ps(self, files: list[Path]) -> list[str]:  # pragma: no cover
         """Get container states using compose command.
 
-        :param file: Path to the compose file.
-        :type file: str | Path
+        :param files: List of compose file paths
+        :type files: list[Path]
         :return: A status info for each found container.
         :rtype: list[str]
         """
@@ -158,12 +170,12 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     async def compose_ps_json(
-        self, file: str | Path
+        self, files: list[Path]
     ) -> list[dict[str, Any]]:  # pragma: no cover
         """Get container states in JSON format using compose command.
 
-        :param file: Path to the compose file.
-        :type file: str | Path
+        :param files: List of compose file paths
+        :type files: list[Path]
         :return: A status info for each found container.
         :rtype: list[dict[str, Any]]
         """
@@ -171,7 +183,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     async def compose_build(
-        self, logger_name: str, file: str | Path, to_stdout: bool = False
+        self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:  # pragma: no cover
         """Build container images using `podman-compose` command.
 
@@ -188,17 +200,17 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     def compose_shell(
-        self, file: str | Path, service: str, command: str
+        self, files: list[Path], service: str, command: str
     ) -> subprocess.CompletedProcess:  # pragma: no cover
         """Shell into the container using `podman-compose` command.
 
-        :param file: A path to the compose file.
-        :type file: str | Path
-        :param service: Name of the service within the compose file.
+        :param files: List of compose file paths
+        :type files: list[Path]
+        :param service: Name of the service within the compose file
         :type service: str
-        :param command: A command that will be executed.
+        :param command: A command that will be executed
         :type command: str
-        :return: A completed process object.
+        :return: A completed process object
         :rtype: subprocess.CompletedProcess
         """
         raise NotImplementedError()
@@ -255,17 +267,43 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
 
     @abstractmethod
     async def compose_states(
-        self, file: str | Path
+        self, files: list[Path]
     ) -> list[HealthCheckDict]:  # pragma: no cover
         """Returns a simple table that shows the state of each service in the cluster.
 
-        :param file: Path to the compose file.
-        :type file: str | Path
-        :return: A basic status for each service.
+        :param files: List of compose file paths
+        :type files: list[Path]
+        :return: A basic status for each service
         :rtype: list[HealthCheckDict]
         """
         raise NotImplementedError()
 
     @abstractmethod
     async def project_stats(self, project_name: str) -> list[dict]:  # pragma: no cover
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def build_image(
+        self,
+        logger_name: str,
+        context_path: pathlib.Path,
+        image_name: str,
+        containerfile: str = "Containerfile",
+        to_stdout: bool = False,
+    ) -> ErrorCode:  # pragma: no cover
+        """Build a container image from a Containerfile/Dockerfile.
+
+        :param logger_name: Logger name for output
+        :type logger_name: str
+        :param context_path: Path to build context directory
+        :type context_path: pathlib.Path
+        :param image_name: Name to tag the built image
+        :type image_name: str
+        :param containerfile: Name of Containerfile/Dockerfile (default: "Containerfile")
+        :type containerfile: str
+        :param to_stdout: Pipe output to stdout as well. Defaults to False.
+        :type to_stdout: bool
+        :return: An exit code
+        :rtype: ErrorCode
+        """
         raise NotImplementedError()

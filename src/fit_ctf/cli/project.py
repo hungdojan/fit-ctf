@@ -153,7 +153,7 @@ def enrolled_users(ctx: click.Context, project_name: str, format: str, all: bool
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        lof_active_users = ctf_app.ue_mgr.get_user_enrollments_for_project_raw(
+        lof_active_users = ctf_app.enroll_mgr.get_enrollments_for_project_raw(
             project_name, all
         )
     except CTFBaseException as e:
@@ -211,10 +211,13 @@ def used_ports(ctx: click.Context, format: str):
 @project_option
 @click.pass_context
 def resources_usage(ctx: click.Context, project_name: str):
-    """Display the resource usage of a given project."""
-    prj_mgr: ProjectManager = ctx.parent.obj["ctf_app"].prj_mgr  # pyright: ignore
+    """Display the resource usage of project cluster."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        asyncio.run(prj_mgr.get_resource_usage(project_name))
+        project = ctf_app.prj_mgr.get_project(project_name)
+        cluster = ctf_app.project_cluster_mgr.get_cluster(project)
+        usage = asyncio.run(ctf_app.project_cluster_mgr.get_resource_usage(cluster))
+        click.echo(usage)
     except CTFBaseException as e:
         click.echo(e)
 
@@ -238,7 +241,9 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
 
     When tabulate format is used, the status column is colored."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    services_info = asyncio.run(ctf_app.prj_mgr.get_all_services_info(project_name))
+    project = ctf_app.prj_mgr.get_project(project_name)
+    cluster = ctf_app.project_cluster_mgr.get_cluster(project)
+    services_info = asyncio.run(ctf_app.project_cluster_mgr.get_all_services_info(cluster))
     data_buffer = []
     for info in services_info:
         data_buffer.append(
@@ -276,7 +281,7 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
 def leaderboard(ctx: click.Context, project_name: str, format: str):
     """Display the leaderboard of top NUM users."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    data = ctf_app.ue_mgr.get_leaderboard(ctf_app.prj_mgr.get_project(project_name))
+    data = ctf_app.enroll_mgr.get_leaderboard(ctf_app.prj_mgr.get_project(project_name))
     header_order = ["user", "found_secrets", "total_secrets", "last_submit_time"]
     headers = ["Pos", "User", "Submitted", "Total", "Last submit"]
     values = [

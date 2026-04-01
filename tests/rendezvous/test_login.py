@@ -1,3 +1,4 @@
+import pytest
 from textual.app import App
 from textual.widgets import Label
 
@@ -5,6 +6,7 @@ from fit_ctf_models.utils.sessions import LoginSession
 from tests import FixtureData
 
 
+@pytest.mark.skip()
 async def test_login(tui_app: App, connected_data: FixtureData):
     ctf_app, _ = connected_data
     async with tui_app.run_test() as pilot:

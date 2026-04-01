@@ -42,13 +42,15 @@ def get_env_info() -> EnvInfo:
     }
 
 
-def get_paths() -> tuple[Path, Path, Path]:
+def get_paths() -> tuple[Path, Path, Path, Path]:
     default_config_path = f"{os.getenv('HOME', '')}/.local/share/FIT_CTF"
     prj_env = os.getenv("PROJECT_SHARE_DIR", f"{default_config_path}/project")
     user_env = os.getenv("USER_SHARE_DIR", f"{default_config_path}/user")
     module_env = os.getenv("MODULE_SHARE_DIR", f"{default_config_path}/module")
+    scenarios_env = os.getenv("SCENARIO_SHARE_DIR", f"{default_config_path}/scenario")
 
     prj_share_path = Path(os.path.expandvars(prj_env))
     user_share_path = Path(os.path.expandvars(user_env))
     module_share_path = Path(os.path.expandvars(module_env))
-    return prj_share_path, user_share_path, module_share_path
+    scenario_share_path = Path(os.path.expandvars(scenarios_env))
+    return prj_share_path, user_share_path, module_share_path, scenario_share_path

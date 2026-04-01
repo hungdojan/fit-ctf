@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
 
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.types import NewUserDict, UserInfoDict, UserRole
@@ -21,14 +22,14 @@ from fit_ctf_models.utils.exceptions import (
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
 from fit_ctf_models.utils.sessions import LoginSession
-from fit_ctf_templates import JINJA_TEMPLATE_DIRPATHS, get_template
+from fit_ctf_templates import TEMPLATE_PATH_MAP, get_template
 
 # suppress deprecation warning for `crypt` module used by `passlib` when generating shadow
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
-    import fit_ctf_models.user_enrollment as _ue
+    import fit_ctf_models.enrollment as enroll
 
 
 class User(Base):
@@ -85,13 +86,13 @@ class UserManager(BaseManagerInterface[User]):
         super().__init__(ctf_base, db, db["user"], User)
 
     @property
-    def ue_mgr(self) -> "_ue.UserEnrollmentManager":
+    def enroll_mgr(self) -> "enroll.EnrollmentManager":
         """Returns a user enroll manager.
 
-        :return: A user enrollment manager initialized in UserManager.
-        :rtype: user_enrollment.UserEnrollmentManager
+        :return: An enrollment manager initialized in UserManager.
+        :rtype: enrollment.EnrollmentManager
         """
-        return self.ctf_base.ue_mgr
+        return self.ctf_base.enroll_mgr
 
     def get_user(
         self, user_or_username: str | User, active: bool | None = True
@@ -149,7 +150,9 @@ class UserManager(BaseManagerInterface[User]):
         :rtype: str
         """
         crypt_hash = sha512_crypt.using(rounds=20000).hash(password)
-        template = get_template("shadow.j2", str(JINJA_TEMPLATE_DIRPATHS["v1"]))
+        template = get_template(
+            "shadow.j2", str(TEMPLATE_PATH_MAP["jinja_template"].resolve())
+        )
         with open(f"{shadow_path}", "w") as f:
             f.write(template.render(hash=crypt_hash))
         return crypt_hash
@@ -346,11 +349,16 @@ class UserManager(BaseManagerInterface[User]):
         """
         user = self.get_user(username)
 
-        lof_projects = self.ue_mgr.get_enrolled_projects(user.username)
+        lof_projects = self.enroll_mgr.get_enrolled_projects(user.username)
         for project in lof_projects:
-            await self.ue_mgr.stop_user_cluster(user, project)
+            try:
+                enrollment = self.enroll_mgr.get_enrollment(user, project)
+                cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
+                await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+            except CTFBaseException:  # pragma: no cover
+                pass  # Cluster doesn't exist or already stopped
 
-        await self.ue_mgr.cancel_user_from_all_projects(user)
+        await self.enroll_mgr.cancel_user_from_all_projects(user)
         user.active = False
         self.update_doc(user)
 
@@ -386,17 +394,17 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            await self.ue_mgr.stop_all_clusters_of_a_user(user)
+            await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(user)
             pairs.extend(
-                [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user)]
+                [(user, prj) for prj in self.enroll_mgr.get_enrolled_projects(user)]
             )
 
-        await self.ue_mgr.disable_multiple_enrollments(pairs)
+        await self.enroll_mgr.disable_multiple_enrollments(pairs)
         self.collection.update_many(
             {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
         )
 
-    def flush_multiple_users(self, lof_usernames: list[str]):
+    async def flush_multiple_users(self, lof_usernames: list[str]):
         """Remove multiple user data from the host machine.
 
         Only works if the user is not active.
@@ -410,13 +418,16 @@ class UserManager(BaseManagerInterface[User]):
         pairs = []
         for user in users:
             pairs.extend(
-                [(user, prj) for prj in self.ue_mgr.get_enrolled_projects(user, True)]
+                [
+                    (user, prj)
+                    for prj in self.enroll_mgr.get_enrolled_projects(user, True)
+                ]
             )
             path = self.paths.user_path(user)
             if path.exists():
                 shutil.rmtree(path)
 
-        self.ue_mgr.flush_multiple_enrollments(pairs)
+        await self.enroll_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
     async def delete_a_user(self, username: str):
@@ -437,7 +448,7 @@ class UserManager(BaseManagerInterface[User]):
         """
 
         await self.disable_multiple_users(lof_usernames)
-        self.flush_multiple_users(lof_usernames)
+        await self.flush_multiple_users(lof_usernames)
 
     async def delete_all(self):
         """Remove all users from the host system and clear the database."""

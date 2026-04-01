@@ -1,5 +1,5 @@
-import asyncio
 import os
+import shutil
 from pathlib import Path
 
 import pymongo.errors
@@ -38,21 +38,26 @@ def empty_data(
     """
 
     def teardown():
-        # teardown ctf_app
-        asyncio.run(ctf_app.prj_mgr.delete_all())
-        asyncio.run(ctf_app.user_mgr.delete_all())
-        asyncio.run(ctf_app.ue_mgr.delete_all())
+        ctf_app.user_cluster_mgr.remove_docs_by_filter()
+        ctf_app.project_cluster_mgr.remove_docs_by_filter()
+        ctf_app.enroll_mgr.remove_docs_by_filter()
+        ctf_app.prj_mgr.remove_docs_by_filter()
+        ctf_app.user_mgr.remove_docs_by_filter()
 
     # get data
     env_info = get_env_info()
     os.environ["LOG_DEST"] = str(workdir.resolve())
 
     YamlParser.init_parser()
+    share_root = workdir / "share"
+    if share_root.exists():
+        shutil.rmtree(share_root)
     paths = PathDict(
         **{
             "projects": workdir / "share" / "project",
             "users": workdir / "share" / "user",
             "modules": workdir / "share" / "module",
+            "scenarios": workdir / "share" / "scenarios",
         }
     )
 
@@ -62,9 +67,11 @@ def empty_data(
     except pymongo.errors.ServerSelectionTimeoutError:
         pytest.exit("DB is probably not running")
 
-    ctf_app.prj_mgr.remove_docs_by_filter()
+    ctf_app.user_cluster_mgr.remove_docs_by_filter()
+    ctf_app.project_cluster_mgr.remove_docs_by_filter()
+    ctf_app.enroll_mgr.remove_docs_by_filter()
     ctf_app.user_mgr.remove_docs_by_filter()
-    ctf_app.ue_mgr.remove_docs_by_filter()
+    ctf_app.prj_mgr.remove_docs_by_filter()
 
     # make a shadow dir
     request.addfinalizer(teardown)
@@ -174,7 +181,7 @@ def connected_data(
     ctf_app, tmp_path = empty_data
     ctf_app.setup_env_from_file(fixture_path() / "connected_data.yaml")
 
-    assert len(ctf_app.ue_mgr.get_enrolled_projects("user2")) == 2
+    assert len(ctf_app.enroll_mgr.get_enrolled_projects("user2")) == 2
 
     # yield data
     return ctf_app, tmp_path
@@ -188,6 +195,7 @@ def cli_data(connected_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()
@@ -201,6 +209,7 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()

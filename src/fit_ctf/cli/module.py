@@ -74,20 +74,49 @@ def get(ctx: click.Context, module_name: str):
     type=str,
     help="Project's name. If not set, the tool will do the referencing on all data.",
 )
+@click.option(
+    "--all-images",
+    is_flag=True,
+    help="Also list each services.*.image value as its own key (not module dir names).",
+)
 @format_option
 @click.pass_context
-def referenced(ctx: click.Context, project_name: str | None, format: str):
+def referenced(
+    ctx: click.Context, format: str, all_images: bool, project_name: str | None
+):
     """Get the module usage count.
 
     For each module used in the given project (or overall) get its usage count
     in all the clusters.
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    module_count = ctf_app.module_mgr.reference_count(project_name)
+    module_count = ctf_app.module_mgr.reference_count(project_name, all_images=all_images)
 
     header = ["Module name", "Count"]
     values = [[name, count] for name, count in module_count.items()]
     get_view(format).print_data(header, values)
+
+
+@module.command(name="build")
+@module_name_option
+@click.option("-v", "--verbose", is_flag=True, help="Show build output")
+@click.pass_context
+def build(ctx: click.Context, module_name: str, verbose: bool):
+    """Build a module's container image."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    try:
+        click.echo(f"Building module '{module_name}'...")
+        error_code = asyncio.run(
+            ctf_app.module_mgr.build_module(module_name, to_stdout=verbose)
+        )
+        if error_code == 0:
+            click.echo(f"Module '{module_name}' built successfully.")
+        else:
+            click.echo(f"Error building module (exit code: {error_code})")
+            ctx.exit(error_code)
+    except ModuleNotExistsException as e:
+        click.echo(e)
+        ctx.exit(1)
 
 
 @module.command(name="rm")

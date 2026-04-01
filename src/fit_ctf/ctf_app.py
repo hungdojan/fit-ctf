@@ -1,9 +1,12 @@
+import asyncio
+import concurrent.futures
 import os
+import shutil
 import tempfile
 import zipfile
 from pathlib import Path
 from shutil import copytree
-from typing import Literal, cast
+from typing import cast
 
 from dateutil import parser
 from jsonschema.exceptions import ValidationError
@@ -25,7 +28,10 @@ from fit_ctf_components.types import (
     PathDict,
     SetupDict,
 )
-from fit_ctf_models.cluster import Service
+from fit_ctf_models.clusters.config_models import scenario_config_from_dict
+from fit_ctf_models.clusters.user_cluster import UserCluster
+
+# Service management deprecated - moved to cluster configurations
 from fit_ctf_models.secret import Secret
 from fit_ctf_models.user_progress import UserProgress
 from fit_ctf_models.utils.exceptions import (
@@ -33,6 +39,7 @@ from fit_ctf_models.utils.exceptions import (
     UserExistsException,
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
+from fit_ctf_templates import TEMPLATE_PATH_MAP
 
 
 class CTFApp(CTFBase):
@@ -58,64 +65,52 @@ class CTFApp(CTFBase):
     def _init_paths(self, paths: PathDict):
         """Initialize path directories for the current session."""
         self._paths = paths
-        if not self._paths["projects"].exists():
-            self.logger.print(
-                f"Creating central project directory `{str(self._paths['projects'].resolve())}`...",
-                logger_name=f"{__name__}_print",
-            )
-            self._paths["projects"].mkdir(parents=True, exist_ok=True)
-        if not self._paths["users"].exists():
-            self.logger.print(
-                f"Creating central user directory `{str(self._paths['users'].resolve())}`...",
-                logger_name=f"{__name__}_print",
-            )
-            self._paths["users"].mkdir(parents=True, exist_ok=True)
-        if not self._paths["modules"].exists():
-            self.logger.print(
-                f"Creating central module directory `{str(self._paths['modules'].resolve())}`...",
-                logger_name=f"{__name__}_print",
-            )
-            self._paths["modules"].mkdir(parents=True, exist_ok=True)
+        for obj_name, path in self._paths.items():
+            path = cast(Path, path)
+            if not path.exists():
+                self.logger.print(
+                    f"Creating central {obj_name} directory `{str(path.resolve())}`...",
+                    logger_name=f"{__name__}_print",
+                )
+                path.mkdir(parents=True, exist_ok=True)
 
         self.init_tool()
 
-    def init_tool(self, base_image_os: Literal["ubi", "debian"] = "ubi"):
+    def init_tool(self):
         """Initialize base images."""
-        for module_name in {"base", "base_ssh"}:
-            if not (self._paths["modules"] / module_name).exists():
-                dst_path = self._paths["modules"] / module_name
-                root_dir = (
-                    Path(os.path.dirname(os.path.realpath(__file__))).parent.parent
-                    / "config"
-                    / "base_images"
-                )
-
-                if base_image_os not in {"ubi", "debian"}:
-                    raise ValueError(
-                        "The only supported base image OS are `rhel` or `ubuntu`."
-                    )
-                src_path = root_dir / f"{module_name}_{base_image_os}"
-                copytree(str(src_path.resolve()), str(dst_path.resolve()))
+        for module_path in TEMPLATE_PATH_MAP["modules"].iterdir():
+            if (self.paths.module_global / module_path.name).exists():
+                continue
+            if module_path.is_dir():
+                copytree(module_path, self.paths.module_global / module_path.name)
+        for scenario_path in TEMPLATE_PATH_MAP["scenarios"].iterdir():
+            if (self.paths.scenario_global / scenario_path.name).exists():
+                continue
+            if scenario_path.is_dir():
+                copytree(scenario_path, self.paths.scenario_global / scenario_path.name)
 
     def export_all(self, output_zip_name: str):
         raise NotImplementedError()
 
     def _load_all_data_to_dict(self, project: "project.Project") -> dict:
         data = {}
+        # Project document (export shape for database_dump.yaml)
         data["project"] = {k: v for k, v in project.model_dump().items() if k != "_id"}
 
-        users = self.ue_mgr.get_user_enrollments_for_project(project, True)
+        # User rows are whoever is enrolled in this project
+        users = self.enroll_mgr.get_enrollments_for_project(project, True)
         data["users"] = [
             {k: v for k, v in u.model_dump().items() if k != "_id"} for u in users
         ]
-        pipeline = MongoQueries.export_user_enrollments(project)
-        enrollments = list(self.ue_mgr.collection.aggregate(pipeline))
+        pipeline = MongoQueries.export_enrollments(project)
+        enrollments = list(self.enroll_mgr.collection.aggregate(pipeline))
 
-        # some processing for enrollment documents
-        # contains a nested object `progress` that have datetime and ObjectID objects
-        # ObjectIDs are mapped to the username
-        # datetime objects are printed as string
+        # Per enrollment: normalize secrets for YAML, attach optional UserCluster export
+        clusters = []
+
         for enrollment in enrollments:
+            enrollment_ref = f"{enrollment['user']}@{enrollment['project']}"
+
             progress = enrollment["progress"]
             for v in progress["secrets"].values():
                 user_id = v.pop("user_id")
@@ -127,8 +122,43 @@ class CTFApp(CTFBase):
                     v["submitted"] = v["submitted"].isoformat()
             if progress["last_submit_time"]:
                 progress["last_submit_time"] = progress["last_submit_time"].isoformat()
-        data["enrollments"] = enrollments
 
+            cluster = self.user_cluster_mgr.get_doc_by_filter(
+                **{"enrollment_id.$id": enrollment["_id"]}
+            )
+            if cluster:
+                cluster_dict = {
+                    "name": cluster.name,
+                    "scenario_configs": {
+                        n: c.model_dump()
+                        for n, c in cluster.scenario_configs.items()
+                    },
+                    "enrollment_ref": enrollment_ref,
+                }
+                clusters.append(cluster_dict)
+
+            enrollment.pop("_id", None)
+            enrollment["enrollment_id"] = enrollment_ref
+
+        data["enrollments"] = enrollments
+        data["clusters"] = clusters
+
+        # Project-level cluster (admin / shared scenarios)
+        pc = self.project_cluster_mgr.get_doc_by_filter(
+            **{"project_id.$id": project.id}
+        )
+        if pc:
+            data["project_cluster"] = {
+                "name": pc.name,
+                "scenario_names": pc.scenario_names,
+                "scenario_configs": {
+                    n: c.model_dump() for n, c in pc.scenario_configs.items()
+                },
+            }
+        else:
+            data["project_cluster"] = None
+
+        # Module names referenced by this project (for ZIP module tree)
         module_count = self.module_mgr.reference_count(project.name)
         data["modules"] = [k for k, v in module_count.items() if v > 0]
         return data
@@ -136,10 +166,10 @@ class CTFApp(CTFBase):
     def _add_user_files_to_zipfile(self, zf: zipfile.ZipFile, data: dict):
         for username in [u["username"] for u in data["users"]]:
             # get path to shadow file
-            user_root_dir = self._paths["users"] / username
+            user_root_dir = self.paths.user_global / username
             filepath = user_root_dir / "shadow"
             parentpath = os.path.relpath(filepath, user_root_dir)
-            arcname = os.path.join(self._paths["users"].name, username, parentpath)
+            arcname = os.path.join(self.paths.user_global.name, username, parentpath)
 
             # add a shadow file to the archive
             zf.write(filepath, arcname)
@@ -147,13 +177,13 @@ class CTFApp(CTFBase):
             # create an empty home directory
             zf.writestr(
                 zipfile.ZipInfo(
-                    os.path.join(self._paths["users"].name, username, "home/")
+                    os.path.join(self.paths.user_global.name, username, "home/")
                 ),
                 "",
             )
 
     def _add_module_files_to_zipfile(self, zf: zipfile.ZipFile, data: dict):
-        module_root_dir = self._paths["modules"]
+        module_root_dir = self.paths.module_global
         for module_name in data["modules"]:
             for dirpath, _, filenames in os.walk(module_root_dir / module_name):
                 for filename in filenames:
@@ -166,11 +196,32 @@ class CTFApp(CTFBase):
                         filepath, module_root_dir / module_name
                     )
                     arcname = os.path.join(
-                        self._paths["modules"].name,
+                        self.paths.module_global.name,
                         os.path.basename(module_root_dir / module_name),
                         parentpath,
                     )
 
+                    zf.write(filepath, arcname)
+
+    def _add_scenario_files_to_zipfile(self, zf: zipfile.ZipFile, data: dict):
+        """Add scenario template files to the ZIP archive.
+
+        :param zf: ZipFile object to write to
+        :param data: Export data containing scenarios list
+        """
+        for scenario in data.get("scenarios", []):
+            scenario_name = scenario["name"]
+            scenario_dir = self.paths.scenario_global / scenario_name
+
+            if not scenario_dir.exists():
+                continue
+
+            # Add all files in scenario directory to ZIP
+            for dirpath, _, filenames in os.walk(scenario_dir):
+                for filename in filenames:
+                    filepath = Path(dirpath) / filename
+                    parentpath = os.path.relpath(filepath, scenario_dir)
+                    arcname = os.path.join("scenario", scenario_name, parentpath)
                     zf.write(filepath, arcname)
 
     def export_project(self, project_name: str, output_zip_name: str):
@@ -192,6 +243,19 @@ class CTFApp(CTFBase):
             zf.writestr("database_dump.yaml", YamlParser.dump_data(data))
             self._add_user_files_to_zipfile(zf, data)
             self._add_module_files_to_zipfile(zf, data)
+            self._add_scenario_files_to_zipfile(zf, data)
+
+    def _apply_project_cluster_from_dump(
+        self, prj: "project.Project", pc_data: dict | None
+    ) -> None:
+        if not pc_data or not pc_data.get("scenario_configs"):
+            return
+        pc = self.project_cluster_mgr.get_cluster(prj)
+        for scenario_name, raw in pc_data["scenario_configs"].items():
+            if not isinstance(raw, dict):
+                continue
+            sc = scenario_config_from_dict(scenario_name, raw)
+            self.project_cluster_mgr.create_or_update_scenario_config(pc, sc)
 
     def _validate_with_database(self, data: DatabaseDumpDict):
         # check if they exist in the database, raise collision error if needed
@@ -199,7 +263,7 @@ class CTFApp(CTFBase):
         if self.prj_mgr.get_doc_by_filter(name=project["name"]):
             raise ProjectExistsException(f"Project `{project['name']}` already exists.")
         modules = list(self.module_mgr.list_modules().keys())
-        for module_name in data["modules"]:
+        for module_name in data.get("modules", []):
             if module_name in modules:
                 self.logger.warning(
                     f"Module `{module_name}` is already present on the host.",
@@ -218,48 +282,181 @@ class CTFApp(CTFBase):
                 f"Users `{' '.join(usernames)}` already exist in the database."
             )
 
-    def _add_to_database(self, data: DatabaseDumpDict):
-        prj = self.prj_mgr.init_project(
-            data["project"]["name"],
-            data["project"]["max_nof_users"],
-            description=data["project"]["description"],
-        )
-        self.prj_mgr.remove_service(prj, "admin")
-        for name, service in data["project"]["services"].items():
-            self.prj_mgr.register_service(prj, name, Service(**service))
+    @staticmethod
+    def _run_coroutine_safely(coro):
+        """Run async code from sync context (works when an event loop is already running)."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(asyncio.run, coro).result()
 
-        for user in data["users"]:
-            self.user_mgr.create_and_insert_doc(**user)
+    def _remove_user_if_unenrolled(self, username: str) -> None:
+        """Drop user document and global user dir when they have no enrollments."""
+        user = self.user_mgr.get_doc_by_filter(username=username)
+        if not user:
+            return
+        if self.enroll_mgr.collection.count_documents({"user_id.$id": user.id}) > 0:
+            return
+        up = self.paths.user_path(username)
+        if up.exists():
+            shutil.rmtree(up)
+        self.user_mgr.remove_doc_by_id(user.id)
 
-        for enrollment in data["enrollments"]:
-            user = enrollment["user"]
-            project = enrollment["project"]
-            progress_dict = enrollment["progress"]
-            # manually generate progress nested object
-            progress = UserProgress(
-                secrets={
-                    k: Secret(
-                        flag=v["flag"],
-                        submitted=(
-                            parser.parse(v["submitted"]) if v["submitted"] else None
-                        ),
-                        user_id=(
-                            self.user_mgr.get_user(v["user"]).id if v["user"] else None
-                        ),
-                    )
-                    for k, v in progress_dict["secrets"].items()
-                },
-                found_secrets=progress_dict["found_secrets"],
-                last_submit_time=(
-                    parser.parse(progress_dict["last_submit_time"])
-                    if progress_dict["last_submit_time"]
-                    else None
-                ),
+    def _revert_setup_new_user(self, username: str) -> None:
+        """Remove user row and share dir after failed setup user creation."""
+        self._remove_user_if_unenrolled(username)
+        if not self.user_mgr.get_doc_by_filter(username=username):
+            orphan = self.paths.user_path(username)
+            if orphan.exists():
+                shutil.rmtree(orphan)
+
+    def _enrollment_active_exists(self, username: str, project_name: str) -> bool:
+        user = self.user_mgr.get_doc_by_filter(username=username)
+        project = self.prj_mgr.get_doc_by_filter(name=project_name)
+        if not user or not project:
+            return False
+        return (
+            self.enroll_mgr.get_doc_by_filter(
+                **{"user_id.$id": user.id, "project_id.$id": project.id, "active": True}
             )
-            user_enroll = self.ue_mgr.import_user_enrollment(user, project, progress)
-            self.ue_mgr.remove_service(user_enroll, "login")
-            for name, service in enrollment["services"].items():
-                self.ue_mgr.register_service(user_enroll, name, Service(**service))
+            is not None
+        )
+
+    def _cleanup_orphan_enrolled_path(self, username: str, project_name: str) -> None:
+        user = self.user_mgr.get_doc_by_filter(username=username)
+        project = self.prj_mgr.get_doc_by_filter(name=project_name)
+        if not user or not project:
+            return
+        ep = self.paths.enrolled_user_path(user, project)
+        if ep.exists():
+            shutil.rmtree(ep)
+
+    def _revert_setup_enrollment_slice(self, username: str, project_name: str) -> None:
+        """Undo enroll_user_to_project via cancel_enrollment; fall back to DB/path-only cleanup."""
+        try:
+            self._run_coroutine_safely(
+                self.enroll_mgr.cancel_enrollment(username, project_name)
+            )
+        except Exception:
+            self._revert_imported_user_slice(username, project_name)
+            return
+        self._remove_user_if_unenrolled(username)
+
+    def _revert_imported_user_slice(self, username: str, project_name: str) -> None:
+        """Remove enrollment row + enrolled tree (import has no user cluster yet)."""
+        user = self.user_mgr.get_doc_by_filter(username=username)
+        project = self.prj_mgr.get_doc_by_filter(name=project_name)
+        if user and project:
+            enrollment = self.enroll_mgr.get_doc_by_filter(
+                **{"user_id.$id": user.id, "project_id.$id": project.id}
+            )
+            if enrollment:
+                self.enroll_mgr.remove_doc_by_id(enrollment.id)
+            enrolled_path = self.paths.enrolled_user_path(user, project)
+            if enrolled_path.exists():
+                shutil.rmtree(enrolled_path)
+        self._remove_user_if_unenrolled(username)
+
+    def _add_to_database(self, data: DatabaseDumpDict) -> set[str]:
+        """Insert dump rows; return usernames that failed and must not receive archive files."""
+        failed_usernames: set[str] = set()
+        # project and project cluster import
+        p = data["project"]
+        prj = self.prj_mgr.init_project(
+            p["name"],
+            p["max_nof_users"],
+            starting_port_bind=p.get("starting_port_bind", -1),
+            description=p.get("description", ""),
+        )
+        self._apply_project_cluster_from_dump(prj, data.get("project_cluster"))
+
+        # user import
+        for user in data["users"]:
+            username = user["username"]
+            try:
+                self.user_mgr.create_and_insert_doc(**user)
+            except Exception as e:
+                self.logger.warning(
+                    f"Import project: skipped user {username!r} after user insert "
+                    f"failure: {e}"
+                )
+                failed_usernames.add(username)
+
+        # enrollment and progress progress
+        # TODO: imported objects should be related to the project
+        for enrollment in data["enrollments"]:
+            username = enrollment["user"]
+            project_name = enrollment["project"]
+            if username in failed_usernames:
+                continue
+            try:
+                progress_dict = enrollment["progress"]
+                secrets: dict[str, Secret] = {}
+                for k, v in progress_dict["secrets"].items():
+                    if not isinstance(v, dict):
+                        continue
+                    ref_name = v.get("user")
+                    if ref_name and ref_name in failed_usernames:
+                        uid = None
+                    elif ref_name:
+                        uid = self.user_mgr.get_user(ref_name).id
+                    else:
+                        uid = None
+                    secrets[k] = Secret(
+                        value=v.get("value", ""),
+                        submitted=(
+                            parser.parse(v["submitted"]) if v.get("submitted") else None
+                        ),
+                        user_id=uid,
+                    )
+                progress = UserProgress(
+                    secrets=secrets,
+                    found_secrets=progress_dict["found_secrets"],
+                    last_submit_time=(
+                        parser.parse(progress_dict["last_submit_time"])
+                        if progress_dict.get("last_submit_time")
+                        else None
+                    ),
+                )
+                self.enroll_mgr.import_enrollment(username, project_name, progress)
+            except Exception as e:
+                self.logger.warning(
+                    f"Import project: skipped user {username!r} after enrollment "
+                    f"failure: {e}"
+                )
+                self._revert_imported_user_slice(username, project_name)
+                failed_usernames.add(username)
+
+        # user cluster import
+        for cluster_data in data.get("clusters") or []:
+            ref = cluster_data["enrollment_ref"]
+            user_name, proj_name = ref.split("@", 1)
+            if user_name in failed_usernames:
+                continue
+            try:
+                user_obj = self.user_mgr.get_user(user_name)
+                project_obj = self.prj_mgr.get_project(proj_name)
+                enrollment_obj = self.enroll_mgr.get_enrollment(user_obj, project_obj)
+                builder = UserCluster.Builder(cluster_data["name"], enrollment_obj)
+                for scenario_name, raw in cluster_data.get(
+                    "scenario_configs", {}
+                ).items():
+                    if not isinstance(raw, dict):
+                        continue
+                    builder.add_scenario_config(
+                        scenario_name,
+                        scenario_config_from_dict(scenario_name, raw),
+                    )
+                self.user_cluster_mgr.create_cluster(builder.build())
+            except Exception as e:
+                self.logger.warning(
+                    f"Import project: skipped cluster for user {user_name!r} "
+                    f"(project {proj_name!r}): {e}"
+                )
+
+        return failed_usernames
 
     def import_project(self, input_file: Path):
         """Import the project data from the zip file.
@@ -291,22 +488,36 @@ class CTFApp(CTFBase):
                             f"{str(e)}"
                         )
 
-                # process data
+                # DB first: collisions abort; partial per-user failures recorded in set
                 self._validate_with_database(data)
-                self._add_to_database(data)
+                failed_usernames = self._add_to_database(data)
 
-                # extract files into the temporary directory
                 zf.extractall(dir_path)
 
-                # move all the files to the designated places
-                for item in (dir_path / "user").iterdir():
-                    copytree(item, self._paths["users"] / item.name)
-                for item in (dir_path / "module").iterdir():
-                    if not (self._paths["modules"] / item.name).exists():
-                        copytree(item, self._paths["modules"] / item.name)
+                # Copy trees from temp extract into share roots (user shadows skip failures)
+                # Archive paths use directory basename (e.g. share/user → "user")
+                users_dir = dir_path / self.paths.user_global.name
+                if users_dir.exists():
+                    for item in users_dir.iterdir():
+                        if item.name in failed_usernames:
+                            continue
+                        copytree(item, self.paths.user_global / item.name)
+
+                modules_dir = dir_path / self.paths.module_global.name
+                if modules_dir.exists():
+                    for item in modules_dir.iterdir():
+                        if not (self.paths.module_global / item.name).exists():
+                            copytree(item, self.paths.module_global / item.name)
+
+                scenario_dir = dir_path / "scenario"
+                if scenario_dir.exists():
+                    for item in scenario_dir.iterdir():
+                        if not (self.paths.scenario_global / item.name).exists():
+                            copytree(item, self.paths.scenario_global / item.name)
 
     def _dry_run_setup(self, data: SetupDict):
         out = {}
+        # Report which project names from YAML are not yet in Mongo
         if data.get("projects"):
             project_names = [prj["name"] for prj in data["projects"]]
             found_names = [
@@ -319,6 +530,7 @@ class CTFApp(CTFBase):
             if new_names:
                 out["new_projects"] = list(new_names)
 
+        # Same for usernames
         if data.get("users"):
             user_names = [user["username"] for user in data["users"]]
             found_names = [
@@ -335,18 +547,31 @@ class CTFApp(CTFBase):
 
     def _run_setup(self, data: SetupDict, exist_ok: bool) -> list[NewUserDict]:
         new_users = []
+        failed_setup_usernames: set[str] = set()
+        cluster_key = "cluster.scenario_configs"
+        # project and project cluster
         if data.get("projects"):
-            for prj in data["projects"]:
+            for prj_data in data["projects"]:
+                prj_data = dict(prj_data)
+                scenarios = prj_data.pop(cluster_key, {}) or {}
                 try:
-                    self.prj_mgr.init_project(**prj)
+                    prj = self.prj_mgr.init_project(**prj_data)
                 except ProjectExistsException as e:
                     if exist_ok:
                         self.logger.warning(str(e))
                         continue
                     raise ProjectExistsException(e)
+                pc = self.project_cluster_mgr.get_cluster(prj)
+                for scenario_name, raw in scenarios.items():
+                    if not isinstance(raw, dict):
+                        continue
+                    sc = scenario_config_from_dict(scenario_name, raw)
+                    self.project_cluster_mgr.create_or_update_scenario_config(pc, sc)
 
+        # user
         if data.get("users"):
             for user in data["users"]:
+                username = user["username"]
                 try:
                     if user.get("generate_password"):
                         password = AuthInterface.generate_password(
@@ -362,45 +587,84 @@ class CTFApp(CTFBase):
                         self.logger.warning(str(e))
                         continue
                     raise UserExistsException(e)
-                new_users.append(user_data)
-        if data.get("enrollments"):
-            for enroll in data["enrollments"]:
-                try:
-                    ue = self.ue_mgr.enroll_user_to_project(
-                        enroll["user"], enroll["project"]
+                except Exception as e:
+                    self._revert_setup_new_user(username)
+                    self.logger.warning(
+                        f"Setup: skipped user {username!r} after user creation failure: {e}"
                     )
-                    # load secrets
-                    for key, item in enroll["progress"].pop("secrets", {}).items():
+                    failed_setup_usernames.add(username)
+                    continue
+                new_users.append(user_data)
+
+        # enrollments, progerss, user clusters
+        if data.get("enrollments"):
+            for enroll_data in data["enrollments"]:
+                username = enroll_data["user"]
+                project_name = enroll_data["project"]
+                if username in failed_setup_usernames:
+                    continue
+                had_enrollment = self._enrollment_active_exists(username, project_name)
+                try:
+                    enroll_copy = dict(enroll_data)
+                    uc_scenarios = enroll_copy.pop(cluster_key, {}) or {}
+                    enrollment = self.enroll_mgr.enroll_user_to_project(
+                        enroll_copy["user"], enroll_copy["project"]
+                    )
+                    # Secrets from YAML (optional submitter user ref per secret)
+                    for key, item in enroll_copy["progress"].pop("secrets", {}).items():
                         user_info = item.pop("user")
-                        user_id = (
-                            None
-                            if not user_info
-                            else self.user_mgr.get_user(user_info).id
-                        )
+                        if user_info and user_info in failed_setup_usernames:
+                            user_id = None
+                        elif user_info:
+                            user_id = self.user_mgr.get_user(user_info).id
+                        else:
+                            user_id = None
 
-                        secret = self.ue_mgr.add_secret(ue, key, item["flag"])
-
-                        # manually update if secret is found
+                        secret = self.enroll_mgr.add_secret(enrollment, key, item["value"])
                         secret.user_id = user_id
                         secret.submitted = (
                             parser.parse(item["submitted"])
                             if item["submitted"]
                             else None
                         )
-                        self.ue_mgr.update_doc(ue)
-                    # update generate secret information
-                    ue.progress.last_submit_time = (
-                        parser.parse(enroll["progress"]["last_submit_time"])
-                        if enroll["progress"]["last_submit_time"]
+                        self.enroll_mgr.update_doc(enrollment)
+                    # Progress aggregate fields
+                    enrollment.progress.last_submit_time = (
+                        parser.parse(enroll_copy["progress"]["last_submit_time"])
+                        if enroll_copy["progress"]["last_submit_time"]
                         else None
                     )
-                    ue.progress.found_secrets = enroll["progress"]["found_secrets"]
-                    self.ue_mgr.update_doc(ue)
-                except CTFBaseException as e:
-                    if exist_ok:
-                        self.logger.warning(str(e))
-                        continue
-                    raise CTFBaseException(e)
+                    enrollment.progress.found_secrets = enroll_copy["progress"][
+                        "found_secrets"
+                    ]
+                    self.enroll_mgr.update_doc(enrollment)
+                    # Optional extra scenarios on the enrollment's UserCluster
+                    uc = self.user_cluster_mgr.get_cluster(enrollment)
+                    for scenario_name, raw in uc_scenarios.items():
+                        if not isinstance(raw, dict):
+                            continue
+                        sc = scenario_config_from_dict(scenario_name, raw)
+                        self.user_cluster_mgr.create_or_update_scenario_config(uc, sc)
+                except Exception as e:
+                    # Compare before/after to avoid reverting pre-existing enrollments
+                    has_enrollment = self._enrollment_active_exists(
+                        username, project_name
+                    )
+                    if has_enrollment and not had_enrollment:
+                        self._revert_setup_enrollment_slice(username, project_name)
+                    elif not has_enrollment and not had_enrollment:
+                        self._cleanup_orphan_enrolled_path(username, project_name)
+
+                    if isinstance(e, CTFBaseException):
+                        if exist_ok:
+                            self.logger.warning(str(e))
+                            continue
+                        raise CTFBaseException(e)
+                    self.logger.warning(
+                        f"Setup: skipped enrollment for {username!r} / "
+                        f"{project_name!r}: {e}"
+                    )
+                    continue
         return new_users
 
     def setup_env_from_file(

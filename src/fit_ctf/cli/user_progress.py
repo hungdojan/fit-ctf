@@ -3,7 +3,7 @@ import click
 from fit_ctf.cli.utils import format_option, project_option, user_option, requires_database
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_view import get_view
-from fit_ctf_models.user_enrollment import UserEnrollment
+from fit_ctf_models.enrollment import Enrollment
 from fit_ctf_models.utils.exceptions import (
     CTFModelException,
     SecretAlreadySubmittedException,
@@ -21,7 +21,7 @@ def user_progress(ctx: click.Context, username: str, project_name: str):
     ctx.obj = ctx.parent.obj  # pyright: ignore
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        ctx.obj["user_enrollment"] = ctf_app.ue_mgr.get_user_enrollment(
+        ctx.obj["enrollment"] = ctf_app.enroll_mgr.get_enrollment(
             ctf_app.user_mgr.get_user(username),
             ctf_app.prj_mgr.get_project(project_name),
         )
@@ -37,9 +37,9 @@ def user_progress(ctx: click.Context, username: str, project_name: str):
 def add_secret(ctx: click.Context, name: str, value: str):
     """Add a secret to the progress."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
+    enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.ue_mgr.add_secret(ue, name, value)
+        ctf_app.enroll_mgr.add_secret(enrollment, name, value)
     except CTFModelException as e:
         click.echo(str(e))
         ctx.exit(1)
@@ -58,9 +58,9 @@ def add_secret(ctx: click.Context, name: str, value: str):
 def update_secret(ctx: click.Context, name: str, value: str, reset_submitted: bool):
     """Update an existing secret from the list."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
+    enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.ue_mgr.update_secret_value(ue, name, value, reset_submitted)
+        ctf_app.enroll_mgr.update_secret_value(enrollment, name, value, reset_submitted)
     except CTFModelException as e:
         click.echo(str(e))
         ctx.exit(1)
@@ -72,9 +72,9 @@ def update_secret(ctx: click.Context, name: str, value: str, reset_submitted: bo
 def delete_secret(ctx: click.Context, name: str):
     """Delete secret from the progress."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
+    enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.ue_mgr.delete_secret(ue, name, False)
+        ctf_app.enroll_mgr.delete_secret(enrollment, name, False)
     except CTFModelException as e:
         click.echo(str(e))
         ctx.exit(1)
@@ -85,11 +85,11 @@ def delete_secret(ctx: click.Context, name: str):
 @click.pass_context
 def list_secrets(ctx: click.Context, format: str):
     """Print list of all secrets"""
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
+    enrollment: Enrollment = ctx.obj["enrollment"]
     header_order = ["name", "submitted"]
     headers = ["Name", "Submitted"]
     values = [
-        [item[key] for key in header_order] for item in ue.progress.list_secrets()
+        [item[key] for key in header_order] for item in enrollment.progress.list_secrets()
     ]
     get_view(format).print_data(headers, values)
 
@@ -100,9 +100,9 @@ def list_secrets(ctx: click.Context, format: str):
 def submit_secret(ctx: click.Context, value: str):
     """Validate a secret."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
+    enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.ue_mgr.submit_secret(ue, value)
+        ctf_app.enroll_mgr.submit_secret(enrollment, value)
         click.echo("Secret was successfully submitted.")
     except SecretNotFoundException:
         click.echo("Secret is incorrect.")
@@ -118,16 +118,16 @@ def submit_secret(ctx: click.Context, value: str):
 def progress_info(ctx: click.Context, format: str):
     """Display user progress information."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    ue: UserEnrollment = ctx.obj["user_enrollment"]
-    user = ctf_app.user_mgr.get_doc_by_id(ue.user_id.id)
+    enrollment: Enrollment = ctx.obj["enrollment"]
+    user = ctf_app.user_mgr.get_doc_by_id(enrollment.user_id.id)
     if not user:
         click.echo("User not found")
         ctx.exit(1)
     data = {
         "user": user.username,
-        "found": ue.progress.found_secrets,
-        "total": len(ue.progress.secrets.keys()),
-        "last_found": ue.progress.last_submit_time,
+        "found": enrollment.progress.found_secrets,
+        "total": len(enrollment.progress.secrets.keys()),
+        "last_found": enrollment.progress.last_submit_time,
     }
     header_order = ["user", "found", "total", "last_found"]
     headers = ["User", "Found", "Total", "Last Found"]

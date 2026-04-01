@@ -1,0 +1,31 @@
+---
+name: "{{ project_name }}_{{ username }}_login_node"
+
+services:
+  # example service named 'login_node'
+  # create additional services
+  login_node:
+    build:
+      context: {{ paths__modules }}/ssh_ubi
+      dockerfile: Containerfile
+    image: fit-ctf/ssh_ubi:latest
+    restart: unless-stopped
+    # use shared or private mode
+    networks:
+      {{ network_map__shared }}:
+      {{ network_map__private }}:
+    # example port usage
+    ports:
+      - "{{ login_node__port_map__ssh }}:22"
+    environment:
+    volumes:
+      - "{{ login_node__volume_map__home }}:/home/user"
+      - "{{ login_node__volume_map__shadow }}:/etc/shadow"
+
+# set networks as external
+networks:
+  {{ network_map__shared }}:
+    external: true
+  {{ network_map__private }}:
+    external: true
+

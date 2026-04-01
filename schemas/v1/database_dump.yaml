@@ -3,49 +3,70 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 type: object
 title: Exported project database dump
 properties:
-  enrollments:
-    type: array
-    items:
-      $ref: "#/$defs/user_enrollment_item"
-  modules:
-    type: array
-    items:
-      type: string
   project:
     $ref: "#/$defs/project"
+  project_cluster:
+    anyOf:
+      - type: "null"
+      - $ref: "#/$defs/project_cluster_item"
   users:
     type: array
     items:
       $ref: "#/$defs/user_item"
+  modules:
+    type: array
+    items:
+      type: string
+  enrollments:
+    type: array
+    items:
+      $ref: "#/$defs/user_enrollment_item"
+  clusters:
+    type: array
+    items:
+      $ref: "#/$defs/cluster_item"
+
+required:
+  - project
+  - users
+  - modules
+  - enrollments
 
 $defs:
   project:
     type: object
     properties:
-      allOf:
-        - $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/project.yaml#/properties"
-        - _id:
-            not: {}
-      required:
-        - name
-        - active
-        - max_of_users
-        - starting_port_bind
-        - services
-        - networks
+      name:
+        type: string
+      description:
+        type: string
+      active:
+        type: boolean
+      max_nof_users:
+        type: integer
+      max_of_users:
+        type: integer
+      starting_port_bind:
+        type: integer
+    required:
+      - name
+      - active
   user_item:
     type: object
     properties:
-      allOf:
-        - $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/user.yaml#/properties"
-        - _id:
-            not: {}
+      username:
+        type: string
+      password:
+        type: string
+      email:
+        type: string
+      role:
+        type: string
+      active:
+        type: boolean
     required:
       - username
-      - active
       - password
-      - email
-      - role
   user_enrollment_item:
     type: object
     properties:
@@ -53,20 +74,16 @@ $defs:
         type: string
       project:
         type: string
+      enrollment_id:
+        type: string
       container_port:
         type: integer
       forwarded_port:
         type: integer
       networks:
         type: object
-        patternProperties:
-          ".*":
-            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/network.yaml"
       services:
         type: object
-        patternProperties:
-          ".*":
-            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/service.yaml"
       progress:
         $ref: "#/$defs/user_progress"
     required:
@@ -80,7 +97,7 @@ $defs:
         type: object
         patternProperties:
           ".*":
-            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/secret.yaml"
+            $ref: "#/$defs/secret_export"
       found_secrets:
         type: integer
       last_submit_time:
@@ -90,3 +107,45 @@ $defs:
       - secrets
       - found_secrets
       - last_submit_time
+  secret_export:
+    type: object
+    properties:
+      value:
+        type: string
+      submitted:
+        type: ["string", "null"]
+        format: date-time
+      user:
+        type: ["string", "null"]
+    required:
+      - value
+  project_cluster_item:
+    type: object
+    properties:
+      name:
+        type: string
+      scenario_configs:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/setup.yaml#/$defs/scenario_configs"
+    required:
+      - name
+      - scenario_configs
+  cluster_item:
+    type: object
+    properties:
+      name:
+        type: string
+      enrollment_ref:
+        type: string
+        pattern: "^[^@]+@[^@]+$"
+      scenario_configs:
+        type: object
+        patternProperties:
+          ".*":
+            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/setup.yaml#/$defs/scenario_configs"
+    required:
+      - name
+      - enrollment_ref
+      - scenario_configs
