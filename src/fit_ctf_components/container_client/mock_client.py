@@ -64,6 +64,17 @@ class MockClient(c_client.ContainerClientInterface):
     ) -> ErrorCode:  # pragma: no cover
         return 0
 
+    async def compose_logs(
+        self,
+        logger_name: str,
+        files: list[Path],
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:  # pragma: no cover
+        return 0
+
     def compose_shell(
         self, files: list[Path], service: str, command: str
     ) -> subprocess.CompletedProcess:  # pragma: no cover

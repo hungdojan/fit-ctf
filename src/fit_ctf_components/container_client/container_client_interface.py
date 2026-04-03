@@ -47,6 +47,23 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
                 if to_stdout:
                     self.ctf_base.logger.print(message)
 
+    def _run_logged_sync(
+        self, cmd: list[str], logger_name: str, *, to_stdout: bool = False
+    ) -> int:
+        proc = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        out = proc.stdout or ""
+        for line in out.splitlines():
+            self.ctf_base.logger.info(line, logger_name=logger_name)
+            if to_stdout:
+                self.ctf_base.logger.print(line)
+        rc = proc.returncode
+        return rc if rc is not None else 255
+
     @abstractmethod
     def generate_container_prefix(self, *names: str) -> str:
         raise NotImplementedError()
@@ -195,6 +212,26 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
         :type to_stdout: bool
         :return: An exit code.
         :rtype: int
+        """
+        raise NotImplementedError()
+
+    @abstractmethod
+    async def compose_logs(
+        self,
+        logger_name: str,
+        files: list[Path],
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:  # pragma: no cover
+        """Print recent logs from compose services (bounded tail).
+
+        :param logger_name: Logger name for file output
+        :param files: Compose file paths
+        :param tail: Max lines per service (engine-specific)
+        :param service: If set, restrict to this service name
+        :param to_stdout: Also echo lines to the default print logger
         """
         raise NotImplementedError()
 

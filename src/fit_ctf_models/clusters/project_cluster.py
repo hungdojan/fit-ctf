@@ -11,6 +11,7 @@ import fit_ctf_models.project as project_module
 from fit_ctf_components.types import ErrorCode, HealthCheckDict, ProjectNetworkMap
 from fit_ctf_models.clusters.cluster_document import ClusterDocument
 from fit_ctf_models.clusters.cluster_scenario_mixin import ClusterScenarioMixin
+from fit_ctf_models.clusters.constants import CLUSTER_LOGGER_NAME
 from fit_ctf_models.clusters.config_models import ScenarioConfig
 from fit_ctf_models.utils.exceptions import (
     ProjectClusterExistException,
@@ -21,7 +22,6 @@ from fit_ctf_models.utils.exceptions import (
 if TYPE_CHECKING:
     import fit_ctf.ctf_base
     import fit_ctf_models.project as project
-
 
 class ProjectCluster(ClusterDocument):
     """ProjectCluster model representing project-level deployed scenarios."""
@@ -306,11 +306,15 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             if scenario_dir.exists() and scenario_dir.is_dir():
                 shutil.rmtree(scenario_dir)
 
-    async def start_cluster(self, cluster: ProjectCluster) -> ErrorCode:
+    async def start_cluster(
+        self, cluster: ProjectCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Start a project cluster.
 
         :param cluster: ProjectCluster object
         :type cluster: ProjectCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
@@ -318,23 +322,55 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
 
         # Check if already running before starting
         if await self.cluster_is_running(cluster):
+            self.ctf_base.logger.info(
+                f"project_cluster start skipped (already running) cluster={cluster.name} "
+                f"project={project.name}",
+                logger_name=CLUSTER_LOGGER_NAME,
+            )
             return 0
 
-        return await self.c_client.compose_up(
-            project.name, self.get_compose_files(cluster)
+        self.ctf_base.logger.info(
+            f"project_cluster start cluster={cluster.name} project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
         )
+        error_code = await self.c_client.compose_up(
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
+        )
+        self.ctf_base.logger.info(
+            f"project_cluster start done cluster={cluster.name} project={project.name} "
+            f"exit_code={error_code}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        return error_code
 
-    async def stop_cluster(self, cluster: ProjectCluster) -> ErrorCode:
+    async def stop_cluster(
+        self, cluster: ProjectCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Stop a project cluster.
 
         :param cluster: ProjectCluster object
         :type cluster: ProjectCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
         project = self.get_project(cluster)
-        error_code, _ = await self.c_client.compose_down(
-            project.name, self.get_compose_files(cluster)
+        self.ctf_base.logger.info(
+            f"project_cluster stop cluster={cluster.name} project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        error_code, ran_teardown = await self.c_client.compose_down(
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
+        )
+        self.ctf_base.logger.info(
+            f"project_cluster stop done cluster={cluster.name} project={project.name} "
+            f"exit_code={error_code} teardown={ran_teardown}",
+            logger_name=CLUSTER_LOGGER_NAME,
         )
         return error_code
 
@@ -348,16 +384,31 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         """
         return len(await self.c_client.compose_ps(self.get_compose_files(cluster))) > 0
 
-    async def restart_cluster(self, cluster: ProjectCluster) -> ErrorCode:
+    async def restart_cluster(
+        self, cluster: ProjectCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Restart a project cluster.
 
         :param cluster: ProjectCluster object
         :type cluster: ProjectCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
-        await self.stop_cluster(cluster)
-        return await self.start_cluster(cluster)
+        project = self.get_project(cluster)
+        self.ctf_base.logger.info(
+            f"project_cluster restart cluster={cluster.name} project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        stop_code = await self.stop_cluster(cluster, verbose=verbose)
+        start_code = await self.start_cluster(cluster, verbose=verbose)
+        self.ctf_base.logger.info(
+            f"project_cluster restart done cluster={cluster.name} project={project.name} "
+            f"stop_exit={stop_code} start_exit={start_code}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        return start_code
 
     async def cluster_health_check(
         self, cluster: ProjectCluster
@@ -371,17 +422,41 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         """
         return await self.c_client.compose_states(self.get_compose_files(cluster))
 
-    async def build_cluster_images(self, cluster: ProjectCluster) -> ErrorCode:
+    async def build_cluster_images(
+        self, cluster: ProjectCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Build/rebuild cluster images.
 
         :param cluster: ProjectCluster object
         :type cluster: ProjectCluster
+        :param verbose: Stream build output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
         project = self.get_project(cluster)
         return await self.c_client.compose_build(
-            project.name, self.get_compose_files(cluster)
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
+        )
+
+    async def compose_logs(
+        self,
+        cluster: ProjectCluster,
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:
+        """Fetch recent compose service logs (bounded tail)."""
+        project = self.get_project(cluster)
+        return await self.c_client.compose_logs(
+            project.name,
+            self.get_compose_files(cluster),
+            tail=tail,
+            service=service,
+            to_stdout=to_stdout,
         )
 
     def shell_into_service(

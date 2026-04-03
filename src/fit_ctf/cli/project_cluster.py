@@ -38,14 +38,17 @@ def project_cluster(ctx: click.Context, project_name: str):
 
 
 @project_cluster.command(name="start")
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def start_cluster(ctx: click.Context):
+def start_cluster(ctx: click.Context, verbose: bool):
     """Start project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Starting project cluster '{cluster.name}'...")
-    error_code = asyncio.run(ctf_app.project_cluster_mgr.start_cluster(cluster))
+    error_code = asyncio.run(
+        ctf_app.project_cluster_mgr.start_cluster(cluster, verbose=verbose)
+    )
 
     if error_code == 0:
         click.echo("Project cluster started successfully.")
@@ -55,14 +58,17 @@ def start_cluster(ctx: click.Context):
 
 
 @project_cluster.command(name="stop")
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def stop_cluster(ctx: click.Context):
+def stop_cluster(ctx: click.Context, verbose: bool):
     """Stop project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Stopping project cluster '{cluster.name}'...")
-    error_code = asyncio.run(ctf_app.project_cluster_mgr.stop_cluster(cluster))
+    error_code = asyncio.run(
+        ctf_app.project_cluster_mgr.stop_cluster(cluster, verbose=verbose)
+    )
 
     if error_code == 0:
         click.echo("Project cluster stopped successfully.")
@@ -72,14 +78,17 @@ def stop_cluster(ctx: click.Context):
 
 
 @project_cluster.command(name="restart")
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def restart_cluster(ctx: click.Context):
+def restart_cluster(ctx: click.Context, verbose: bool):
     """Restart project cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Restarting project cluster '{cluster.name}'...")
-    error_code = asyncio.run(ctf_app.project_cluster_mgr.restart_cluster(cluster))
+    error_code = asyncio.run(
+        ctf_app.project_cluster_mgr.restart_cluster(cluster, verbose=verbose)
+    )
 
     if error_code == 0:
         click.echo("Project cluster restarted successfully.")
@@ -126,6 +135,41 @@ def health_check(ctx: click.Context, format: str):
     get_view(format).print_data(header, values)
 
 
+@project_cluster.command(name="logs")
+@click.option(
+    "--tail",
+    default=500,
+    show_default=True,
+    type=int,
+    help="Max lines per service",
+)
+@click.option("-s", "--service", default=None, help="Limit to one compose service")
+@click.option(
+    "--no-log-stdout",
+    is_flag=True,
+    help="Write logs only to LOG_DEST files, not the terminal",
+)
+@click.pass_context
+def cluster_logs(
+    ctx: click.Context, tail: int, service: str | None, no_log_stdout: bool
+):
+    """Show recent container logs from the project cluster compose stack."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    cluster = ctx.parent.obj["cluster"]  # pyright: ignore
+
+    error_code = asyncio.run(
+        ctf_app.project_cluster_mgr.compose_logs(
+            cluster,
+            tail=tail,
+            service=service,
+            to_stdout=not no_log_stdout,
+        )
+    )
+    if error_code != 0:
+        click.echo(f"Error fetching logs (exit code: {error_code})")
+        ctx.exit(error_code)
+
+
 @project_cluster.command(name="build")
 @click.option("-v", "--verbose", is_flag=True, help="Show build output")
 @click.pass_context
@@ -136,7 +180,7 @@ def build_images(ctx: click.Context, verbose: bool):
 
     click.echo(f"Building images for project cluster '{cluster.name}'...")
     error_code = asyncio.run(
-        ctf_app.project_cluster_mgr.build_cluster_images(cluster)
+        ctf_app.project_cluster_mgr.build_cluster_images(cluster, verbose=verbose)
     )
 
     if error_code == 0:

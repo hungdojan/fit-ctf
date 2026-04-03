@@ -24,9 +24,7 @@ class PodmanClient(c_client.ContainerClientInterface):
         cmd = ["podman", "network", "create", name]
         # TODO: subnets
         # TODO: create if not exist
-        proc = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
-        # TODO: await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
-        return proc.returncode if proc.returncode is not None else 255
+        return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
     async def get_networks(self, contains: str | list[str] | None = None) -> list[str]:
         cmd = ["podman", "network", "ls", "--format", '"{{ .Name }}"']
@@ -34,8 +32,7 @@ class PodmanClient(c_client.ContainerClientInterface):
 
     def rm_network(self, logger_name: str, name: str, to_stdout: bool = False) -> ErrorCode:
         cmd = ["podman", "network", "rm", name]
-        proc = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
-        return proc.returncode if proc.returncode is not None else 255
+        return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
@@ -129,6 +126,32 @@ class PodmanClient(c_client.ContainerClientInterface):
         cmd = f"podman-compose {' '.join(file_flags)} build"
         proc = await asyncio.create_subprocess_exec(
             *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def compose_logs(
+        self,
+        logger_name: str,
+        files: list[Path],
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:
+        if not files:
+            return 1
+        file_flags = [f"-f {str(path.resolve())}" for path in files]
+        tail_arg = f"--tail={tail}"
+        parts = ["podman-compose"] + file_flags + ["logs", tail_arg]
+        if service:
+            parts.append(service)
+        cmd = " ".join(parts)
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )

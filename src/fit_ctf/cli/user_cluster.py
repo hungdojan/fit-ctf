@@ -514,8 +514,11 @@ def compile_cluster(
 @user_cluster.command(name="start")
 @user_option
 @project_option
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def start_cluster(ctx: click.Context, username: str, project_name: str):
+def start_cluster(
+    ctx: click.Context, username: str, project_name: str, verbose: bool
+):
     """Start all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -526,7 +529,9 @@ def start_cluster(ctx: click.Context, username: str, project_name: str):
 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
-        error_code = asyncio.run(ctf_app.user_cluster_mgr.start_cluster(cluster))
+        error_code = asyncio.run(
+            ctf_app.user_cluster_mgr.start_cluster(cluster, verbose=verbose)
+        )
 
         if error_code == 0:
             click.echo(f"Cluster started for {username}@{project_name}")
@@ -542,8 +547,11 @@ def start_cluster(ctx: click.Context, username: str, project_name: str):
 @user_cluster.command(name="stop")
 @user_option
 @project_option
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def stop_cluster(ctx: click.Context, username: str, project_name: str):
+def stop_cluster(
+    ctx: click.Context, username: str, project_name: str, verbose: bool
+):
     """Stop all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -554,7 +562,9 @@ def stop_cluster(ctx: click.Context, username: str, project_name: str):
 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
-        error_code = asyncio.run(ctf_app.user_cluster_mgr.stop_cluster(cluster))
+        error_code = asyncio.run(
+            ctf_app.user_cluster_mgr.stop_cluster(cluster, verbose=verbose)
+        )
 
         if error_code == 0:
             click.echo(f"Cluster stopped for {username}@{project_name}")
@@ -570,8 +580,11 @@ def stop_cluster(ctx: click.Context, username: str, project_name: str):
 @user_cluster.command(name="restart")
 @user_option
 @project_option
+@click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def restart_cluster(ctx: click.Context, username: str, project_name: str):
+def restart_cluster(
+    ctx: click.Context, username: str, project_name: str, verbose: bool
+):
     """Restart all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -582,12 +595,65 @@ def restart_cluster(ctx: click.Context, username: str, project_name: str):
 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
-        error_code = asyncio.run(ctf_app.user_cluster_mgr.restart_cluster(cluster))
+        error_code = asyncio.run(
+            ctf_app.user_cluster_mgr.restart_cluster(cluster, verbose=verbose)
+        )
 
         if error_code == 0:
             click.echo(f"Cluster restarted for {username}@{project_name}")
         else:
             click.echo(f"Error restarting cluster (exit code: {error_code})")
+            ctx.exit(error_code)
+
+    except CTFModelException as e:
+        click.echo(f"Error: {e}")
+        ctx.exit(1)
+
+
+@user_cluster.command(name="logs")
+@user_option
+@project_option
+@click.option(
+    "--tail",
+    default=500,
+    show_default=True,
+    type=int,
+    help="Max lines per service",
+)
+@click.option("-s", "--service", default=None, help="Limit to one compose service")
+@click.option(
+    "--no-log-stdout",
+    is_flag=True,
+    help="Write logs only to LOG_DEST files, not the terminal",
+)
+@click.pass_context
+def user_cluster_logs(
+    ctx: click.Context,
+    username: str,
+    project_name: str,
+    tail: int,
+    service: str | None,
+    no_log_stdout: bool,
+):
+    """Show recent container logs for a user's cluster."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+
+    try:
+        user = ctf_app.user_mgr.get_user(username)
+        project = ctf_app.prj_mgr.get_project(project_name)
+        enrollment = ctf_app.enroll_mgr.get_enrollment(user, project)
+        cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
+
+        error_code = asyncio.run(
+            ctf_app.user_cluster_mgr.compose_logs(
+                cluster,
+                tail=tail,
+                service=service,
+                to_stdout=not no_log_stdout,
+            )
+        )
+        if error_code != 0:
+            click.echo(f"Error fetching logs (exit code: {error_code})")
             ctx.exit(error_code)
 
     except CTFModelException as e:

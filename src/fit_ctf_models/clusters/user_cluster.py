@@ -11,6 +11,7 @@ import fit_ctf_models.enrollment as enroll
 from fit_ctf_components.types import ErrorCode, HealthCheckDict, UserNetworkMap
 from fit_ctf_models.clusters.cluster_document import ClusterDocument
 from fit_ctf_models.clusters.cluster_scenario_mixin import ClusterScenarioMixin
+from fit_ctf_models.clusters.constants import CLUSTER_LOGGER_NAME
 from fit_ctf_models.clusters.config_models import (
     ScenarioConfig,
     ServiceConfig,
@@ -18,6 +19,7 @@ from fit_ctf_models.clusters.config_models import (
 )
 from fit_ctf_models.utils.exceptions import (
     EnrollmentNotExistException,
+    ProjectClusterNotExistException,
     ProjectNotExistException,
     ScenarioConfigNotExistException,
     UserClusterExistException,
@@ -32,7 +34,6 @@ if TYPE_CHECKING:
     import fit_ctf_models.enrollment as enroll
     import fit_ctf_models.project as project
     import fit_ctf_models.user as user
-
 
 class UserCluster(ClusterDocument):
     enrollment_id: DBRef
@@ -369,11 +370,15 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             if scenario_dir.exists() and scenario_dir.is_dir():
                 shutil.rmtree(scenario_dir)
 
-    async def start_cluster(self, cluster: UserCluster) -> ErrorCode:
+    async def start_cluster(
+        self, cluster: UserCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Start a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
@@ -385,33 +390,72 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             if not await self.ctf_base.project_cluster_mgr.cluster_is_running(
                 project_cluster
             ):
-                await self.ctf_base.project_cluster_mgr.start_cluster(project_cluster)
-        except Exception:
-            pass  # No project cluster configured
+                await self.ctf_base.project_cluster_mgr.start_cluster(
+                    project_cluster, verbose=verbose
+                )
+        except ProjectClusterNotExistException:
+            self.ctf_base.logger.debug(
+                f"No project cluster for project={project.name}; skipping dependency start",
+                logger_name=CLUSTER_LOGGER_NAME,
+            )
+        except Exception as e:
+            self.ctf_base.logger.warning(
+                f"Could not ensure project cluster is running for project={project.name}: {e}",
+                logger_name=CLUSTER_LOGGER_NAME,
+            )
 
+        self.ctf_base.logger.info(
+            f"user_cluster start cluster={cluster.name} user={user.username} "
+            f"project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
         enrollment = self.ctf_base.enroll_mgr.get_enrollment(user, project)
         self.ctf_base.enroll_mgr.record_session(enrollment, ProgressSession.State.START)
-        return await self.c_client.compose_up(
-            project.name, self.get_compose_files(cluster)
+        error_code = await self.c_client.compose_up(
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
         )
+        self.ctf_base.logger.info(
+            f"user_cluster start done cluster={cluster.name} user={user.username} "
+            f"project={project.name} exit_code={error_code}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        return error_code
 
-    async def stop_cluster(self, cluster: UserCluster) -> ErrorCode:
+    async def stop_cluster(
+        self, cluster: UserCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Stop a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
+        self.ctf_base.logger.info(
+            f"user_cluster stop cluster={cluster.name} user={user.username} "
+            f"project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
         enrollment = self.ctf_base.enroll_mgr.get_enrollment(user, project, None)
         error_code, success = await self.c_client.compose_down(
-            project.name, self.get_compose_files(cluster)
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
         )
         if success:
             self.ctf_base.enroll_mgr.record_session(
                 enrollment, ProgressSession.State.STOP
             )
+        self.ctf_base.logger.info(
+            f"user_cluster stop done cluster={cluster.name} user={user.username} "
+            f"project={project.name} exit_code={error_code} teardown={success}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
         return error_code
 
     async def cluster_is_running(self, cluster: UserCluster) -> bool:
@@ -424,16 +468,50 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         """
         return len(await self.c_client.compose_ps(self.get_compose_files(cluster))) > 0
 
-    async def restart_cluster(self, cluster: UserCluster) -> ErrorCode:
+    async def restart_cluster(
+        self, cluster: UserCluster, *, verbose: bool = False
+    ) -> ErrorCode:
         """Restart a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param verbose: Stream compose engine output to the terminal as well as log files
+        :type verbose: bool
         :return: An exit code
         :rtype: ErrorCode
         """
-        await self.stop_cluster(cluster)
-        return await self.start_cluster(cluster)
+        user, project = self.get_user_and_project(cluster.enrollment_id.id)
+        self.ctf_base.logger.info(
+            f"user_cluster restart cluster={cluster.name} user={user.username} "
+            f"project={project.name}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        stop_code = await self.stop_cluster(cluster, verbose=verbose)
+        start_code = await self.start_cluster(cluster, verbose=verbose)
+        self.ctf_base.logger.info(
+            f"user_cluster restart done cluster={cluster.name} user={user.username} "
+            f"project={project.name} stop_exit={stop_code} start_exit={start_code}",
+            logger_name=CLUSTER_LOGGER_NAME,
+        )
+        return start_code
+
+    async def compose_logs(
+        self,
+        cluster: UserCluster,
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:
+        """Fetch recent compose service logs (bounded tail)."""
+        _, project = self.get_user_and_project(cluster.enrollment_id.id)
+        return await self.c_client.compose_logs(
+            project.name,
+            self.get_compose_files(cluster),
+            tail=tail,
+            service=service,
+            to_stdout=to_stdout,
+        )
 
     async def cluster_health_check(self, cluster: UserCluster) -> list[HealthCheckDict]:
         """Get health check status for a cluster.

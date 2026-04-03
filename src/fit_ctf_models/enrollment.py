@@ -1,4 +1,3 @@
-import logging
 import shutil
 from typing import Any
 
@@ -6,7 +5,6 @@ from bson import DBRef
 from pymongo.database import Database
 
 import fit_ctf.ctf_base as ctf_base
-import fit_ctf_models.clusters as _cluster
 import fit_ctf_models.project as _project
 import fit_ctf_models.user as _user
 from fit_ctf_components.types import (
@@ -29,8 +27,6 @@ from fit_ctf_models.utils.exceptions import (
     UserNotExistsException,
 )
 from fit_ctf_models.utils.mongo_queries import MongoQueries
-
-log = logging.getLogger()
 
 
 class Enrollment(Base):

@@ -23,9 +23,7 @@ class DockerClient(c_client.ContainerClientInterface):
         self, logger_name: str, name: str, to_stdout: bool = False
     ) -> ErrorCode:
         cmd = ["docker", "network", "create", name]
-        proc = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
-        # TODO: logging await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
-        return proc.returncode if proc.returncode is not None else 255
+        return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
     async def get_networks(self, contains: str | list[str] | None = None) -> list[str]:
         cmd = ["docker", "network", "ls", "--format", '"{{ .Name }}"']
@@ -35,10 +33,7 @@ class DockerClient(c_client.ContainerClientInterface):
         self, logger_name: str, name: str, to_stdout: bool = False
     ) -> ErrorCode:
         cmd = ["docker", "network", "rm", name]
-        proc = subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
-        # await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
-        # await proc.wait()
-        return proc.returncode if proc.returncode is not None else 255
+        return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
     async def rm_images(
         self, logger_name: str, contains: str | list[str], to_stdout: bool = False
@@ -144,6 +139,34 @@ class DockerClient(c_client.ContainerClientInterface):
             return 1
         cmd = ["docker", "compose"] + [f"-f {str(f.resolve())}" for f in files] + ["build"]
         cmd = " ".join(cmd)
+        proc = await asyncio.create_subprocess_exec(
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
+        await proc.wait()
+        return proc.returncode if proc.returncode is not None else 255
+
+    async def compose_logs(
+        self,
+        logger_name: str,
+        files: list[Path],
+        *,
+        tail: int = 500,
+        service: str | None = None,
+        to_stdout: bool = True,
+    ) -> ErrorCode:
+        if not files:
+            return 1
+        parts = (
+            ["docker", "compose"]
+            + [f"-f {str(f.resolve())}" for f in files]
+            + ["logs", "--no-color", f"--tail={tail}"]
+        )
+        if service:
+            parts.append(service)
+        cmd = " ".join(parts)
         proc = await asyncio.create_subprocess_exec(
             *cmd.split(),
             stdout=asyncio.subprocess.PIPE,
