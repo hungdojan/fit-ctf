@@ -49,7 +49,7 @@ def test_export_project(connected_data: FixtureData):
             enroll_doc = [i for i in data["enrollments"] if i["user"] == "user1"][0]
             assert (
                 enroll_doc
-                and len(enroll_doc["progress"]["secrets"]) == 2
+                and len(enroll_doc["progress"]["solved_secrets"]) == 1
                 and enroll_doc["progress"]["last_submit_time"]
                 and enroll_doc["progress"]["found_secrets"] == 1
             )
@@ -81,7 +81,7 @@ def test_import_project(empty_data: FixtureData):
     )
     assert (
         enrollment
-        and len(enrollment.progress.secrets) == 2
+        and len(enrollment.progress.solved_secrets) == 1
         and enrollment.progress.last_submit_time
         and enrollment.progress.found_secrets == 1
     )

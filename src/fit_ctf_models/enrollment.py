@@ -15,12 +15,13 @@ from fit_ctf_components.types import (
 )
 from fit_ctf_components.utils import get_missing_in_sequence
 from fit_ctf_models.base import Base, BaseManagerInterface
-from fit_ctf_models.clusters.config_models import ScenarioConfig, ServiceConfig
+from fit_ctf_models.clusters.secret_slots import count_submittable_secret_slots
 from fit_ctf_models.user_progress import UserProgress, UserProgressManager
 from fit_ctf_models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
     MaxUserCountReachedException,
+    ProjectClusterNotExistException,
     ProjectNotExistException,
     SSHPortOutOfRangeException,
     UserEnrolledToProjectException,
@@ -602,18 +603,31 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :rtype: list[LeaderBoardItem]
         """
 
+        try:
+            project_cluster = self.ctf_base.project_cluster_mgr.get_cluster(project)
+        except ProjectClusterNotExistException:
+            project_cluster = None
+
         def _transform_items(items) -> list[LeaderBoardItem]:
             """Transform fetch data to final format."""
-            return [
-                {
-                    "secrets": obj["progress"]["secrets"],
-                    "found_secrets": obj["progress"]["found_secrets"],
-                    "last_submit_time": obj["progress"]["last_submit_time"],
-                    "total_secrets": len(obj["progress"]["secrets"]),
-                    "user": obj["user"],
-                }
-                for obj in items
-            ]
+            out: list[LeaderBoardItem] = []
+            for obj in items:
+                eid = obj["_id"]
+                user_cluster = self.ctf_base.user_cluster_mgr.get_doc_by_filter(
+                    **{"enrollment_id.$id": eid}
+                )
+                total = count_submittable_secret_slots(user_cluster, project_cluster)
+                solved = obj["progress"].get("solved_secrets") or {}
+                out.append(
+                    {
+                        "secrets": solved,
+                        "found_secrets": obj["progress"]["found_secrets"],
+                        "last_submit_time": obj["progress"]["last_submit_time"],
+                        "total_secrets": total,
+                        "user": obj["user"],
+                    }
+                )
+            return out
 
         pipeline = MongoQueries.enrollment_fetch_leaderboard(project)
         fetch_leaderboard_items = list(self.collection.aggregate(pipeline))

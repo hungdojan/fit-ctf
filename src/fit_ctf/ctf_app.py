@@ -32,7 +32,7 @@ from fit_ctf_models.clusters.config_models import scenario_config_from_dict
 from fit_ctf_models.clusters.user_cluster import UserCluster
 
 # Service management deprecated - moved to cluster configurations
-from fit_ctf_models.secret import Secret
+from fit_ctf_models.secret import SecretSubmissionLogEntry, SolvedSecretRecord
 from fit_ctf_models.user_progress import UserProgress
 from fit_ctf_models.utils.exceptions import (
     ProjectExistsException,
@@ -112,15 +112,20 @@ class CTFApp(CTFBase):
             enrollment_ref = f"{enrollment['user']}@{enrollment['project']}"
 
             progress = enrollment["progress"]
-            for v in progress["secrets"].values():
-                user_id = v.pop("user_id")
+            for v in (progress.get("solved_secrets") or {}).values():
+                if not isinstance(v, dict):
+                    continue
+                user_id = v.pop("user_id", None)
                 user = None
                 if user_id:
                     user = self.user_mgr.get_doc_by_id(user_id)
                 v["user"] = user.username if user else None
-                if v["submitted"]:
-                    v["submitted"] = v["submitted"].isoformat()
-            if progress["last_submit_time"]:
+                if v.get("submitted_at"):
+                    v["submitted_at"] = v["submitted_at"].isoformat()
+            for entry in progress.get("submission_log") or []:
+                if isinstance(entry, dict) and entry.get("timestamp"):
+                    entry["timestamp"] = entry["timestamp"].isoformat()
+            if progress.get("last_submit_time"):
                 progress["last_submit_time"] = progress["last_submit_time"].isoformat()
 
             cluster = self.user_cluster_mgr.get_doc_by_filter(
@@ -256,6 +261,49 @@ class CTFApp(CTFBase):
                 continue
             sc = scenario_config_from_dict(scenario_name, raw)
             self.project_cluster_mgr.create_or_update_scenario_config(pc, sc)
+
+    def _user_progress_from_import_dict(
+        self, progress_dict: dict, failed_usernames: set[str]
+    ) -> UserProgress:
+        solved: dict[str, SolvedSecretRecord] = {}
+        for cid, raw in (progress_dict.get("solved_secrets") or {}).items():
+            if not isinstance(raw, dict):
+                continue
+            ref_name = raw.get("user")
+            if ref_name and ref_name in failed_usernames:
+                uid = None
+            elif ref_name:
+                uid = self.user_mgr.get_user(ref_name).id
+            else:
+                uid = None
+            solved[str(cid)] = SolvedSecretRecord(
+                cluster_kind=raw["cluster_kind"],
+                scenario_name=raw["scenario_name"],
+                local_name=raw["local_name"],
+                submitted_at=parser.parse(raw["submitted_at"]),
+                user_id=uid,
+                value_at_submit=raw.get("value_at_submit"),
+            )
+        log: list[SecretSubmissionLogEntry] = []
+        for entry in progress_dict.get("submission_log") or []:
+            if not isinstance(entry, dict):
+                continue
+            log.append(
+                SecretSubmissionLogEntry(
+                    value=entry["value"],
+                    timestamp=parser.parse(entry["timestamp"]),
+                )
+            )
+        return UserProgress(
+            solved_secrets=solved,
+            submission_log=log,
+            found_secrets=progress_dict["found_secrets"],
+            last_submit_time=(
+                parser.parse(progress_dict["last_submit_time"])
+                if progress_dict.get("last_submit_time")
+                else None
+            ),
+        )
 
     def _validate_with_database(self, data: DatabaseDumpDict):
         # check if they exist in the database, raise collision error if needed
@@ -393,32 +441,8 @@ class CTFApp(CTFBase):
                 continue
             try:
                 progress_dict = enrollment["progress"]
-                secrets: dict[str, Secret] = {}
-                for k, v in progress_dict["secrets"].items():
-                    if not isinstance(v, dict):
-                        continue
-                    ref_name = v.get("user")
-                    if ref_name and ref_name in failed_usernames:
-                        uid = None
-                    elif ref_name:
-                        uid = self.user_mgr.get_user(ref_name).id
-                    else:
-                        uid = None
-                    secrets[k] = Secret(
-                        value=v.get("value", ""),
-                        submitted=(
-                            parser.parse(v["submitted"]) if v.get("submitted") else None
-                        ),
-                        user_id=uid,
-                    )
-                progress = UserProgress(
-                    secrets=secrets,
-                    found_secrets=progress_dict["found_secrets"],
-                    last_submit_time=(
-                        parser.parse(progress_dict["last_submit_time"])
-                        if progress_dict.get("last_submit_time")
-                        else None
-                    ),
+                progress = self._user_progress_from_import_dict(
+                    progress_dict, failed_usernames
                 )
                 self.enroll_mgr.import_enrollment(username, project_name, progress)
             except Exception as e:
@@ -610,33 +634,9 @@ class CTFApp(CTFBase):
                     enrollment = self.enroll_mgr.enroll_user_to_project(
                         enroll_copy["user"], enroll_copy["project"]
                     )
-                    # Secrets from YAML (optional submitter user ref per secret)
-                    for key, item in enroll_copy["progress"].pop("secrets", {}).items():
-                        user_info = item.pop("user")
-                        if user_info and user_info in failed_setup_usernames:
-                            user_id = None
-                        elif user_info:
-                            user_id = self.user_mgr.get_user(user_info).id
-                        else:
-                            user_id = None
-
-                        secret = self.enroll_mgr.add_secret(enrollment, key, item["value"])
-                        secret.user_id = user_id
-                        secret.submitted = (
-                            parser.parse(item["submitted"])
-                            if item["submitted"]
-                            else None
-                        )
-                        self.enroll_mgr.update_doc(enrollment)
-                    # Progress aggregate fields
-                    enrollment.progress.last_submit_time = (
-                        parser.parse(enroll_copy["progress"]["last_submit_time"])
-                        if enroll_copy["progress"]["last_submit_time"]
-                        else None
+                    enrollment.progress = self._user_progress_from_import_dict(
+                        enroll_copy["progress"], failed_setup_usernames
                     )
-                    enrollment.progress.found_secrets = enroll_copy["progress"][
-                        "found_secrets"
-                    ]
                     self.enroll_mgr.update_doc(enrollment)
                     # Optional extra scenarios on the enrollment's UserCluster
                     uc = self.user_cluster_mgr.get_cluster(enrollment)

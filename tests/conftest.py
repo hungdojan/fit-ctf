@@ -195,7 +195,7 @@ def cli_data(connected_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenarios").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()
@@ -209,7 +209,7 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenarios").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()

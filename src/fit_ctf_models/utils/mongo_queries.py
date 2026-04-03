@@ -518,26 +518,21 @@ class MongoQueries:
                     "progress.last_submit_time": 1,
                 }
             },
-            # remove hashes from the output data
-            # it converts object to array
-            # then only select relevant data
-            # and reassemble back to object
             {
                 "$addFields": {
-                    "progress.secrets": {
+                    "progress.solved_secrets": {
                         "$arrayToObject": {
                             "$map": {
-                                "input": {"$objectToArray": "$progress.secrets"},
+                                "input": {
+                                    "$objectToArray": {
+                                        "$ifNull": ["$progress.solved_secrets", {}]
+                                    }
+                                },
                                 "as": "item",
                                 "in": {
                                     "k": "$$item.k",
                                     "v": {
-                                        "$let": {
-                                            "vars": {"s": "$$item.v"},
-                                            "in": {
-                                                "submitted": "$$s.submitted",
-                                            },
-                                        }
+                                        "submitted_at": "$$item.v.submitted_at",
                                     },
                                 },
                             }
@@ -547,8 +542,8 @@ class MongoQueries:
             },
             {
                 "$project": {
-                    "_id": 0,
-                    "progress.secrets": 1,
+                    "_id": 1,
+                    "progress.solved_secrets": 1,
                     "progress.found_secrets": 1,
                     "progress.last_submit_time": 1,
                     "user": 1,

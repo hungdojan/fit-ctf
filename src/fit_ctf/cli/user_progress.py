@@ -30,67 +30,23 @@ def user_progress(ctx: click.Context, username: str, project_name: str):
         ctx.exit(1)
 
 
-@user_progress.command(name="add-secret")
-@click.option("-n", "--name", required=True, help="Name of the secret.", type=str)
-@click.option("-v", "--value", required=True, help="Secret value.", type=str)
-@click.pass_context
-def add_secret(ctx: click.Context, name: str, value: str):
-    """Add a secret to the progress."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    enrollment: Enrollment = ctx.obj["enrollment"]
-    try:
-        ctf_app.enroll_mgr.add_secret(enrollment, name, value)
-    except CTFModelException as e:
-        click.echo(str(e))
-        ctx.exit(1)
-
-
-@user_progress.command(name="update-secret")
-@click.option("-n", "--name", required=True, help="Name of the secret.", type=str)
-@click.option("-v", "--value", required=True, help="Secret value.", type=str)
-@click.option(
-    "-r",
-    "--reset-submitted",
-    is_flag=True,
-    help="Reset stats if updated secret was previously submitted.",
-)
-@click.pass_context
-def update_secret(ctx: click.Context, name: str, value: str, reset_submitted: bool):
-    """Update an existing secret from the list."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    enrollment: Enrollment = ctx.obj["enrollment"]
-    try:
-        ctf_app.enroll_mgr.update_secret_value(enrollment, name, value, reset_submitted)
-    except CTFModelException as e:
-        click.echo(str(e))
-        ctx.exit(1)
-
-
-@user_progress.command(name="delete-secret")
-@click.option("-n", "--name", required=True, help="Name of the secret.", type=str)
-@click.pass_context
-def delete_secret(ctx: click.Context, name: str):
-    """Delete secret from the progress."""
-    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    enrollment: Enrollment = ctx.obj["enrollment"]
-    try:
-        ctf_app.enroll_mgr.delete_secret(enrollment, name, False)
-    except CTFModelException as e:
-        click.echo(str(e))
-        ctx.exit(1)
-
-
 @user_progress.command(name="list-secrets")
+@click.option(
+    "-s",
+    "--show-secret",
+    is_flag=True,
+    help="Include expected secret values from cluster config (sensitive).",
+)
 @format_option
 @click.pass_context
-def list_secrets(ctx: click.Context, format: str):
-    """Print list of all secrets"""
+def list_secrets(ctx: click.Context, format: str, show_secret: bool):
+    """Print list of all secrets (slots from user + project clusters)."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     enrollment: Enrollment = ctx.obj["enrollment"]
-    header_order = ["name", "submitted"]
-    headers = ["Name", "Submitted"]
-    values = [
-        [item[key] for key in header_order] for item in enrollment.progress.list_secrets()
-    ]
+    header_order = ["name", "submitted"] + (["flag"] if show_secret else [])
+    headers = ["Name", "Submitted"] + (["Secret"] if show_secret else [])
+    rows = ctf_app.enroll_mgr.list_secrets_for_display(enrollment, show_flag=show_secret)
+    values = [[item[key] for key in header_order] for item in rows]
     get_view(format).print_data(headers, values)
 
 
@@ -123,10 +79,11 @@ def progress_info(ctx: click.Context, format: str):
     if not user:
         click.echo("User not found")
         ctx.exit(1)
+    total = ctf_app.enroll_mgr.count_submittable_slots(enrollment)
     data = {
         "user": user.username,
         "found": enrollment.progress.found_secrets,
-        "total": len(enrollment.progress.secrets.keys()),
+        "total": total,
         "last_found": enrollment.progress.last_submit_time,
     }
     header_order = ["user", "found", "total", "last_found"]

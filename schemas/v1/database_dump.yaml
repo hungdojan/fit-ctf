@@ -93,32 +93,58 @@ $defs:
   user_progress:
     type: object
     properties:
-      secrets:
+      solved_secrets:
         type: object
         patternProperties:
           ".*":
-            $ref: "#/$defs/secret_export"
+            $ref: "#/$defs/solved_secret_export"
+      submission_log:
+        type: array
+        items:
+          $ref: "#/$defs/submission_log_entry"
       found_secrets:
         type: integer
       last_submit_time:
         type: ["string", "null"]
         format: date-time
     required:
-      - secrets
+      - solved_secrets
+      - submission_log
       - found_secrets
       - last_submit_time
-  secret_export:
+  solved_secret_export:
+    type: object
+    properties:
+      cluster_kind:
+        type: string
+        enum: ["user", "project"]
+      scenario_name:
+        type: string
+      local_name:
+        type: string
+      submitted_at:
+        type: string
+        format: date-time
+      user:
+        type: ["string", "null"]
+      value_at_submit:
+        type: ["string", "null"]
+    required:
+      - cluster_kind
+      - scenario_name
+      - local_name
+      - submitted_at
+  submission_log_entry:
     type: object
     properties:
       value:
         type: string
-      submitted:
-        type: ["string", "null"]
+      timestamp:
+        type: string
         format: date-time
-      user:
-        type: ["string", "null"]
     required:
       - value
+      - timestamp
   project_cluster_item:
     type: object
     properties:

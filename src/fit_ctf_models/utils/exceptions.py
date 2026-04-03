@@ -133,6 +133,12 @@ class SecretNameAlreadyExistsException(CTFModelException):
     pass
 
 
+class InvalidDynamicSecretKeyException(CTFModelException):
+    """A ``dynamic_secrets`` key is not allowed (e.g. contains ``__``)."""
+
+    pass
+
+
 class SecretNotFoundException(CTFModelException):
     """Could not locate the secret in the given progress document."""
 

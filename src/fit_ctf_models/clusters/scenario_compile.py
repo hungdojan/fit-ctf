@@ -31,7 +31,12 @@ class ScenarioCompileContext:
 
 
 class ScenarioCompiler:
-    """Copy scenario assets, build compose param map, and render `scenario_compose.yaml`."""
+    """Copy scenario assets, build compose param map, and render `scenario_compose.yaml`.
+
+    ``ScenarioConfig.dynamic_secrets`` is injected only into ``volumes/*.template`` render
+    contexts as ``secret_map__<name>`` (alongside ``{service}__volume_map__{vol}__*`` from
+    ``template_params``), not into ``src_path`` or ``scenario_compose.yaml.j2``.
+    """
 
     def __init__(self, context: ScenarioCompileContext) -> None:
         self._c = context
@@ -61,6 +66,7 @@ class ScenarioCompiler:
 
     def build_param_map(self, scenario_config: ScenarioConfig) -> dict[str, Any]:
         """Assemble the param dict passed to `scenario_compose.yaml.j2`."""
+        dyn = dict(scenario_config.dynamic_secrets)
         base_vol = self._volume_src_path_context()
         param_map: dict[str, Any] = {
             **{f"paths__{k}": str(v) for k, v in self._c.paths_dict.items()},
@@ -77,6 +83,7 @@ class ScenarioCompiler:
                         service_name=s_name,
                         volume_name=vol_name,
                         template_params=config.template_params,
+                        dynamic_secrets=dyn,
                     )
                 )
             param_map.update(

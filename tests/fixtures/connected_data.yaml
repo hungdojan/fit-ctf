@@ -31,19 +31,28 @@ enrollments:
   - user: user1
     project: prj2
     progress:
-      secrets:
-        key1:
-          value: value1
-          submitted: "2025-09-27T18:09:25.594Z"
+      solved_secrets:
+        "user\u001flogin_node\u001fkey1":
+          cluster_kind: user
+          scenario_name: login_node
+          local_name: key1
+          submitted_at: "2025-09-27T18:09:25.594Z"
           user: user1
-        key2:
-          value: value2
-          submitted: null
-          user: null
+          value_at_submit: value1
+      submission_log:
+        - value: not-the-flag
+          timestamp: "2025-09-27T18:05:00.000Z"
+        - value: totally-wrong
+          timestamp: "2025-09-27T18:08:15.000Z"
+        - value: value1
+          timestamp: "2025-09-27T18:09:25.594Z"
       found_secrets: 1
       last_submit_time: "2025-09-27T18:09:25.594Z"
     cluster.scenario_configs:
       login_node:
+        dynamic_secrets:
+          key1: value1
+          key2: value2
         service_configs:
           login_node:
             port_map:
@@ -55,19 +64,21 @@ enrollments:
               shadow:
                 src_path: "{{ paths__users }}/{{ username }}/shadow"
                 template_params: {}
-
   - user: user2
     project: prj1
     progress:
-      secrets:
-        key3:
-          value: value3
-          submitted: null
-          user: null
+      solved_secrets: {}
+      submission_log:
+        - value: guess-one
+          timestamp: "2025-09-26T10:00:00.000Z"
+        - value: guess-two
+          timestamp: "2025-09-26T10:01:30.000Z"
       found_secrets: 0
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
+        dynamic_secrets:
+          key3: value3
         service_configs:
           login_node:
             port_map:
@@ -82,11 +93,15 @@ enrollments:
   - user: user2
     project: prj2
     progress:
-      secrets: {}
+      solved_secrets: {}
+      submission_log:
+        - value: nope
+          timestamp: "2025-09-28T12:00:00.000Z"
       found_secrets: 0
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
+        dynamic_secrets: {}
         service_configs:
           login_node:
             port_map:
@@ -101,11 +116,15 @@ enrollments:
   - user: user3
     project: prj1
     progress:
-      secrets: {}
+      solved_secrets: {}
+      submission_log:
+        - value: ""
+          timestamp: "2025-09-25T08:00:00.000Z"
       found_secrets: 0
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
+        dynamic_secrets: {}
         service_configs:
           login_node:
             port_map:

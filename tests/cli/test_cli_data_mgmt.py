@@ -30,11 +30,6 @@ def test_cli_import_data(empty_cli_data: CLIData):
     result = cli_runner.invoke(cli, cmd)
 
     assert result.exit_code == 0
-    print(result.stdout)
-    print(ctf_app.prj_mgr.get_docs())
-    print(ctf_app.user_mgr.get_docs())
-    print(ctf_app.enroll_mgr.get_docs())
-
     assert ctf_app.prj_mgr.get_project("prj1")
     assert len(ctf_app.user_mgr.get_docs()) == 2
     assert len(ctf_app.enroll_mgr.get_docs()) > 0

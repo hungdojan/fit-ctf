@@ -103,7 +103,7 @@ def scenario_config_from_dict(scenario_name: str, raw: dict) -> ScenarioConfig:
     """Build ScenarioConfig from a YAML/dump dict (per setup.yaml scenario_configs)."""
     builder = ScenarioConfig.Builder(scenario_name)
     for name, value in raw.get("dynamic_secrets", {}).items():
-        builder.add_secret(name, value)
+        builder.add_secret(name, value if isinstance(value, str) else str(value))
     for service_name, svc_raw in raw.get("service_configs", {}).items():
         if not isinstance(svc_raw, dict):
             continue
