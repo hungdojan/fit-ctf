@@ -24,19 +24,19 @@ cp config/setup/env_example .env
 ./manage_db.sh start
 ```
 
-After the installation is done, both `fit-ctf` and `ctf-rendezvous` should be installed. Either run the CLI tools using `poetry run` command, or shell into the poetry virtual environment and run them as you would normally do.
+After the installation is done, both `fit-ctf` and `fit-rendezvous` should be installed. Either run the CLI tools using `poetry run` command, or shell into the poetry virtual environment and run them as you would normally do.
 
 ```sh
 # run CLI tool
 poetry run fit-ctf <options>
 
 # run Rendezvous tool
-poetry run ctf-rendezvous
+poetry run fit-rendezvous
 
 # run them after activating the environment
 poetry shell
 fit-ctf
-ctf-rendezvous
+fit-rendezvous
 ```
 
 ## Basic control
@@ -78,7 +78,7 @@ fit-ctf project server \
 
 User can then start his instance by running the **Rendezvous** tool.
 ```sh
-ctf-rendezvous
+fit-rendezvous
 ```
 
 Of course, the tool support a whole lot more. The full listing of commands can be found on the project's wiki page. Each command has a help command that displays command options and arguments. User `--help` option to display the usage messages.
@@ -172,7 +172,7 @@ Port 22
 Port 5555
 Match User TheUser LocalPort 5555
     PermitEmptyPasswords yes
-    ForceCommand cd /home/TheUser && poetry run ctf-rendezvous
+    ForceCommand cd /home/TheUser && poetry run fit-rendezvous
 ```
 
 Apply changes using following commands:
