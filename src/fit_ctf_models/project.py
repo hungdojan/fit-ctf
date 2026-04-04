@@ -23,7 +23,6 @@ from fit_ctf_models.utils.mongo_queries import MongoQueries
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
-    import fit_ctf_models.clusters.project_cluster as prj_cluster
     import fit_ctf_models.enrollment as enroll
 
 
@@ -297,7 +296,7 @@ class ProjectManager(BaseManagerInterface[Project]):
             # Stop all user clusters
             await self.ctf_base.user_cluster_mgr.stop_all_user_clusters(prj)
 
-        except CTFBaseException: # pragma: no cover
+        except CTFBaseException:  # pragma: no cover
             pass  # No cluster exists
         await self.enroll_mgr.disable_multiple_enrollments(
             [(user, prj) for user in self.enroll_mgr.get_enrollments_for_project(prj)]

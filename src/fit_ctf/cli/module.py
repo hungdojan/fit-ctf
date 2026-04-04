@@ -90,7 +90,9 @@ def referenced(
     in all the clusters.
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    module_count = ctf_app.module_mgr.reference_count(project_name, all_images=all_images)
+    module_count = ctf_app.module_mgr.reference_count(
+        project_name, all_images=all_images
+    )
 
     header = ["Module name", "Count"]
     values = [[name, count] for name, count in module_count.items()]

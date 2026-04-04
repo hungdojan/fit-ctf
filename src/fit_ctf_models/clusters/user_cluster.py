@@ -31,9 +31,9 @@ from fit_ctf_models.utils.sessions import ProgressSession
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base
-    import fit_ctf_models.enrollment as enroll
     import fit_ctf_models.project as project
     import fit_ctf_models.user as user
+
 
 class UserCluster(ClusterDocument):
     enrollment_id: DBRef
@@ -552,11 +552,9 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :param project: Project object
         :type project: project.Project
         """
-        for user in users:
+        for u in users:
             try:
-                enrollment = self.ctf_base.enroll_mgr.get_enrollment(
-                    user, project, None
-                )
+                enrollment = self.ctf_base.enroll_mgr.get_enrollment(u, project, None)
                 cluster = self.get_doc_by_filter(**{"enrollment_id.$id": enrollment.id})
                 if cluster:
                     await self.stop_cluster(cluster)
@@ -579,5 +577,5 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :type user: user.User
         """
         projects = self.ctf_base.enroll_mgr.get_enrolled_projects(user)
-        for project in projects:
-            await self.stop_multiple_user_clusters([user], project)
+        for p in projects:
+            await self.stop_multiple_user_clusters([user], p)

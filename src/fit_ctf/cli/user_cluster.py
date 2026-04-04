@@ -104,7 +104,8 @@ def add_scenario_to_cluster(
             f"Scenario '{scenario}' added to cluster for {username}@{project_name}"
         )
         click.echo(
-            "WARNING: Remember to update service configurations with 'cluster edit-service' if needed"
+            "WARNING: Remember to update service configurations with"
+            " 'cluster edit-service' if needed"
         )
     except ConfigurationFileNotEditedException as e:
         click.echo(e)
@@ -447,7 +448,7 @@ def cluster_info(ctx: click.Context, username: str, project_name: str):
 
         click.echo(f"Cluster: {cluster.name}")
         click.echo(f"Enrollment ID: {cluster.enrollment_id.id}")
-        click.echo(f"\nNetworks:")
+        click.echo("\nNetworks:")
         click.echo(f"  SHARED: {network_map['shared']}")
         click.echo(f"  PRIVATE: {network_map['private']}")
         click.echo(f"\nScenarios ({len(cluster.scenario_configs)}):")
@@ -503,7 +504,8 @@ def compile_cluster(
             for scenario_name in cluster.scenario_configs.keys():
                 ctf_app.user_cluster_mgr.compile_scenario(cluster, scenario_name)
             click.echo(
-                f"All scenarios compiled for {username}@{project_name} ({len(cluster.scenario_configs)} scenarios)"
+                f"All scenarios compiled for {username}@{project_name} "
+                f"({len(cluster.scenario_configs)} scenarios)"
             )
 
     except CTFModelException as e:
@@ -547,9 +549,7 @@ def build_images(ctx: click.Context, username: str, project_name: str, verbose: 
 @project_option
 @click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def start_cluster(
-    ctx: click.Context, username: str, project_name: str, verbose: bool
-):
+def start_cluster(ctx: click.Context, username: str, project_name: str, verbose: bool):
     """Start all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -580,9 +580,7 @@ def start_cluster(
 @project_option
 @click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def stop_cluster(
-    ctx: click.Context, username: str, project_name: str, verbose: bool
-):
+def stop_cluster(ctx: click.Context, username: str, project_name: str, verbose: bool):
     """Stop all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 

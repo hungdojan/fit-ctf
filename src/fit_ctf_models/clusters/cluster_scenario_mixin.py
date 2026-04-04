@@ -34,9 +34,7 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
         """Return ``(scenario_global_root, compile_destination_root)`` for ``scenario_name``."""
 
     @abstractmethod
-    def _network_map_for_scenario_compile(
-        self, cluster: ClusterT
-    ) -> Mapping[str, str]:
+    def _network_map_for_scenario_compile(self, cluster: ClusterT) -> Mapping[str, str]:
         """Network names for compose param map (``network_map__*``)."""
 
     @abstractmethod

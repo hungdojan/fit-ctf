@@ -30,7 +30,9 @@ class PodmanClient(c_client.ContainerClientInterface):
         cmd = ["podman", "network", "ls", "--format", '"{{ .Name }}"']
         return await self._process_get_commands(cmd, contains)
 
-    def rm_network(self, logger_name: str, name: str, to_stdout: bool = False) -> ErrorCode:
+    def rm_network(
+        self, logger_name: str, name: str, to_stdout: bool = False
+    ) -> ErrorCode:
         cmd = ["podman", "network", "rm", name]
         return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
@@ -82,14 +84,18 @@ class PodmanClient(c_client.ContainerClientInterface):
         file_flags = [f"-f {str(path.resolve())}" for path in files]
         cmd = f"podman-compose {' '.join(file_flags)} ps -q"
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
         if not stdout.decode().strip():
             return 0, False
         cmd = f"podman-compose {' '.join(file_flags)} down"
         proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
         await self._process_logging(proc, logger_name=logger_name, to_stdout=to_stdout)
         await proc.wait()
@@ -217,9 +223,7 @@ class PodmanClient(c_client.ContainerClientInterface):
         # TODO: implement
         pass
 
-    async def compose_states(
-        self, files: list[Path]
-    ) -> list[HealthCheckDict]:
+    async def compose_states(self, files: list[Path]) -> list[HealthCheckDict]:
         file_flags = [f"-f {str(path.resolve())}" for path in files]
         cmd = f"podman-compose {' '.join(file_flags)} ps --format json"
         proc = await asyncio.create_subprocess_shell(

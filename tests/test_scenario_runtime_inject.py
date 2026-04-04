@@ -1,6 +1,6 @@
-"""Inject scenario trees at runtime by copying ``tests/fixtures/injected_scenarios/*``.
+"""Inject scenario trees at runtime by copying `tests/fixtures/injected_scenarios/*`.
 
-Edit files under ``fixtures/injected_scenarios/<name>/`` (compose, ``volumes/``, etc.)
+Edit files under `fixtures/injected_scenarios/<name>/` (compose, `volumes/`, etc.)
 instead of large inline strings in this module.
 """
 
@@ -20,7 +20,10 @@ from fit_ctf_models.clusters.config_models import (
     VolumeConfig,
     scenario_config_from_dict,
 )
-from fit_ctf_models.clusters.scenario_compile import ScenarioCompileContext, ScenarioCompiler
+from fit_ctf_models.clusters.scenario_compile import (
+    ScenarioCompileContext,
+    ScenarioCompiler,
+)
 from fit_ctf_models.clusters.scenario_manager import ScenarioManager
 from fit_ctf_models.utils.exceptions import ScenarioNotExistException
 
@@ -33,9 +36,9 @@ def copy_injected_scenario(
     *,
     dest_name: str | None = None,
 ) -> Path:
-    """Copy ``fixtures/injected_scenarios/<fixture_name>`` into ``scenarios_root/<dest_name>``.
+    """Copy `fixtures/injected_scenarios/<fixture_name>` into `scenarios_root/<dest_name>`.
 
-    ``dest_name`` defaults to ``fixture_name`` (same folder name under the temp scenarios root).
+    `dest_name` defaults to `fixture_name` (same folder name under the temp scenarios root).
     """
     src = INJECTED_SCENARIOS / fixture_name
     if not src.is_dir():
@@ -47,12 +50,14 @@ def copy_injected_scenario(
 
 @pytest.fixture
 def injected_scenarios_source() -> Path:
-    """Path to the repo's ``tests/fixtures/injected_scenarios`` tree (read-only)."""
+    """Path to the repo's `tests/fixtures/injected_scenarios` tree (read-only)."""
     return INJECTED_SCENARIOS
 
 
 def scenario_manager_for_scenarios_root(scenarios_root: Path) -> ScenarioManager:
-    """Build a :class:`ScenarioManager` whose scenario root is ``scenarios_root`` (no DB / full CTFApp)."""
+    """Build a :class:`ScenarioManager`
+    whose scenario root is `scenarios_root` (no DB / full CTFApp).
+    """
     base = SimpleNamespace(paths=SimpleNamespace(scenario_global=scenarios_root))
     return ScenarioManager(base)  # type: ignore[arg-type]
 
@@ -118,7 +123,7 @@ def test_inject_scenario_config_from_dict_roundtrip_build_param_map(tmp_path: Pa
 
 
 def test_inject_full_compile_writes_compose(tmp_path: Path):
-    """End-to-end compile using ``s_full`` fixture → ``scenario_compose.yaml`` on disk."""
+    """End-to-end compile using `s_full` fixture → `scenario_compose.yaml` on disk."""
     scenario_dir = copy_injected_scenario(tmp_path, "s_full")
 
     cfg = ScenarioConfig(
@@ -148,7 +153,10 @@ def test_inject_full_compile_writes_compose(tmp_path: Path):
         scenario_global_root=scenario_dir,
         compile_destination_root=dest,
         network_map={"shared": "demo_shared_net"},
-        volume_context_extras={"project_name": "demo", "project_scenario_dir": str(dest)},
+        volume_context_extras={
+            "project_name": "demo",
+            "project_scenario_dir": str(dest),
+        },
     )
     ScenarioCompiler(ctx).compile(cfg, {"project_name": "demo"})
 

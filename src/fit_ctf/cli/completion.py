@@ -49,3 +49,16 @@ def zsh(ctx: click.Context):
         __SHELL_COMPLETION_VARS["complete_var"],
         "zsh_source",
     )
+
+
+@completion.command(name="fish")
+@click.pass_context
+def fish(ctx: click.Context):
+    """Generate a shell complete script for Zsh."""
+    shell_complete(
+        ctx.find_root().command,
+        ctx.find_root().default_map,  # pyright: ignore
+        __SHELL_COMPLETION_VARS["program_name"],
+        __SHELL_COMPLETION_VARS["complete_var"],
+        "fish_source",
+    )

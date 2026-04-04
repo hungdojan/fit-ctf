@@ -1,4 +1,6 @@
-"""Composite secret ids and flattening UserCluster + ProjectCluster dynamic_secrets for submission."""
+"""
+Composite secret ids and flattening UserCluster + ProjectCluster dynamic_secrets for submission.
+"""
 
 from __future__ import annotations
 

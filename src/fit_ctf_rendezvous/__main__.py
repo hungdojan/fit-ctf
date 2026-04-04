@@ -17,7 +17,9 @@ def main():
     paths = PathDict(
         **{
             key: value
-            for key, value in zip(["projects", "users", "modules", "scenarios"], get_paths())
+            for key, value in zip(
+                ["projects", "users", "modules", "scenarios"], get_paths()
+            )
         }
     )
 

@@ -76,7 +76,7 @@ def test_cli_referenced(cli_data: CLIData):
 
 
 def test_cli_remove_module(cli_data: CLIData):
-    """Sync test: ``module rm`` uses ``asyncio.run()`` and cannot run under pytest-asyncio's loop."""
+    """Sync test: `module rm` uses `asyncio.run()` and cannot run under pytest-asyncio's loop."""
     ctf_app, _, cli_runner = cli_data
     cmd = "module ls -f csv".split()
     result = cli_runner.invoke(cli, cmd)

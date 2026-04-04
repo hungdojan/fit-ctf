@@ -108,7 +108,9 @@ async def test_disable_and_flush_project(connected_data: FixtureData):
     await prj_mgr.disable_project(deleted_prj)
 
     assert not prj_mgr.get_project(deleted_prj.name, active=None).active
-    new_enrollment_count = len(ctf_app.enroll_mgr.get_enrolled_projects(enrolled_users[0]))
+    new_enrollment_count = len(
+        ctf_app.enroll_mgr.get_enrolled_projects(enrolled_users[0])
+    )
 
     assert new_enrollment_count < enrolled_count
     assert (ctf_app.paths.project_global / deleted_prj.name).is_dir()

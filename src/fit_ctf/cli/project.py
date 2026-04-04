@@ -243,7 +243,9 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     project = ctf_app.prj_mgr.get_project(project_name)
     cluster = ctf_app.project_cluster_mgr.get_cluster(project)
-    services_info = asyncio.run(ctf_app.project_cluster_mgr.get_all_services_info(cluster))
+    services_info = asyncio.run(
+        ctf_app.project_cluster_mgr.get_all_services_info(cluster)
+    )
     data_buffer = []
     for info in services_info:
         data_buffer.append(

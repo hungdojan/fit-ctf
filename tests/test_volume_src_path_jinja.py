@@ -89,7 +89,9 @@ def test_render_volume_file_template_with_secret_map():
     assert render_volume_file_template(body, ctx) == "TOKEN=secret123"
 
 
-def test_materialize_volume_src_for_compose_passes_secret_map_to_template(tmp_path: Path):
+def test_materialize_volume_src_for_compose_passes_secret_map_to_template(
+    tmp_path: Path,
+):
     scenario_root = tmp_path / "scen"
     vol_dir = scenario_root / "volumes"
     vol_dir.mkdir(parents=True)

@@ -106,7 +106,9 @@ def cancel_multiple_enrollment(
         with open(input_file, "r") as f:
             usernames = [line.strip() for line in f]
 
-        asyncio.run(ctf_app.enroll_mgr.cancel_multiple_enrollments(usernames, project_name))
+        asyncio.run(
+            ctf_app.enroll_mgr.cancel_multiple_enrollments(usernames, project_name)
+        )
     except FileNotFoundError:
         click.echo(f"File `{str(input_file.resolve())}` does not exist.")
     except PermissionError:

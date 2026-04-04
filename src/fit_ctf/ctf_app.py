@@ -164,8 +164,7 @@ class CTFApp(CTFBase):
                 cluster_dict = {
                     "name": cluster.name,
                     "scenario_configs": {
-                        n: c.model_dump()
-                        for n, c in cluster.scenario_configs.items()
+                        n: c.model_dump() for n, c in cluster.scenario_configs.items()
                     },
                     "enrollment_ref": enrollment_ref,
                 }

@@ -1,6 +1,11 @@
 import click
 
-from fit_ctf.cli.utils import format_option, project_option, user_option, requires_database
+from fit_ctf.cli.utils import (
+    format_option,
+    project_option,
+    user_option,
+    requires_database,
+)
 from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.data_view import get_view
 from fit_ctf_models.enrollment import Enrollment
@@ -45,7 +50,9 @@ def list_secrets(ctx: click.Context, format: str, show_secret: bool):
     enrollment: Enrollment = ctx.obj["enrollment"]
     header_order = ["name", "submitted"] + (["flag"] if show_secret else [])
     headers = ["Name", "Submitted"] + (["Secret"] if show_secret else [])
-    rows = ctf_app.enroll_mgr.list_secrets_for_display(enrollment, show_flag=show_secret)
+    rows = ctf_app.enroll_mgr.list_secrets_for_display(
+        enrollment, show_flag=show_secret
+    )
     values = [[item[key] for key in header_order] for item in rows]
     get_view(format).print_data(headers, values)
 

@@ -6,9 +6,9 @@ from fit_ctf_components.auth.auth_interface import AuthInterface
 from fit_ctf_components.auth.local_auth import LocalAuth
 from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf_components.exceptions import CTFBaseException, LoginException
+from fit_ctf_models.enrollment import Enrollment
 from fit_ctf_models.project import Project
 from fit_ctf_models.user import User
-from fit_ctf_models.enrollment import Enrollment
 from fit_ctf_models.utils.exceptions import (
     PublicKeyUploadFail,
     SecretAlreadySubmittedException,
@@ -159,7 +159,9 @@ class CoreManager(_VariableRegistry):
             raise UserNotLoggedIn("Cannot submit a secret.")
         try:
             project = self.ctf_base.prj_mgr.get_project(project_name)
-            enrollment = self.ctf_base.enroll_mgr.get_enrollment(self.active_user, project)
+            enrollment = self.ctf_base.enroll_mgr.get_enrollment(
+                self.active_user, project
+            )
         except CTFBaseException as e:
             raise InvalidAction(e)
 
@@ -174,7 +176,9 @@ class CoreManager(_VariableRegistry):
         """Fetch leaderboard from the backend."""
         if not self.selected_project:
             raise InvalidAction("Cannot fetch leaderboard without selected project.")
-        leaderboard_items = self.ctf_base.enroll_mgr.get_leaderboard(self.selected_project)
+        leaderboard_items = self.ctf_base.enroll_mgr.get_leaderboard(
+            self.selected_project
+        )
         return [
             LeaderboardDataTableItem(
                 {
@@ -218,13 +222,12 @@ class CoreManager(_VariableRegistry):
             enrollment = self.ctf_base.enroll_mgr.get_enrollment(
                 self.active_user, self.selected_project
             )
+            cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
         except CTFBaseException:
             # TODO: print e
             return None
 
-        await self.ctf_base.enroll_mgr.start_user_cluster(
-            self.active_user, self.selected_project
-        )
+        await self.ctf_base.user_cluster_mgr.start_cluster(cluster)
         return enrollment
 
     async def stop_user_instance(self):
@@ -237,25 +240,31 @@ class CoreManager(_VariableRegistry):
             return
 
         try:
-            self.ctf_base.enroll_mgr.get_enrollment(
+            enrollment = self.ctf_base.enroll_mgr.get_enrollment(
                 self.active_user, self.selected_project
             )
+            cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
         except CTFBaseException:
             return
 
-        await self.ctf_base.enroll_mgr.stop_user_cluster(
-            self.active_user, self.selected_project
-        )
+        await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
 
     async def instance_is_running(self) -> bool:
         if not self.active_user or not self.selected_project:
             return False
-        return await self.ctf_base.enroll_mgr.user_cluster_is_running(
-            self.active_user, self.selected_project
-        )
+        try:
+            enrollment = self.ctf_base.enroll_mgr.get_enrollment(
+                self.active_user, self.selected_project
+            )
+            cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
+        except CTFBaseException:
+            return False
+        return await self.ctf_base.user_cluster_mgr.cluster_is_running(cluster)
 
     async def cleanup(self):
         if self.active_user is None:
             return
-        await self.ctf_base.enroll_mgr.stop_all_clusters_of_a_user(self.active_user)
+        await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(
+            self.active_user
+        )
         # TODO: log out sessions

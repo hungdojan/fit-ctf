@@ -49,7 +49,8 @@ def validate_variable_parse(
     missing = vars_to_map - set(variables.keys())
     if missing:
         raise MissingJinjaVariableException(
-            f"Template '{template_name}' is missing required variables: {', '.join(sorted(missing))}"
+            f"Template '{template_name}' is missing "
+            f"required variables: {', '.join(sorted(missing))}"
         )
 
 

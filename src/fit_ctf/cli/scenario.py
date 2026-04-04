@@ -50,7 +50,9 @@ def create_scenario(ctx: click.Context, name: str):
     help="Suppress per-cluster recompilation messages",
 )
 @click.pass_context
-def edit_scenario_template(ctx: click.Context, name: str, skip_recompile: bool, quiet: bool):
+def edit_scenario_template(
+    ctx: click.Context, name: str, skip_recompile: bool, quiet: bool
+):
     """Edit scenario template file."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     scenario_path = ctf_app.paths.scenario_global / name
@@ -157,14 +159,14 @@ def scenario_info(ctx: click.Context, name: str):
 
         click.echo(f"Scenario: {name}")
         click.echo(f"Path: {scenario_path}")
-        click.echo(f"\nFiles and directories:")
+        click.echo("\nFiles and directories:")
 
         # List template file
         template_path = scenario_path / "scenario_compose.yaml.j2"
         if template_path.exists():
-            click.echo(f"  ✓ scenario_compose.yaml.j2 (template)")
+            click.echo("  ✓ scenario_compose.yaml.j2 (template)")
         else:
-            click.echo(f"  ✗ scenario_compose.yaml.j2 (missing!)")
+            click.echo("  ✗ scenario_compose.yaml.j2 (missing!)")
 
         # Check for volumes directory
         volumes_dir = scenario_path / "volumes"
@@ -172,7 +174,7 @@ def scenario_info(ctx: click.Context, name: str):
             volume_count = len(list(volumes_dir.iterdir()))
             click.echo(f"  ✓ volumes/ ({volume_count} items)")
         else:
-            click.echo(f"  - volumes/ (not present)")
+            click.echo("  - volumes/ (not present)")
 
         # Show usage
         clusters = ctf_app.scenario_mgr.scenario_usage(name)

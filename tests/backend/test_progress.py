@@ -33,7 +33,9 @@ def test_empty_progress(connected_data: FixtureData):
 def test_submit_secret(connected_data: FixtureData):
     ctf_app, _ = connected_data
     user1 = ctf_app.user_mgr.get_user("user1")
-    enrollment = ctf_app.enroll_mgr.get_enrollment(user1, ctf_app.prj_mgr.get_project("prj2"))
+    enrollment = ctf_app.enroll_mgr.get_enrollment(
+        user1, ctf_app.prj_mgr.get_project("prj2")
+    )
 
     timestamp = parser.parse("2025-10-01T00:00:00.000Z")
     assert (

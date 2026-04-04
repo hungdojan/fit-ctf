@@ -13,10 +13,6 @@ from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_components.data_view import get_view
 from fit_ctf_components.utils import color_state
-from fit_ctf_models.utils.exceptions import (
-    ProjectClusterNotExistException,
-    ProjectNotExistException,
-)
 
 
 @click.group(name="project-cluster")
@@ -117,7 +113,9 @@ def health_check(ctx: click.Context, format: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
-    cluster_data = asyncio.run(ctf_app.project_cluster_mgr.cluster_health_check(cluster))
+    cluster_data = asyncio.run(
+        ctf_app.project_cluster_mgr.cluster_health_check(cluster)
+    )
 
     if not cluster_data:
         click.echo("No services running in project cluster")
@@ -203,7 +201,7 @@ def cluster_info(ctx: click.Context):
     click.echo(f"Project Cluster: {cluster.name}")
     click.echo(f"Project: {project.name}")
     click.echo(f"Project ID: {cluster.project_id.id}")
-    click.echo(f"\nNetworks:")
+    click.echo("\nNetworks:")
     click.echo(f"  SHARED: {network_map['shared']}")
     click.echo(f"  OPERATIONAL: {network_map['operational']}")
     click.echo(f"\nScenarios ({len(cluster.scenario_configs)}):")

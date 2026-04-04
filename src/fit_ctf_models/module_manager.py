@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
     import fit_ctf_models.enrollment as enroll
     import fit_ctf_models.project as prj
-    import fit_ctf_models.user as user
 
 
 class ModuleManager(BaseComponent):
@@ -91,7 +90,7 @@ class ModuleManager(BaseComponent):
         :rtype: ErrorCode
         """
         dir_path = self.get_path(module_name)
-        image_name = f"fit_ctf_module_{module_name}"
+        image_name = f"fit-ctf/{module_name}"
         return await self.c_client.build_image(
             logger_name=__name__,
             context_path=dir_path,
@@ -100,7 +99,9 @@ class ModuleManager(BaseComponent):
             to_stdout=to_stdout,
         )
 
-    def reference_count(self, project_name: str | None, all_images: bool = False) -> dict[str, int]:
+    def reference_count(
+        self, project_name: str | None, all_images: bool = False
+    ) -> dict[str, int]:
         """Count module directory usage from compiled ``scenario_compose.yaml`` files.
 
         Scans project-level scenarios under ``project_scenarios`` and per-user
@@ -125,7 +126,7 @@ class ModuleManager(BaseComponent):
                     module_acc[module_name] += count
             return module_acc
 
-        def _user_usage(user: "user.User", project: "prj.Project") -> dict[str, int]:
+        def _user_usage(user: "u.User", project: "prj.Project") -> dict[str, int]:
             module_acc = defaultdict(int)
             user_root = self.paths.enrolled_user_path(user, project)
             if not user_root.is_dir():
@@ -170,12 +171,12 @@ class ModuleManager(BaseComponent):
         else:
             prjs = self.ctf_base.prj_mgr.get_docs()
         modules = defaultdict(int)
-        for prj in prjs:
-            if self.paths.project_scenarios(prj).exists():
-                for k, v in _project_usage(prj).items():
+        for p in prjs:
+            if self.paths.project_scenarios(p).exists():
+                for k, v in _project_usage(p).items():
                     modules[k] += v
-            for user in self.enroll_mgr.get_enrollments_for_project(prj):
-                for k, v in _user_usage(user, prj).items():
+            for u in self.enroll_mgr.get_enrollments_for_project(p):
+                for k, v in _user_usage(u, p).items():
                     modules[k] += v
 
         return dict(modules)

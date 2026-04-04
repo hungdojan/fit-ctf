@@ -47,7 +47,7 @@ class TeamManager(BaseManagerInterface[Team]):
 
     def remove_user(self, team_or_name: str | Team, user: User):
         team = self.get_team(team_or_name)
-        if not user.id in set(team.user_ids):
+        if user.id not in set(team.user_ids):
             return
         team.user_ids.remove(user.id)
         self.update_doc(team)

@@ -42,7 +42,7 @@ class ScenarioCompiler:
         self._c = context
 
     def copy_scenario_template_trees(self) -> None:
-        """Copy `volumes/` and, if present, `modules/` from the scenario template (not stored in DB)."""
+        """Copy `volumes/` and, `modules/` from the scenario template (not stored in DB)."""
         self._c.compile_destination_root.mkdir(parents=True, exist_ok=True)
         root = self._c.scenario_global_root
         dst = self._c.compile_destination_root
@@ -102,9 +102,7 @@ class ScenarioCompiler:
         """Merge extras into `param_map`, validate, and write `scenario_compose.yaml`."""
         merged = {**dict(param_map), **dict(compose_template_extras)}
         root = self._c.scenario_global_root
-        template = get_template(
-            "scenario_compose.yaml.j2", str(root.resolve())
-        )
+        template = get_template("scenario_compose.yaml.j2", str(root.resolve()))
         validate_variable_parse("scenario_compose.yaml.j2", root, merged)
         self._c.compile_destination_root.mkdir(parents=True, exist_ok=True)
         out = self._c.compile_destination_root / "scenario_compose.yaml"

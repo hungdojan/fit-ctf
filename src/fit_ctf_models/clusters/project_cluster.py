@@ -19,9 +19,11 @@ from fit_ctf_models.utils.exceptions import (
     ProjectNotExistException,
     ScenarioConfigNotExistException,
 )
+
 if TYPE_CHECKING:
     import fit_ctf.ctf_base
     import fit_ctf_models.project as project
+
 
 class ProjectCluster(ClusterDocument):
     """ProjectCluster model representing project-level deployed scenarios."""
@@ -85,9 +87,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         """
         super().__init__(ctf_base, db, db["project_cluster"], ProjectCluster)
 
-    def get_project(
-        self, cluster: ProjectCluster
-    ) -> "project.Project":
+    def get_project(self, cluster: ProjectCluster) -> "project.Project":
         """Get project from cluster.
 
         :param cluster: ProjectCluster instance
@@ -249,9 +249,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             )
 
         # Check if cluster already exists for this project
-        existing_cluster = self.get_doc_by_filter(
-            **{"project_id.$id": project.id}
-        )
+        existing_cluster = self.get_doc_by_filter(**{"project_id.$id": project.id})
         if existing_cluster:
             raise ProjectClusterExistException(
                 f"ProjectCluster already exists for project {project.id}"

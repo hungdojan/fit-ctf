@@ -16,4 +16,3 @@ CLI commands
 .. click:: fit_ctf_backend.cli.user:user
    :prog: fit_ctf_backend user
    :nested: full
-

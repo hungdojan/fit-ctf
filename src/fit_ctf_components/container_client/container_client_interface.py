@@ -42,7 +42,7 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
     ):
         if proc.stdout:
             async for line in proc.stdout:
-                message = line.decode()
+                message = line.decode().strip()
                 self.ctf_base.logger.info(message, logger_name=logger_name)
                 if to_stdout:
                     self.ctf_base.logger.print(message)

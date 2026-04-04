@@ -69,7 +69,11 @@ class DockerClient(c_client.ContainerClientInterface):
         # TODO: eliminate whitespaces
         if not files:
             return 1
-        cmd = ["docker", "compose"] + [f"-f {str(f.resolve())}" for f in files] + ["up", "-d"]
+        cmd = (
+            ["docker", "compose"]
+            + [f"-f {str(f.resolve())}" for f in files]
+            + ["up", "-d"]
+        )
         cmd = " ".join(cmd)
         proc = await asyncio.create_subprocess_exec(
             *cmd.split(),
@@ -114,7 +118,9 @@ class DockerClient(c_client.ContainerClientInterface):
         cmd = ["docker", "compose"] + file_args + ["ps", "--format", '"{{ .Names }}"']
         cmd = " ".join(cmd)
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
         return [data.strip('"') for data in stdout.decode().rsplit()]
@@ -126,7 +132,9 @@ class DockerClient(c_client.ContainerClientInterface):
         cmd = ["docker", "compose"] + file_args + ["ps", "--format", "json"]
         cmd = " ".join(cmd)
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
         data = json.loads(stdout)
@@ -137,7 +145,11 @@ class DockerClient(c_client.ContainerClientInterface):
     ) -> ErrorCode:
         if not files:
             return 1
-        cmd = ["docker", "compose"] + [f"-f {str(f.resolve())}" for f in files] + ["build"]
+        cmd = (
+            ["docker", "compose"]
+            + [f"-f {str(f.resolve())}" for f in files]
+            + ["build"]
+        )
         cmd = " ".join(cmd)
         proc = await asyncio.create_subprocess_exec(
             *cmd.split(),
@@ -181,7 +193,11 @@ class DockerClient(c_client.ContainerClientInterface):
     ) -> subprocess.CompletedProcess:  # pragma: no cover
         if not files:
             raise ValueError()
-        cmd = ["docker", "compose"] + [f"-f {str(f.resolve())}" for f in files] + ["exec", service, command]
+        cmd = (
+            ["docker", "compose"]
+            + [f"-f {str(f.resolve())}" for f in files]
+            + ["exec", service, command]
+        )
         cmd = " ".join(cmd)
         return subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
 
@@ -255,7 +271,9 @@ class DockerClient(c_client.ContainerClientInterface):
         cmd = ["docker", "compose"] + file_args + ["ps", "--format", "json"]
         cmd = " ".join(cmd)
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+            *cmd.split(),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
         data = json.loads(stdout)

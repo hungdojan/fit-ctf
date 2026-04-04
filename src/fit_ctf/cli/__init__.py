@@ -48,6 +48,7 @@ class LazyGroup(click.Group):
             )
         return cmd_object
 
+
 @click.command("cli", cls=LazyGroup)
 @click.option(
     "-pd",
@@ -86,7 +87,9 @@ def cli(
     paths = PathDict(
         **{
             key: value
-            for key, value in zip(["projects", "users", "modules", "scenarios"], get_paths())
+            for key, value in zip(
+                ["projects", "users", "modules", "scenarios"], get_paths()
+            )
         }
     )
     if project_dir:  # pragma: no cover

@@ -1,6 +1,9 @@
 from fit_ctf_models.clusters.cluster_document import ClusterDocument
 from fit_ctf_models.clusters.user_cluster import UserCluster, UserClusterManager
-from fit_ctf_models.clusters.project_cluster import ProjectCluster, ProjectClusterManager
+from fit_ctf_models.clusters.project_cluster import (
+    ProjectCluster,
+    ProjectClusterManager,
+)
 from fit_ctf_models.clusters.cluster_scenario_mixin import ClusterScenarioMixin
 from fit_ctf_models.clusters.scenario_compile import (
     ScenarioCompileContext,
