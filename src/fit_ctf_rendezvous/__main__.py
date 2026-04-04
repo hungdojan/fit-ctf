@@ -2,6 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.ctf_base import CTFBase
 from fit_ctf_components.constants import get_env_info, get_paths
 from fit_ctf_components.container_client import get_c_client_by_name
@@ -20,9 +21,13 @@ def main():
         }
     )
 
+    # Create MongoDB client
+    mongo_client = CTFApp.create_mongo_client(env_info)
+
     ctf_base = CTFBase(
         env_info,
         paths,
+        mongo_client,
         get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
     )
 

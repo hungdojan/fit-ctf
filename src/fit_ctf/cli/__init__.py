@@ -21,7 +21,6 @@ class LazyGroup(click.Group):
             "user-cluster": ("fit_ctf.cli.user_cluster", "user_cluster"),
             "project-cluster": ("fit_ctf.cli.project_cluster", "project_cluster"),
             "module": ("fit_ctf.cli.module", "module"),
-            "system": ("fit_ctf.cli.system", "system"),
             "data-mgmt": ("fit_ctf.cli.data_mgmt", "data_mgmt"),
             "user-progress": ("fit_ctf.cli.user_progress", "user_progress"),
             "scenario": ("fit_ctf.cli.scenario", "scenario"),
@@ -68,12 +67,19 @@ class LazyGroup(click.Group):
     type=click.Path(path_type=pathlib.Path),
     help="Directory that contains module folders.",
 )
+@click.option(
+    "-sd",
+    "--scenario-dir",
+    type=click.Path(path_type=pathlib.Path),
+    help="Directory that contains scenario folders.",
+)
 @click.pass_context
 def cli(
     ctx: click.Context,
     project_dir: pathlib.Path | None,
     user_dir: pathlib.Path | None,
     module_dir: pathlib.Path | None,
+    scenario_dir: pathlib.Path | None,
 ):
     """A tool for CTF competition management."""
 
@@ -89,6 +95,8 @@ def cli(
         paths["users"] = user_dir
     if module_dir:  # pragma: no cover
         paths["modules"] = module_dir
+    if scenario_dir:  # pragma: no cover
+        paths["scenarios"] = scenario_dir
 
     # Store paths in context object for lazy initialization
     # Database connection will be initialized only when needed via @requires_database decorator

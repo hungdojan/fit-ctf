@@ -1,4 +1,3 @@
-import os
 from typing import TYPE_CHECKING, overload
 
 import pymongo
@@ -25,20 +24,12 @@ class CTFBase:
         self,
         env_info: EnvInfo,
         paths: PathDict,
+        mongo_client: pymongo.MongoClient,
         _c_client: type["c_client_interface.ContainerClientInterface"],
         logger_cls: type[LoggerInterface] = DefaultLogger,
     ) -> None:
         self._env_info = env_info
-        self._db_uri = (
-            f"mongodb://{env_info['db_username']}:"
-            f"{env_info['db_password']}@{env_info['db_host']}:{env_info['db_port']}/"
-        )
-        if env_info["db_name"]:
-            self._db_uri += f"{env_info['db_name']}"
-        # FIX: remove hardcoded parameter
-        self._db_uri += "?authSource=admin"
-
-        self._mongo_client: pymongo.MongoClient | None = None
+        self._mongo_client = mongo_client
         self._ctf_db: Database | None = None
         self._c_client = _c_client(self)
         self._managers = {}
@@ -49,13 +40,6 @@ class CTFBase:
 
     @property
     def mongo_client(self) -> pymongo.MongoClient:
-        if not self._mongo_client:
-            self._mongo_client = pymongo.MongoClient(
-                self._db_uri,
-                serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
-                tz_aware=True,
-            )
-            self._mongo_client.server_info()
         return self._mongo_client
 
     @property

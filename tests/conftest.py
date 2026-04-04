@@ -1,7 +1,9 @@
 import os
 import shutil
 from pathlib import Path
+from typing import Generator
 
+import pymongo
 import pymongo.errors
 import pytest
 from _pytest.fixtures import FixtureRequest
@@ -25,10 +27,24 @@ def workdir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.getbasetemp()
 
 
+@pytest.fixture(scope="session")
+def shared_mongo_client() -> Generator[pymongo.MongoClient, None, None]:
+    """Create a shared MongoDB client for all tests in the session."""
+    env_info = get_env_info()
+    try:
+        client = CTFApp.create_mongo_client(env_info)
+    except pymongo.errors.ServerSelectionTimeoutError:
+        pytest.exit("DB is probably not running")
+
+    yield client
+    client.close()
+
+
 @pytest.fixture
 def empty_data(
     request: FixtureRequest,
     workdir: Path,
+    shared_mongo_client: pymongo.MongoClient,
 ) -> FixtureData:
     """Yield an empty CTFApp object.
 
@@ -57,15 +73,12 @@ def empty_data(
             "projects": workdir / "share" / "project",
             "users": workdir / "share" / "user",
             "modules": workdir / "share" / "module",
-            "scenarios": workdir / "share" / "scenarios",
+            "scenarios": workdir / "share" / "scenario",
         }
     )
 
     # init testing env and clear database (just in case)
-    try:
-        ctf_app = CTFApp(env_info, paths)
-    except pymongo.errors.ServerSelectionTimeoutError:
-        pytest.exit("DB is probably not running")
+    ctf_app = CTFApp(env_info, paths, shared_mongo_client)
 
     ctf_app.user_cluster_mgr.remove_docs_by_filter()
     ctf_app.project_cluster_mgr.remove_docs_by_filter()
@@ -195,7 +208,7 @@ def cli_data(connected_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenarios").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()
@@ -209,7 +222,7 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
             "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
             "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
             "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenarios").resolve()),
+            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
         }
     )
     return ctf_app, tmp_path, CliRunner()
@@ -219,100 +232,3 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
 def tui_app(connected_data: FixtureData) -> App:
     ctf_app, _ = connected_data
     return RendezvousApp(ctf_app)
-
-
-# @pytest.fixture
-# def modules_data(
-#     connected_data: FixtureData,
-# ) -> FixtureData:
-#     """Yield a CTFApp with 2 projects, 3 users, and destination directory.
-#
-#     The manager contains following objects:
-#         Projects [enrolled] [modules]:
-#             - prj1 - [user2, user3] [prj1_prj_module1, prj1_prj_module2]
-#             - prj2 - [user1, user2] [prj2_prj_module1, prj2_prj_module2]
-#         Users [enrolled] [modules]:
-#             - user1 - [prj2]        [prj2_module1]
-#             - user2 - [prj1, prj2]  [prj2_module1, prj2_module2, prj1_module1]
-#             - user3 - [prj1]        [prj1_module1, prj1_module2]
-#
-#     :return: A CTFApp object, a path to the temporary directory,
-#     list of projects and users.
-#     :rtype: Iterator[FixtureData]
-#     """
-#     # init testing env
-#     ctf_app, tmp_path, prjs, usrs = connected_data
-#     prj_mgr = ctf_app.prj_mgr
-#     user_mgr = ctf_app.user_mgr
-#     ue_mgr = ctf_app.ue_mgr
-#
-#     # fill mgr with data
-#     for prj in prjs:
-#         for i in range(2):
-#             prj_mgr.create_project_module(prj.name, f"{prj.name}_prj_module{i+1}")
-#             prj_mgr.create_user_module(prj.name, f"{prj.name}_module{i+1}")
-#
-#     usrs = user_mgr.get_docs()
-#     prjs = prj_mgr.get_docs()
-#
-#     ue_mgr.add_module(
-#         usrs[0], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
-#     )
-#     ue_mgr.add_module(
-#         usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module1")
-#     )
-#     ue_mgr.add_module(
-#         usrs[1], prjs[1], prjs[1].get_user_module(f"{prjs[1].name}_module2")
-#     )
-#
-#     ue_mgr.add_module(
-#         usrs[1], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
-#     )
-#     ue_mgr.add_module(
-#         usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module1")
-#     )
-#     ue_mgr.add_module(
-#         usrs[2], prjs[0], prjs[0].get_user_module(f"{prjs[0].name}_module2")
-#     )
-#
-#     [ue_mgr.compile_compose(u, prjs[0]) for u in usrs[1:]]
-#     [ue_mgr.compile_compose(u, prjs[1]) for u in usrs[:-1]]
-#
-#     # yield data
-#     return ctf_app, tmp_path, prjs, usrs
-#
-#
-# @pytest.fixture
-# def deleted_data(
-#     connected_data: FixtureData,
-# ) -> FixtureData:
-#     """Yield a CTFApp with 2 projects, 3 users, and destination directory.
-#
-#     The manager contains following objects:
-#         Projects [enrolled]:
-#             - prj1 - [] - deleted
-#             - prj2 - [user2]
-#         Users [enrolled]:
-#             - user1 - [] - deleted
-#             - user2 - [prj2]
-#             - user3 - []
-#
-#     :return: A CTFApp object, a path to the temporary directory,
-#     list of projects and users.
-#     :rtype: Iterator[FixtureData]
-#     """
-#     # init testing env
-#     ctf_app, tmp_path, prjs, usrs = connected_data
-#     prj_mgr = ctf_app.prj_mgr
-#     user_mgr = ctf_app.user_mgr
-#
-#     # fill mgr with data
-#     prj_mgr.delete_project("prj1")
-#     user_mgr.delete_a_user("user1")
-#
-#     # update list of objects
-#     usrs = user_mgr.get_docs()
-#     prjs = prj_mgr.get_docs()
-#
-#     # yield data
-#     return ctf_app, tmp_path, prjs, usrs
