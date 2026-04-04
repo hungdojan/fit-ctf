@@ -2,9 +2,9 @@ name: ctf_backend
 
 services:
   mongodb:
-    image: docker.io/library/mongo:latest
+    image: docker.io/library/mongo:7.0
     container_name: ctf-database-mongo
-    restart: always
+    restart: unless-stopped
     env_file:
       - path: ../.env
         required: true

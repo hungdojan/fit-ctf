@@ -89,7 +89,6 @@ class CTFApp(CTFBase):
             serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
             tz_aware=True,
         )
-        client.server_info()
         return client
 
     def _init_paths(self, paths: PathDict):
