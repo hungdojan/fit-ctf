@@ -24,9 +24,12 @@ RUN bash /tmp/init_script.sh \
     && rm -rf /var/cache/apt/lists \
     && rm /tmp/init_script.sh
 
+# copy entrypoint script that fixes volume permissions at runtime
+COPY ./entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 # expose ssh port
 EXPOSE 22
 
 # run default command
-CMD ["/usr/sbin/sshd", "-D"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
