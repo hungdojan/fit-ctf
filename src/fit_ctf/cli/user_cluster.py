@@ -511,6 +511,37 @@ def compile_cluster(
         ctx.exit(1)
 
 
+@user_cluster.command(name="build")
+@user_option
+@project_option
+@click.option("-v", "--verbose", is_flag=True, help="Show build output")
+@click.pass_context
+def build_images(ctx: click.Context, username: str, project_name: str, verbose: bool):
+    """Build/rebuild user cluster images."""
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+
+    try:
+        user = ctf_app.user_mgr.get_user(username)
+        project = ctf_app.prj_mgr.get_project(project_name)
+        enrollment = ctf_app.enroll_mgr.get_enrollment(user, project)
+        cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
+
+        click.echo(f"Building images for user cluster '{cluster.name}'...")
+        error_code = asyncio.run(
+            ctf_app.user_cluster_mgr.build_cluster_images(cluster, verbose=verbose)
+        )
+
+        if error_code == 0:
+            click.echo("Images built successfully.")
+        else:
+            click.echo(f"Error building images (exit code: {error_code})")
+            ctx.exit(error_code)
+
+    except CTFModelException as e:
+        click.echo(f"Error: {e}")
+        ctx.exit(1)
+
+
 @user_cluster.command(name="start")
 @user_option
 @project_option

@@ -38,8 +38,19 @@ def create_scenario(ctx: click.Context, name: str):
 
 @scenario.command(name="edit")
 @click.option("-n", "--name", required=True, help="Scenario name")
+@click.option(
+    "--skip-recompile",
+    is_flag=True,
+    help="Skip recompiling clusters after editing",
+)
+@click.option(
+    "-q",
+    "--quiet",
+    is_flag=True,
+    help="Suppress per-cluster recompilation messages",
+)
 @click.pass_context
-def edit_scenario_template(ctx: click.Context, name: str):
+def edit_scenario_template(ctx: click.Context, name: str, skip_recompile: bool, quiet: bool):
     """Edit scenario template file."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     scenario_path = ctf_app.paths.scenario_global / name
@@ -54,6 +65,26 @@ def edit_scenario_template(ctx: click.Context, name: str):
 
         file_editor(template_path)
         click.echo(f"Template edited: {template_path}")
+
+        # Auto-recompile clusters using this scenario (unless skipped)
+        if not skip_recompile:
+            clusters = ctf_app.scenario_mgr.scenario_usage(name)
+
+            if clusters:
+                if not quiet:
+                    click.echo(f"Recompiling {len(clusters)} clusters...")
+                success_count = 0
+                for cluster in clusters:
+                    try:
+                        ctf_app.user_cluster_mgr.compile_scenario(cluster, name)
+                        success_count += 1
+                        if not quiet:
+                            click.echo(f"  Recompiled {cluster.name}")
+                    except Exception as e:
+                        click.echo(f"Failed to recompile {cluster.name}: {e}")
+
+                if not quiet:
+                    click.echo(f"Recompiled {success_count}/{len(clusters)} clusters.")
 
     except CTFModelException as e:
         click.echo(f"Error: {e}")

@@ -523,6 +523,25 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         """
         return await self.c_client.compose_states(self.get_compose_files(cluster))
 
+    async def build_cluster_images(
+        self, cluster: UserCluster, *, verbose: bool = False
+    ) -> ErrorCode:
+        """Build/rebuild cluster images.
+
+        :param cluster: UserCluster object
+        :type cluster: UserCluster
+        :param verbose: Stream build output to the terminal as well as log files
+        :type verbose: bool
+        :return: An exit code
+        :rtype: ErrorCode
+        """
+        user, project = self.get_user_and_project(cluster.enrollment_id.id)
+        return await self.c_client.compose_build(
+            project.name,
+            self.get_compose_files(cluster),
+            to_stdout=verbose,
+        )
+
     async def stop_multiple_user_clusters(
         self, users: list["user.User"], project: "project.Project"
     ):
