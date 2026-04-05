@@ -1,4 +1,4 @@
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment
 from rich.text import Text
 from textual import on
 from textual.app import ComposeResult
@@ -15,8 +15,8 @@ from textual.widgets import (
 from textual.worker import Worker, WorkerState
 
 from fit_ctf_rendezvous.exceptions import FitRendezvousException, InconsistentState
+from fit_ctf_rendezvous.i18n import jinja_resources_loader, tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
-from fit_ctf_rendezvous.utils import get_resource_dir
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
@@ -25,7 +25,7 @@ class ProjectInfoPage(Container, CoreWidget):
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)
-        self.border_title = "Project Info"
+        self.border_title = tr("project_info.border")
 
     def on_mount(self) -> None:
         self.core_mgr.register_hook(
@@ -51,28 +51,29 @@ class ProjectInfoPage(Container, CoreWidget):
     def _project_description_markdown(self) -> str:
         prj = self.core_mgr.selected_project
         if not prj:
-            return "# Project\n\nSelect a project in the sidebar to see its description."
+            return tr("project_info.select_project_prompt")
         body = (prj.description or "").strip()
         if not body:
-            return f"# {prj.name}\n\n_No description configured for this project._"
+            return tr("project_info.no_description", name=prj.name)
         return body
 
     def compose(self) -> ComposeResult:
         with TabbedContent():
-            with TabPane("Manage instance"):
+            with TabPane(tr("project_info.tab_manage")):
                 with VerticalScroll():
                     yield Markdown(self.generate_ssh_help())
                 yield Rule(line_style="ascii")
                 yield Button(
-                    "Start/Stop Instance", id="projectinfo-toggle-instance-btn"
+                    tr("project_info.start_stop_instance"),
+                    id="projectinfo-toggle-instance-btn",
                 )
-            with TabPane("Project Info"):
+            with TabPane(tr("project_info.tab_info")):
                 with VerticalScroll():
                     yield Markdown(
                         self._project_description_markdown(),
                         id="project-description-md",
                     )
-            with TabPane("Leaderboard"):
+            with TabPane(tr("project_info.tab_leaderboard")):
                 with VerticalScroll():
                     yield self.generate_leaderboard()
 
@@ -80,7 +81,13 @@ class ProjectInfoPage(Container, CoreWidget):
         """Generate the leaderboard tab content"""
         table = DataTable()
         # header and the order
-        columns = ("Pos", "Username", "Found Secrets", "Last Submit Time", "Score")
+        columns = (
+            tr("project_info.leaderboard_col_pos"),
+            tr("project_info.leaderboard_col_username"),
+            tr("project_info.leaderboard_col_secrets"),
+            tr("project_info.leaderboard_col_last_submit"),
+            tr("project_info.leaderboard_col_score"),
+        )
         header_order = (
             "position",
             "username",
@@ -105,14 +112,13 @@ class ProjectInfoPage(Container, CoreWidget):
         return table
 
     def generate_ssh_help(self) -> str:
-        loader = FileSystemLoader(get_resource_dir() / "en")
-        env = Environment(loader=loader)
+        env = Environment(loader=jinja_resources_loader())
         template = env.get_template("run_cluster_instruction.md.j2")
         try:
             port = self._get_port()
         except FitRendezvousException as e:
             self.core_mgr.ctf_base.logger.error(str(e))
-            return "**Error occurred. Please contact the supervisor.**"
+            return tr("project_info.ssh_error_supervisor")
         return template.render(port=port)
 
     def _get_port(self) -> int:
@@ -132,7 +138,9 @@ class ProjectInfoPage(Container, CoreWidget):
     async def toggle_instance(self):
         # TODO: make it more efficient
         if not await self.core_mgr.instance_is_running():
-            self.notify("Instance is booting...", severity="warning", timeout=3)
+            self.notify(
+                tr("project_info.notify_booting"), severity="warning", timeout=3
+            )
             self.run_worker(
                 self.core_mgr.start_user_instance(),
                 name="toggle-instance-on",
@@ -141,7 +149,9 @@ class ProjectInfoPage(Container, CoreWidget):
             btn = self.query_one("#projectinfo-toggle-instance-btn", Button)
             btn.disabled = True
         else:
-            self.notify("Instance is shutting down...", severity="warning", timeout=3)
+            self.notify(
+                tr("project_info.notify_shutting_down"), severity="warning", timeout=3
+            )
             self.run_worker(
                 self.core_mgr.stop_user_instance(),
                 name="toggle-instance-off",
@@ -161,15 +171,18 @@ class ProjectInfoPage(Container, CoreWidget):
         if worker.state == WorkerState.ERROR:
             btn.disabled = False
             err = worker.error
-            self.notify(str(err) if err else "Operation failed.", severity="error")
+            self.notify(
+                str(err) if err else tr("project_info.notify_operation_failed"),
+                severity="error",
+            )
             return
 
         if worker.state != WorkerState.SUCCESS:
             return
 
         if worker.name == "toggle-instance-on":
-            self.notify("Instance has started.", timeout=3)
+            self.notify(tr("project_info.notify_started"), timeout=3)
             btn.disabled = False
         elif worker.name == "toggle-instance-off":
-            self.notify("Instance has shut down...", timeout=3)
+            self.notify(tr("project_info.notify_shutdown"), timeout=3)
             btn.disabled = False

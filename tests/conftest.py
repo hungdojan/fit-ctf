@@ -15,6 +15,7 @@ from fit_ctf.ctf_app import CTFApp
 from fit_ctf_components.constants import get_env_info
 from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.types import PathDict
+from fit_ctf_rendezvous import i18n as rendezvous_i18n
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
 from . import CLIData, FixtureData, fixture_path
@@ -230,5 +231,13 @@ def empty_cli_data(empty_data: FixtureData) -> CLIData:
 
 @pytest.fixture
 def tui_app(connected_data: FixtureData) -> App:
-    ctf_app, _ = connected_data
+    ctf_app, tmp_path = connected_data
+    user_share = (tmp_path / "share" / "user").resolve()
+    user_share.mkdir(parents=True, exist_ok=True)
+    os.environ["USER_SHARE_DIR"] = str(user_share)
+    locale_file = user_share / "rendezvous_locale"
+    if locale_file.is_file():
+        locale_file.unlink()
+    rendezvous_i18n.reset_locale_cache()
+    os.environ.pop("FIT_RENDEZVOUS_LANG", None)
     return RendezvousApp(ctf_app)

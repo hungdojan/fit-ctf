@@ -11,7 +11,7 @@ AppScreen {
     }
 }
 
-ShowConsolePage {
+ShowLogsPage {
     border: none !important;
 
     VerticalScroll {
@@ -20,6 +20,15 @@ ShowConsolePage {
     Log {
         height: 18;
         min-height: 8;
+    }
+}
+
+HelpAboutPage {
+    VerticalScroll {
+        height: 1fr;
+    }
+    Static {
+        height: auto;
     }
 }
 

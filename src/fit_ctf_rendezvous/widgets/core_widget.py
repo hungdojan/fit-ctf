@@ -1,6 +1,7 @@
 from fit_ctf_models.user import User
 from fit_ctf_rendezvous.core_manager import CoreManager
 from fit_ctf_rendezvous.exceptions import UserNotLoggedIn
+from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 
 
@@ -21,7 +22,7 @@ class CoreWidget:
     def active_user(self) -> User:
         user = self.core_mgr.active_user
         if not user:
-            raise UserNotLoggedIn("User not logged in!")
+            raise UserNotLoggedIn(tr("core.not_logged_in"))
         return user
 
     def cleanup_registry(self):

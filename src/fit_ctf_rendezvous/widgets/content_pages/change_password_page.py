@@ -6,6 +6,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Checkbox, Input, Label, Rule
 
 from fit_ctf_rendezvous.exceptions import UserNotLoggedIn
+from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
@@ -17,7 +18,7 @@ class ChangePasswordPage(Container, CoreWidget):
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)
-        self.border_title = "Submit Secret"
+        self.border_title = tr("change_password.border")
         self.allowed_object_ids = [
             "old-password",
             "new-password",
@@ -28,7 +29,7 @@ class ChangePasswordPage(Container, CoreWidget):
         with HorizontalScroll():
             with Vertical():
                 with Horizontal():
-                    yield Label("Old password: ")
+                    yield Label(tr("change_password.old_password"))
                     yield Input(
                         id="old-password-input",
                         password=True,
@@ -36,49 +37,54 @@ class ChangePasswordPage(Container, CoreWidget):
                         validators=[
                             Function(
                                 self.core_mgr.check_password_strength,
-                                "Password is incorrect.",
+                                tr("change_password.validator_incorrect"),
                             )
                         ],
                         valid_empty=False,
                     )
-                    yield Checkbox("show", id="show-old-password")
+                    yield Checkbox(tr("change_password.show"), id="show-old-password")
                 with Horizontal():
-                    yield Label("New Password: ")
+                    yield Label(tr("change_password.new_password"))
                     yield Input(
                         id="new-password-input",
                         password=True,
                         validators=[
                             Function(
                                 self.core_mgr.check_password_strength,
-                                "Invalid format, requires at least 8 characters, one upper,"
-                                "one lower character and a digit.",
+                                tr("change_password.validator_format"),
                             )
                         ],
                         valid_empty=False,
                     )
-                    yield Checkbox("show", id="show-new-password")
+                    yield Checkbox(tr("change_password.show"), id="show-new-password")
                 with Horizontal():
-                    yield Label("New Password (again): ")
+                    yield Label(tr("change_password.new_password_again"))
                     yield Input(
                         id="new-password-again-input",
                         password=True,
                         validators=[
                             Function(
                                 self.again_field_validator,
-                                "New passwords do not match.",
+                                tr("change_password.validator_mismatch"),
                             )
                         ],
                         valid_empty=False,
                     )
-                    yield Checkbox("show", id="show-new-password-again")
+                    yield Checkbox(
+                        tr("change_password.show"), id="show-new-password-again"
+                    )
         with Center():
             yield Rule(line_style="ascii")
         with Center():
-            yield Button("Change password", id="change-password-btn", variant="primary")
+            yield Button(
+                tr("change_password.button"),
+                id="change-password-btn",
+                variant="primary",
+            )
 
     def check_old_pswd(self, value: str) -> bool:
         if not self.core_mgr.active_user:
-            raise UserNotLoggedIn("User not logged in.")
+            raise UserNotLoggedIn(tr("core.not_logged_in"))
         return self.core_mgr.validate_login(self.core_mgr.active_user.username, value)
 
     def again_field_validator(self, value: str) -> bool:
@@ -99,7 +105,7 @@ class ChangePasswordPage(Container, CoreWidget):
                 return
             values[_id] = input.value
         self.core_mgr.change_password(values["new-password"])
-        self.notify("Password changed successfully.")
+        self.notify(tr("change_password.notify_success"))
         for _id in self.allowed_object_ids:
             input = self.query_one(f"#{_id}-input", Input)
             input.value = ""

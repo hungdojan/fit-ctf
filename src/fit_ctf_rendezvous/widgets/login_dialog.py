@@ -7,6 +7,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Checkbox, Input, Label, Rule
 
 from fit_ctf_rendezvous.exceptions import FitRendezvousException
+from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
@@ -29,36 +30,36 @@ class LoginDialog(Container, CoreWidget):
 
     def compose(self) -> ComposeResult:
         with Center():
-            yield Label("CTF Login")
+            yield Label(tr("login.title"))
         with Center():
             yield Rule(line_style="ascii")
         with Horizontal():
-            yield Label("Username")
+            yield Label(tr("login.username"))
             yield Input(
-                placeholder="Username",
+                placeholder=tr("login.placeholder_username"),
                 id="login-username-input",
             )
         with Horizontal():
-            yield Label("Password")
+            yield Label(tr("login.password"))
             yield Input(
                 password=True,
-                placeholder="Password",
+                placeholder=tr("login.placeholder_password"),
                 id="login-password-input",
             )
         with Center():
-            yield Checkbox("Show Password", id="login-checkbox")
+            yield Checkbox(tr("login.show_password"), id="login-checkbox")
         with Center():
             yield Label("", id="login-message-label")
         with Center():
             yield Rule(line_style="ascii")
         with Horizontal():
             yield Button(
-                "Quit",
+                tr("login.quit"),
                 variant="error",
                 id="login-quit-btn",
             )
             yield Button(
-                "Submit",
+                tr("login.submit"),
                 variant="success",
                 id="login-submit-btn",
             )

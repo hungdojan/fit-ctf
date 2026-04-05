@@ -10,6 +10,43 @@ import fit_ctf_components.container_client.container_client_interface as c_clien
 from fit_ctf_components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
+def _docker_compose_prefix(files: list[Path]) -> list[str]:
+    """Build ``docker compose`` argv with one ``-f`` per file (paths/spaces/format-safe)."""
+    parts: list[str] = ["docker", "compose"]
+    for f in files:
+        parts.extend(["-f", str(f.resolve())])
+    return parts
+
+
+def _decode_compose_ps_json(stdout: bytes) -> list[dict[str, Any]]:
+    """Parse ``docker compose ps --format json`` (single JSON array or one object per line)."""
+    text = stdout.decode().strip()
+    if not text:
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        out: list[dict[str, Any]] = []
+        for line in text.splitlines():
+            line = line.strip()
+            if line:
+                out.append(json.loads(line))
+        return out
+    return data if isinstance(data, list) else [data]
+
+
+def _compose_ps_row_name(row: dict[str, Any]) -> str:
+    """Container display name from a compose ``ps --format json`` row (schema varies by version)."""
+    names = row.get("Names")
+    if isinstance(names, list) and names:
+        first = names[0]
+        return first if isinstance(first, str) else str(first)
+    if isinstance(names, str):
+        return names
+    n = row.get("Name")
+    return str(n) if n is not None else ""
+
+
 class DockerClient(c_client.ContainerClientInterface):
 
     def generate_container_prefix(self, *names: str) -> str:
@@ -66,17 +103,11 @@ class DockerClient(c_client.ContainerClientInterface):
     async def compose_up(
         self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:
-        # TODO: eliminate whitespaces
         if not files:
             return 1
-        cmd = (
-            ["docker", "compose"]
-            + [f"-f {str(f.resolve())}" for f in files]
-            + ["up", "-d"]
-        )
-        cmd = " ".join(cmd)
+        cmd = _docker_compose_prefix(files) + ["up", "-d"]
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -89,13 +120,16 @@ class DockerClient(c_client.ContainerClientInterface):
     ) -> tuple[ErrorCode, TaskSuccess]:
         if not files:
             return 0, True
-        file_args = [f"-f {str(f.resolve())}" for f in files]
-        res = subprocess.check_output(
-            ["docker", "compose"] + file_args + ["ps", "-q"], text=True
+        # Do not use check_output: ``ps -q`` exits 1 on compose validation errors or
+        # other docker failures; shutdown must not raise CalledProcessError.
+        ps = subprocess.run(
+            _docker_compose_prefix(files) + ["ps", "-q"],
+            capture_output=True,
+            text=True,
         )
-        if not res.strip():
+        if ps.returncode == 0 and not (ps.stdout or "").strip():
             return 0, False
-        cmd = ["docker", "compose"] + file_args + ["down"]
+        cmd = _docker_compose_prefix(files) + ["down"]
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
@@ -114,45 +148,39 @@ class DockerClient(c_client.ContainerClientInterface):
     async def compose_ps(self, files: list[Path]) -> list[str]:
         if not files:
             return []
-        file_args = [f"-f {str(f.resolve())}" for f in files]
-        cmd = ["docker", "compose"] + file_args + ["ps", "--format", '"{{ .Names }}"']
-        cmd = " ".join(cmd)
+        cmd = _docker_compose_prefix(files) + ["ps", "--format", "{{.Names}}"]
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
-        return [data.strip('"') for data in stdout.decode().rsplit()]
+        return [
+            line.strip().strip('"')
+            for line in stdout.decode().splitlines()
+            if line.strip()
+        ]
 
     async def compose_ps_json(self, files: list[Path]) -> list[dict[str, Any]]:
         if not files:
             return []
-        file_args = [f"-f {str(f.resolve())}" for f in files]
-        cmd = ["docker", "compose"] + file_args + ["ps", "--format", "json"]
-        cmd = " ".join(cmd)
+        cmd = _docker_compose_prefix(files) + ["ps", "--format", "json"]
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
-        data = json.loads(stdout)
-        return data
+        return _decode_compose_ps_json(stdout)
 
     async def compose_build(
         self, logger_name: str, files: list[Path], to_stdout: bool = False
     ) -> ErrorCode:
         if not files:
             return 1
-        cmd = (
-            ["docker", "compose"]
-            + [f"-f {str(f.resolve())}" for f in files]
-            + ["build"]
-        )
-        cmd = " ".join(cmd)
+        cmd = _docker_compose_prefix(files) + ["build"]
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -171,16 +199,11 @@ class DockerClient(c_client.ContainerClientInterface):
     ) -> ErrorCode:
         if not files:
             return 1
-        parts = (
-            ["docker", "compose"]
-            + [f"-f {str(f.resolve())}" for f in files]
-            + ["logs", "--no-color", f"--tail={tail}"]
-        )
+        cmd = _docker_compose_prefix(files) + ["logs", "--no-color", f"--tail={tail}"]
         if service:
-            parts.append(service)
-        cmd = " ".join(parts)
+            cmd.append(service)
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -193,13 +216,8 @@ class DockerClient(c_client.ContainerClientInterface):
     ) -> subprocess.CompletedProcess:  # pragma: no cover
         if not files:
             raise ValueError()
-        cmd = (
-            ["docker", "compose"]
-            + [f"-f {str(f.resolve())}" for f in files]
-            + ["exec", service, command]
-        )
-        cmd = " ".join(cmd)
-        return subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
+        cmd = _docker_compose_prefix(files) + ["exec", service, command]
+        return subprocess.run(cmd, stdout=sys.stdout, stderr=sys.stderr)
 
     async def stats(self, project_name: str) -> list[dict[str, str]]:
         cmd = [
@@ -253,7 +271,8 @@ class DockerClient(c_client.ContainerClientInterface):
             "docker",
             "ps",
             "-a",
-            "--no-truc" "--format",
+            "--no-trunc",
+            "--format",
             'table "{{.Names}}","{{.Networks}}","{{.Ports}}","{{.State}}","{{.CreatedHuman}}"',
             f"--filter=name=^{project_name}",
         ]
@@ -267,22 +286,19 @@ class DockerClient(c_client.ContainerClientInterface):
     async def compose_states(
         self, files: list[Path]
     ) -> list[HealthCheckDict]:  # pragma: no cover
-        file_args = [f"-f {str(f.resolve())}" for f in files]
-        cmd = ["docker", "compose"] + file_args + ["ps", "--format", "json"]
-        cmd = " ".join(cmd)
+        cmd = _docker_compose_prefix(files) + ["ps", "--format", "json"]
         proc = await asyncio.create_subprocess_exec(
-            *cmd.split(),
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
-        data = json.loads(stdout)
-        # filtering
+        data = _decode_compose_ps_json(stdout)
         return [
             {
-                "name": service["Names"][0],
-                "state": service["State"],
-                "image": service["Image"],
+                "name": _compose_ps_row_name(service),
+                "state": str(service.get("State", "")),
+                "image": str(service.get("Image", "")),
             }
             for service in data
         ]

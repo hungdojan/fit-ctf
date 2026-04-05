@@ -8,6 +8,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Label, Rule
 
 from fit_ctf_models.project import Project
+from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
@@ -33,48 +34,51 @@ class AppSideBar(Container, CoreWidget):
 
     def _label_text(self) -> str:
         if not self.selected_project:
-            return "No project selected\nSelect a project below"
-        return (
-            f"{self.selected_project.name}\n"
-            "Green = running · Yellow = idle"
-        )
+            return tr("sidebar.no_project")
+        return f"{self.selected_project.name}\n{tr('sidebar.project_status_hint')}"
 
     def compose(self) -> ComposeResult:
         with Center():
-            yield Button(f"Hello, {self.active_user.username}", id="sidebar-home-btn")
+            yield Button(
+                tr("sidebar.hello", username=self.active_user.username),
+                id="sidebar-home-btn",
+            )
             yield self.label
         with Center():
             yield Rule(line_style="ascii")
         with VerticalScroll():
             yield Button(
-                "Select Project",
+                tr("sidebar.select_project"),
                 id="sidebar-select-project-btn",
             )
             yield Button(
-                "Submit Secret",
+                tr("sidebar.submit_secret"),
                 id="sidebar-submit-secret-btn",
             )
             yield Rule(line_style="ascii")
             yield Button(
-                "Project Info",
+                tr("sidebar.project_info"),
                 id="sidebar-project-info-btn",
                 disabled=self.selected_project is None,
                 classes="sidebar-active-btn",
             )
             yield Rule(line_style="ascii")
-            yield Button("Change Password", id="sidebar-change-pswd-btn")
-            yield Button("Upload public key", id="sidebar-upload-key-btn")
-            yield Button("About & Help", id="sidebar-help-about-btn")
-            yield Button("Activity log", id="sidebar-show-console-btn")
-            yield Button("Settings", id="sidebar-settings-btn")
+            yield Button(tr("sidebar.change_password"), id="sidebar-change-pswd-btn")
+            yield Button(tr("sidebar.upload_key"), id="sidebar-upload-key-btn")
+            yield Button(tr("sidebar.about_help"), id="sidebar-help-about-btn")
+            yield Button(tr("sidebar.show_logs"), id="sidebar-show-logs-btn")
+            yield Button(tr("sidebar.settings"), id="sidebar-settings-btn")
 
         with Center():
             yield Rule(line_style="ascii")
 
-        yield Button("Logout", variant="error", id="sidebar-logout-btn")
+        yield Button(tr("sidebar.logout"), variant="error", id="sidebar-logout-btn")
 
     def on_mount(self) -> None:
         self.set_interval(3, self.update_instance_status)
+
+    def on_unmount(self) -> None:
+        self.core_mgr.unregister_hook("selected_project", self.__class__.__name__)
 
     async def update_instance_status(self) -> None:
         if self.selected_project is None:

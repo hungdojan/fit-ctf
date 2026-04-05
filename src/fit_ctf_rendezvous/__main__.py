@@ -7,12 +7,12 @@ from fit_ctf.ctf_base import CTFBase
 from fit_ctf_components.constants import get_env_info, get_paths
 from fit_ctf_components.container_client import get_c_client_by_name
 from fit_ctf_components.types import PathDict
-from fit_ctf_rendezvous.components.rendezvous_logger import RendezvousLogger
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
 
 def main():
     load_dotenv()
+    # Locale: English on startup; optional FIT_RENDEZVOUS_LANG=en|cs to override.
 
     env_info = get_env_info()
     paths = PathDict(
@@ -24,7 +24,6 @@ def main():
         }
     )
 
-    # Create MongoDB client
     mongo_client = CTFApp.create_mongo_client(env_info)
 
     ctf_base = CTFBase(
@@ -32,10 +31,8 @@ def main():
         paths,
         mongo_client,
         get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
-        logger_cls=RendezvousLogger,
     )
 
-    # start frontend
     app = RendezvousApp(ctf_base)
     app.run()
 

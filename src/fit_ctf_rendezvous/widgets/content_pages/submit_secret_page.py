@@ -8,6 +8,7 @@ from textual.widget import Widget
 from textual.widgets import Button, Input, Label, Rule, Select
 
 from fit_ctf_rendezvous.exceptions import FitRendezvousException
+from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
@@ -19,7 +20,7 @@ class SubmitSecretPage(Container, CoreWidget):
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)
-        self.border_title = "Submit Secret"
+        self.border_title = tr("submit_secret.border")
         self._selected_project_name = ""
 
     def on_mount(self) -> None:
@@ -54,24 +55,31 @@ class SubmitSecretPage(Container, CoreWidget):
 
     def compose(self) -> ComposeResult:
         with Horizontal():
-            yield Label("Secret value: ")
-            yield Input(placeholder="Secret", id="secret-value-input")
+            yield Label(tr("submit_secret.secret_value"))
+            yield Input(
+                placeholder=tr("submit_secret.placeholder_secret"),
+                id="secret-value-input",
+            )
         with Horizontal():
-            yield Label("Project: ")
-            assert self.core_mgr.active_user is not None
+            yield Label(tr("submit_secret.project"))
+            u = self.core_mgr.active_user
+            enrolled = (
+                self.core_mgr.ctf_base.enroll_mgr.get_enrolled_projects(u)
+                if u is not None
+                else ()
+            )
             yield Select(
-                options=(
-                    (prj.name, prj.name)
-                    for prj in self.core_mgr.ctf_base.enroll_mgr.get_enrolled_projects(
-                        self.core_mgr.active_user
-                    )
-                ),
+                options=tuple((prj.name, prj.name) for prj in enrolled),
                 id="project-select",
             )
         with Center():
             yield Rule(line_style="ascii")
         with Center():
-            yield Button("Validate", id="validate-secret-btn", variant="primary")
+            yield Button(
+                tr("submit_secret.validate"),
+                id="validate-secret-btn",
+                variant="primary",
+            )
 
     @on(Select.Changed, "#project-select")
     def project_select_handler(self, event: Select.Changed):
@@ -83,7 +91,7 @@ class SubmitSecretPage(Container, CoreWidget):
     def validate_button_handler(self):
         """Define action after submit button is pressed."""
         if not self._selected_project_name:
-            self.notify("Project not selected.", severity="error")
+            self.notify(tr("submit_secret.notify_no_project"), severity="error")
             return
 
         input_widget = self.query_one("#secret-value-input", Input)
@@ -93,7 +101,7 @@ class SubmitSecretPage(Container, CoreWidget):
         try:
             self.core_mgr.submit_secret(secret_value, self._selected_project_name)
             self.notify(
-                "Secret successfully submitted", timeout=3, severity="information"
+                tr("submit_secret.notify_success"), timeout=3, severity="information"
             )
         except FitRendezvousException as e:
             self.notify(str(e), timeout=3, severity="error")
