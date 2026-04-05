@@ -27,6 +27,36 @@ class ProjectInfoPage(Container, CoreWidget):
         CoreWidget.__init__(self, owner_screen)
         self.border_title = "Project Info"
 
+    def on_mount(self) -> None:
+        self.core_mgr.register_hook(
+            "selected_project", self.__class__.__name__, self._selected_project_hook
+        )
+        self._refresh_project_description()
+
+    def on_unmount(self) -> None:
+        self.core_mgr.unregister_hook("selected_project", self.__class__.__name__)
+
+    def _selected_project_hook(self, _project) -> None:
+        self._refresh_project_description()
+
+    def _refresh_project_description(self) -> None:
+        if not self.is_mounted:
+            return
+        try:
+            md = self.query_one("#project-description-md", Markdown)
+        except Exception:
+            return
+        md.update(self._project_description_markdown())
+
+    def _project_description_markdown(self) -> str:
+        prj = self.core_mgr.selected_project
+        if not prj:
+            return "# Project\n\nSelect a project in the sidebar to see its description."
+        body = (prj.description or "").strip()
+        if not body:
+            return f"# {prj.name}\n\n_No description configured for this project._"
+        return body
+
     def compose(self) -> ComposeResult:
         with TabbedContent():
             with TabPane("Manage instance"):
@@ -38,7 +68,10 @@ class ProjectInfoPage(Container, CoreWidget):
                 )
             with TabPane("Project Info"):
                 with VerticalScroll():
-                    yield Markdown("# Task description")
+                    yield Markdown(
+                        self._project_description_markdown(),
+                        id="project-description-md",
+                    )
             with TabPane("Leaderboard"):
                 with VerticalScroll():
                     yield self.generate_leaderboard()
@@ -119,16 +152,24 @@ class ProjectInfoPage(Container, CoreWidget):
 
     @on(Worker.StateChanged)
     def worker_handler(self, event: Worker.StateChanged):
-        if event.worker.state != WorkerState.SUCCESS:
-            return
-        if event.worker.name not in {"toggle-instance-on", "toggle-instance-off"}:
+        worker = event.worker
+        if worker.name not in {"toggle-instance-on", "toggle-instance-off"}:
             return
 
-        if event.worker.name == "toggle-instance-on":
-            self.notify("Instance has started.", timeout=3)
-            btn = self.query_one("#projectinfo-toggle-instance-btn", Button)
+        btn = self.query_one("#projectinfo-toggle-instance-btn", Button)
+
+        if worker.state == WorkerState.ERROR:
             btn.disabled = False
-        elif event.worker.name == "toggle-instance-off":
+            err = worker.error
+            self.notify(str(err) if err else "Operation failed.", severity="error")
+            return
+
+        if worker.state != WorkerState.SUCCESS:
+            return
+
+        if worker.name == "toggle-instance-on":
+            self.notify("Instance has started.", timeout=3)
+            btn.disabled = False
+        elif worker.name == "toggle-instance-off":
             self.notify("Instance has shut down...", timeout=3)
-            btn = self.query_one("#projectinfo-toggle-instance-btn", Button)
             btn.disabled = False

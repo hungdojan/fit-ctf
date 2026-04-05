@@ -32,10 +32,11 @@ class AppSideBar(Container, CoreWidget):
         self.label = Label(self._label_text(), id="label-project-name")
 
     def _label_text(self) -> str:
+        if not self.selected_project:
+            return "No project selected\nSelect a project below"
         return (
-            "No project\nselected"
-            if not self.selected_project
-            else f"Project:\n{self.selected_project.name}"
+            f"{self.selected_project.name}\n"
+            "Green = running · Yellow = idle"
         )
 
     def compose(self) -> ComposeResult:
@@ -64,6 +65,8 @@ class AppSideBar(Container, CoreWidget):
             yield Button("Change Password", id="sidebar-change-pswd-btn")
             yield Button("Upload public key", id="sidebar-upload-key-btn")
             yield Button("About & Help", id="sidebar-help-about-btn")
+            yield Button("Activity log", id="sidebar-show-console-btn")
+            yield Button("Settings", id="sidebar-settings-btn")
 
         with Center():
             yield Rule(line_style="ascii")

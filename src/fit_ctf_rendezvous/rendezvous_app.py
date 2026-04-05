@@ -26,7 +26,9 @@ class RendezvousApp(App):
         self.push_screen(LoginScreen(self, self.on_login_submit))
 
     async def _shutdown(self) -> None:
-        # NOTE: workaround
         if self.core_mgr.active_user is not None:
             await self.core_mgr.cleanup()
+            self.core_mgr.ctf_base.user_mgr.record_logout(self.core_mgr.active_user)
+            self.core_mgr.active_user = None
+            self.core_mgr.selected_project = None
         return await super()._shutdown()

@@ -61,6 +61,8 @@ class AppScreen(BaseScreen):
         self.curr_content_widget.remove()
         if page_name == "logout":
             if self.core_mgr.active_user is not None:
+                logout_btn = self.side_bar.query_one("#sidebar-logout-btn")
+                logout_btn.disabled = True
                 self.notify("Cleaning Up...", severity="warning", timeout=3)
                 self.run_worker(self.core_mgr.cleanup(), name="logout-cleanup")
             else:
@@ -81,8 +83,16 @@ class AppScreen(BaseScreen):
     @on(Worker.StateChanged)
     def worker_state_change(self, event: Worker.StateChanged):
         worker = event.worker
-        if worker.state == WorkerState.SUCCESS:
-            if worker.name == "logout-cleanup":
+        if worker.name == "logout-cleanup":
+            if worker.state == WorkerState.ERROR:
+                logout_btn = self.side_bar.query_one("#sidebar-logout-btn")
+                logout_btn.disabled = False
+                err = worker.error
+                self.notify(
+                    str(err) if err else "Cleanup failed.", severity="error", timeout=5
+                )
+                return
+            if worker.state == WorkerState.SUCCESS:
                 self.notify("Cleanup done!", timeout=3)
                 self.core_mgr.ctf_base.user_mgr.record_logout(self.core_mgr.active_user)
                 self.core_mgr.active_user = None

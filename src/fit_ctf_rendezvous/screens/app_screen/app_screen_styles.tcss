@@ -13,6 +13,14 @@ AppScreen {
 
 ShowConsolePage {
     border: none !important;
+
+    VerticalScroll {
+        height: 1fr;
+    }
+    Log {
+        height: 18;
+        min-height: 8;
+    }
 }
 
 AppSideBar {

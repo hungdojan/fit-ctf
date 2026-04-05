@@ -18,7 +18,7 @@ class RendezvousLogger(Log, LoggerInterface, metaclass=CombinedMeta):
         ctf_base: CTFBase,
         **kwargs,
     ) -> None:
-        Log.__init__(self, **kwargs)
+        Log.__init__(self, max_lines=1000, auto_scroll=True, **kwargs)
         LoggerInterface.__init__(self, ctf_base)
         ctf_base.register_component("logger", self)
 

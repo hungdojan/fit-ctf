@@ -208,26 +208,28 @@ class CoreManager(_VariableRegistry):
         except PublicKeyUploadFail as e:
             raise InvalidAction(e)
 
-    async def start_user_instance(self) -> Enrollment | None:
+    async def start_user_instance(self) -> Enrollment:
         """Start user login nodes.
 
-        :param project_name: Project name.
-        :type project_name: str
-        :return: Found user enrollment object; `None` otherwise.
-        :rtype: Enrollment | None
+        :return: Enrollment for the running instance.
+        :rtype: Enrollment
+        :raise InvalidAction: If user or project is missing, enrollment lookup fails,
+            or the cluster fails to start.
         """
         if not self.active_user or not self.selected_project:
-            return None
+            raise InvalidAction("Select a project before starting an instance.")
         try:
             enrollment = self.ctf_base.enroll_mgr.get_enrollment(
                 self.active_user, self.selected_project
             )
             cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
-        except CTFBaseException:
-            # TODO: print e
-            return None
+        except CTFBaseException as e:
+            raise InvalidAction(str(e)) from e
 
-        await self.ctf_base.user_cluster_mgr.start_cluster(cluster)
+        try:
+            await self.ctf_base.user_cluster_mgr.start_cluster(cluster)
+        except Exception as e:
+            raise InvalidAction(str(e)) from e
         return enrollment
 
     async def stop_user_instance(self):
@@ -247,7 +249,10 @@ class CoreManager(_VariableRegistry):
         except CTFBaseException:
             return
 
-        await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+        try:
+            await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+        except Exception as e:
+            raise InvalidAction(str(e)) from e
 
     async def instance_is_running(self) -> bool:
         if not self.active_user or not self.selected_project:
@@ -267,4 +272,3 @@ class CoreManager(_VariableRegistry):
         await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(
             self.active_user
         )
-        # TODO: log out sessions

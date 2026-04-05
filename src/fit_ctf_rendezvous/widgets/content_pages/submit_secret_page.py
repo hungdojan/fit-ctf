@@ -22,6 +22,36 @@ class SubmitSecretPage(Container, CoreWidget):
         self.border_title = "Submit Secret"
         self._selected_project_name = ""
 
+    def on_mount(self) -> None:
+        self.core_mgr.register_hook(
+            "selected_project", self.__class__.__name__, self._selected_project_hook
+        )
+        self._sync_project_select()
+
+    def on_unmount(self) -> None:
+        self.core_mgr.unregister_hook("selected_project", self.__class__.__name__)
+
+    def _selected_project_hook(self, _project) -> None:
+        self._sync_project_select()
+
+    def _sync_project_select(self) -> None:
+        if not self.is_mounted:
+            return
+        try:
+            select = self.query_one("#project-select", Select)
+        except Exception:
+            return
+        prj = self.core_mgr.selected_project
+        try:
+            if prj is not None:
+                select.value = prj.name
+                self._selected_project_name = prj.name
+            else:
+                select.value = Select.BLANK
+                self._selected_project_name = ""
+        except Exception:
+            self._selected_project_name = ""
+
     def compose(self) -> ComposeResult:
         with Horizontal():
             yield Label("Secret value: ")
