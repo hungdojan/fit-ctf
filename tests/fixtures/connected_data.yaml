@@ -55,8 +55,6 @@ enrollments:
           key2: value2
         service_configs:
           login_node:
-            port_map:
-              ssh: 10000
             volume_map:
               home:
                 src_path: "{{ paths__users }}/{{ username }}/home/"
@@ -81,8 +79,6 @@ enrollments:
           key3: value3
         service_configs:
           login_node:
-            port_map:
-              ssh: 11001
             volume_map:
               home:
                 src_path: "{{ paths__users }}/{{ username }}/home/"
@@ -104,8 +100,6 @@ enrollments:
         dynamic_secrets: {}
         service_configs:
           login_node:
-            port_map:
-              ssh: 10001
             volume_map:
               home:
                 src_path: "{{ paths__users }}/{{ username }}/home/"
@@ -127,8 +121,6 @@ enrollments:
         dynamic_secrets: {}
         service_configs:
           login_node:
-            port_map:
-              ssh: 11001
             volume_map:
               home:
                 src_path: "{{ paths__users }}/{{ username }}/home/"

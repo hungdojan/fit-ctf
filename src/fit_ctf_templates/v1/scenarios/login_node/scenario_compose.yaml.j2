@@ -14,9 +14,12 @@ services:
     networks:
       {{ network_map__shared }}:
       {{ network_map__private }}:
-    # example port usage
+    # Host bind from enrollment; students use forwarded_port when it differs (NAT / edge)
     ports:
-      - "{{ login_node__port_map__ssh }}:22"
+      - "{{ container_port }}:22"
+    labels:
+      fit_ctf.ssh.container_port: "{{ container_port }}"
+      fit_ctf.ssh.forwarded_port: "{{ forwarded_port }}"
     environment:
     volumes:
       - "{{ login_node__volume_map__home }}:/home/user"

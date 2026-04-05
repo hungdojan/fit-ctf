@@ -3,8 +3,18 @@
 ## Správa clusteru
 Klikněte na tlačítko **Spustit / zastavit instanci** a spusťte svůj cluster. Jakmile se zobrazí zelené oznámení „Instance byla spuštěna.“, je instance připravena a můžete se k ní připojit přes SSH. V novém terminálu spusťte:
 
+## SSH port
+Z vašeho počítače použijte **přesměrovaný port {{ forwarded_port }}** s přepínačem `ssh -p`.
+Jde o port, který vám zpřístupnil správce (může být stejný jako port na platformě, nebo
+se liší při přesměrování).
+
+{% if forwarded_port != container_port %}
+Instance mapuje SSH na platformě jako hostitelovský port **{{ container_port }}** → port
+22 v kontejneru; zvenku se připojujte pomocí **{{ forwarded_port }}** výše.
+{% endif %}
+
 ```bash
-ssh -p {{ port }} user@<hostname>
+ssh -p {{ forwarded_port }} user@<hostname>
 ```
 
 kde `hostname` je adresa serveru. Heslo je stejné jako pro přihlášení do této aplikace.

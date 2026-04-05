@@ -2,7 +2,7 @@
 
 import pathlib
 import shutil
-from typing import TYPE_CHECKING, Self, cast, overload
+from typing import TYPE_CHECKING, Any, Self, cast, overload
 
 from bson import DBRef, ObjectId
 from pymongo.database import Database
@@ -109,7 +109,6 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
                 .add_service(
                     "login_node",
                     ServiceConfig.Builder()
-                    .add_port("ssh", enrollment.container_port)
                     .add_volume(
                         "home",
                         VolumeConfig(
@@ -243,19 +242,36 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
         return cast(dict[str, str], dict(self.get_network_map((user, project))))
 
+    def _enrollment_for_cluster(self, cluster: UserCluster) -> "enroll.Enrollment":
+        enrollment = self.ctf_base.enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
+        if not enrollment:
+            raise EnrollmentNotExistException(
+                f"Enrollment {cluster.enrollment_id.id} not found for cluster compile."
+            )
+        return enrollment
+
     def _volume_context_extras(
         self, cluster: UserCluster, compile_destination: pathlib.Path
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
+        enrollment = self._enrollment_for_cluster(cluster)
         return {
             "user_scenario_dir": str(compile_destination.resolve()),
             "project_name": project.name,
             "username": user.username,
+            "container_port": enrollment.container_port,
+            "forwarded_port": enrollment.forwarded_port,
         }
 
-    def _compose_template_extras(self, cluster: UserCluster) -> dict[str, str]:
+    def _compose_template_extras(self, cluster: UserCluster) -> dict[str, Any]:
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
-        return {"project_name": project.name, "username": user.username}
+        enrollment = self._enrollment_for_cluster(cluster)
+        return {
+            "project_name": project.name,
+            "username": user.username,
+            "container_port": enrollment.container_port,
+            "forwarded_port": enrollment.forwarded_port,
+        }
 
     def get_scenario_compose_file(
         self, cluster: UserCluster, scenario_name: str

@@ -3,14 +3,14 @@
 ## Manage your cluster
 Click the `Start/Stop Instance` button to start your cluster. Once you receive a green
 notification with "Instance has started.", the instance is ready for you and you can SSH
-to it. Run the following command in the new terminal.
+to it. Run the following command in a new terminal.
 
 ```bash
-ssh -p {{ port }} user@<hostname>
+ssh -p {{ forwarded_port }} user@<hostname>
 ```
 where `hostname` is the server address. Password is the same as the one you used to log
 into this app.
 
 ## Secrets
 Once you find a secret, submit it in the `Submit Secret` page. You will be notified
-if the secret is valid or not. Don't forget to select the correct project.
+if it is valid or not. Do not forget to select the correct project.

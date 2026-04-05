@@ -32,12 +32,23 @@ class ProjectInfoPage(Container, CoreWidget):
             "selected_project", self.__class__.__name__, self._selected_project_hook
         )
         self._refresh_project_description()
+        self._refresh_ssh_instruction()
 
     def on_unmount(self) -> None:
         self.core_mgr.unregister_hook("selected_project", self.__class__.__name__)
 
     def _selected_project_hook(self, _project) -> None:
         self._refresh_project_description()
+        self._refresh_ssh_instruction()
+
+    def _refresh_ssh_instruction(self) -> None:
+        if not self.is_mounted:
+            return
+        try:
+            md = self.query_one("#project-ssh-instruction-md", Markdown)
+        except Exception:
+            return
+        md.update(self.generate_ssh_help())
 
     def _refresh_project_description(self) -> None:
         if not self.is_mounted:
@@ -61,7 +72,10 @@ class ProjectInfoPage(Container, CoreWidget):
         with TabbedContent():
             with TabPane(tr("project_info.tab_manage")):
                 with VerticalScroll():
-                    yield Markdown(self.generate_ssh_help())
+                    yield Markdown(
+                        self.generate_ssh_help(),
+                        id="project-ssh-instruction-md",
+                    )
                 yield Rule(line_style="ascii")
                 yield Button(
                     tr("project_info.start_stop_instance"),
@@ -115,13 +129,20 @@ class ProjectInfoPage(Container, CoreWidget):
         env = Environment(loader=jinja_resources_loader())
         template = env.get_template("run_cluster_instruction.md.j2")
         try:
-            port = self._get_port()
+            container_port, forwarded_port = self._get_ssh_ports()
         except FitRendezvousException as e:
             self.core_mgr.ctf_base.logger.error(str(e))
             return tr("project_info.ssh_error_supervisor")
-        return template.render(port=port)
+        return template.render(
+            container_port=container_port,
+            forwarded_port=forwarded_port,
+        )
 
-    def _get_port(self) -> int:
+    def _get_ssh_ports(self) -> tuple[int, int]:
+        """`container_port` is published on the host in compose
+
+        Use `forwarded_port` for SSH from outside.
+        """
         if not self.active_user or not self.core_mgr.selected_project:
             raise InconsistentState("Missing active user or project is not selected.")
         enrollment = self.core_mgr.ctf_base.enroll_mgr.get_enrollment(
@@ -132,7 +153,7 @@ class ProjectInfoPage(Container, CoreWidget):
                 f"User {self.active_user.username} is not enrolled "
                 f"in {self.core_mgr.selected_project.name}."
             )
-        return enrollment.forwarded_port
+        return enrollment.container_port, enrollment.forwarded_port
 
     @on(Button.Pressed, "#projectinfo-toggle-instance-btn")
     async def toggle_instance(self):
