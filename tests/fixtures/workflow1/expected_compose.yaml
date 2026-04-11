@@ -1,0 +1,19 @@
+---
+# Render with Jinja (see test_workflow1) before YamlParser.load_data_stream.
+name: "prj1_user1_new_node"
+services:
+  webserver:
+    build:
+      context: "{{ module_build_context }}"
+      dockerfile: Containerfile
+    image: fit-ctf/webserver
+    ports: []
+    environment: {}
+    volumes:
+      - "{{ flag_volume_host }}:/data/flag"
+    networks:
+      - "{{ private_net }}"
+
+networks:
+  "{{ private_net }}":
+    external: true

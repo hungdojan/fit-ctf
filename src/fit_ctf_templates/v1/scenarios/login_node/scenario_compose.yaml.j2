@@ -20,7 +20,7 @@ services:
     labels:
       fit_ctf.ssh.container_port: "{{ container_port }}"
       fit_ctf.ssh.forwarded_port: "{{ forwarded_port }}"
-    environment:
+    environment: {}
     volumes:
       - "{{ login_node__volume_map__home }}:/home/user"
       - "{{ login_node__volume_map__shadow }}:/etc/shadow"

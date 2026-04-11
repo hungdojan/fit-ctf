@@ -1,17 +1,17 @@
 ---
-name: "{{ project_name }}_{{ username }}_full"
+name: "{{ project_name }}_{{ username }}_new_node"
 services:
   webserver:
     build:
       context: {{ paths__modules }}/webserver
       dockerfile: Containerfile
     image: fit-ctf/webserver
-    ports:
-    environment:
+    ports: []
+    environment: {}
     volumes:
       - "{{ webserver__volume_map__flag }}:/data/flag"
     networks:
-      - {{ network_map__private }}:
+      - {{ network_map__private }}
 
 networks:
   {{ network_map__private }}:

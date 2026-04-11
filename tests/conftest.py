@@ -18,7 +18,7 @@ from fit_ctf_components.types import PathDict
 from fit_ctf_rendezvous import i18n as rendezvous_i18n
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
-from . import CLIData, FixtureData, fixture_path
+from . import CLIData, ComplexData, FixtureData, fixture_path
 
 load_dotenv()
 
@@ -236,3 +236,10 @@ def tui_app(connected_data: FixtureData) -> App:
     rendezvous_i18n.reset_locale_cache()
     os.environ.pop("FIT_RENDEZVOUS_LANG", None)
     return RendezvousApp(ctf_app)
+
+
+@pytest.fixture
+def empty_complex(empty_data: FixtureData) -> ComplexData:
+    ctf_app, path = empty_data
+    os.environ.update(_base_path_dict(path))
+    return (CliRunner(), RendezvousApp(ctf_app), path)

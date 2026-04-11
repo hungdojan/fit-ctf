@@ -1,0 +1,18 @@
+---
+name: "{{ project_name }}_proj_webserver"
+services:
+  project_webserver:
+    build:
+      context: {{ paths__modules }}/webserver
+      dockerfile: Containerfile
+    image: fit-ctf/webserver
+    ports: []
+    environment: {}
+    volumes:
+      - "{{ project_webserver__volume_map__flag }}:/data/flag"
+    networks:
+      - {{ network_map__shared }}
+
+networks:
+  {{ network_map__shared }}:
+    external: true

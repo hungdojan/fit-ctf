@@ -58,6 +58,7 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
         template_warning_sink: Callable[[str], None] | None = None,
     ) -> None:
         cluster.scenario_configs[scenario_config.scenario_name] = scenario_config
+        cluster.scenario_names = list(cluster.scenario_configs.keys())
         self.update_doc(cluster)
         self.compile_scenario(
             cluster,

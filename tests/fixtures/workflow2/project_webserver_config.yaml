@@ -1,0 +1,9 @@
+# Project-level webserver on shared net (reachable from user ``login_node``).
+secrets:
+  flag: 'the-project-secret'
+service_configs:
+  project_webserver:
+    volume_map:
+      flag:
+        src_path: '{{ paths__scenarios }}/volumes/flag.template'
+        template_params: {}

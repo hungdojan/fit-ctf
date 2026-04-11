@@ -1,0 +1,7 @@
+secrets:
+  flag: 'the-secret'
+service_configs:
+  webserver:
+    volume_map:
+      flag:
+        src_path: '{{ paths__scenarios }}/volumes/flag.template'

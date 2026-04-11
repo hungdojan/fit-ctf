@@ -1,0 +1,13 @@
+# Project-level ``template`` scenario (shared / operational nets).
+secrets: {}
+service_configs:
+  template_service:
+    env_map:
+      ADMIN: wf2admin
+      PASSWORD: wf2pass
+    port_map:
+      mongodb: 27018
+    volume_map:
+      example_map:
+        src_path: '{{ paths__scenarios }}/template/volumes/file_example'
+        template_params: {}
