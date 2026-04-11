@@ -23,6 +23,15 @@ from . import CLIData, FixtureData, fixture_path
 load_dotenv()
 
 
+def _base_path_dict(tmp_path: Path) -> dict:
+    return {
+        "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
+        "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
+        "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
+        "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
+    }
+
+
 @pytest.fixture(scope="session")
 def workdir(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return tmp_path_factory.getbasetemp()
@@ -204,28 +213,14 @@ def connected_data(
 @pytest.fixture
 def cli_data(connected_data: FixtureData) -> CLIData:
     ctf_app, tmp_path = connected_data
-    os.environ.update(
-        {
-            "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
-            "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
-            "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
-        }
-    )
+    os.environ.update(_base_path_dict(tmp_path))
     return ctf_app, tmp_path, CliRunner()
 
 
 @pytest.fixture
 def empty_cli_data(empty_data: FixtureData) -> CLIData:
     ctf_app, tmp_path = empty_data
-    os.environ.update(
-        {
-            "PROJECT_SHARE_DIR": str((tmp_path / "share" / "project").resolve()),
-            "USER_SHARE_DIR": str((tmp_path / "share" / "user").resolve()),
-            "MODULE_SHARE_DIR": str((tmp_path / "share" / "module").resolve()),
-            "SCENARIO_SHARE_DIR": str((tmp_path / "share" / "scenario").resolve()),
-        }
-    )
+    os.environ.update(_base_path_dict(tmp_path))
     return ctf_app, tmp_path, CliRunner()
 
 

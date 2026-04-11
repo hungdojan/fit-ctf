@@ -209,10 +209,8 @@ def cluster_info(ctx: click.Context):
     for scenario_name, config in cluster.scenario_configs.items():
         click.echo(f"  - {scenario_name}")
         click.echo(f"    Services: {len(config.service_configs)}")
-        if config.dynamic_secrets:
-            click.echo(
-                f"    Dynamic Secrets: {', '.join(config.dynamic_secrets.keys())}"
-            )
+        if config.secrets:
+            click.echo(f"    Secrets: {', '.join(config.secrets.keys())}")
 
 
 @project_cluster.command(name="list-scenarios")
@@ -226,12 +224,12 @@ def list_scenarios(ctx: click.Context, format: str):
         click.echo("No scenarios in project cluster")
         return
 
-    headers = ["Scenario", "Services", "Dynamic Secrets"]
+    headers = ["Scenario", "Services", "Secrets"]
     values = [
         [
             name,
             len(config.service_configs),
-            len(config.dynamic_secrets),
+            len(config.secrets),
         ]
         for name, config in cluster.scenario_configs.items()
     ]

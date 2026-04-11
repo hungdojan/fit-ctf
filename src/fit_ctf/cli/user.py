@@ -124,8 +124,6 @@ def list_users(ctx: click.Context, format: str, _all: bool):
 
     user_mgr: UserManager = ctx.parent.obj["ctf_app"].user_mgr  # pyright: ignore
     users = user_mgr.get_users_info(None if _all else True)
-    if not users:
-        return
 
     values = [
         [

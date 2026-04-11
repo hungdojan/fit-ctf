@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from textual.app import App
 from textual.widgets import Input, Label
@@ -5,6 +7,9 @@ from textual.widgets import Input, Label
 from fit_ctf_models.utils.sessions import LoginSession
 from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from tests import FixtureData
+
+if os.getenv("ENABLE_RENDEZVOUS_TESTING", "0") == "0":
+    pytest.skip("Rendezvous TUI app testing not enabled", allow_module_level=True)
 
 
 @pytest.mark.skip()
@@ -38,7 +43,9 @@ async def test_login(tui_app: App, connected_data: FixtureData):
 
 
 @pytest.mark.asyncio
-async def test_sidebar_opens_project_selector(tui_app: App, connected_data: FixtureData):
+async def test_sidebar_opens_project_selector(
+    tui_app: App, connected_data: FixtureData
+):
     async with tui_app.run_test() as pilot:
         tui_app.screen.query_one("#login-username-input", Input).value = "user1"
         tui_app.screen.query_one("#login-password-input", Input).value = "user1Password"

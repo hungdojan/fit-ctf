@@ -4,6 +4,35 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field
 
+from fit_ctf_models.utils.exceptions import (
+    CTFModelException,
+    InvalidDynamicSecretKeyException,
+)
+
+CANONICAL_SCENARIO_YAML_KEYS = frozenset({"secrets", "service_configs"})
+
+
+def validate_canonical_scenario_yaml_dict(raw: dict) -> dict:
+    """Require exactly ``secrets`` and ``service_configs`` (add-scenario / vars-template shape)."""
+    if set(raw.keys()) != CANONICAL_SCENARIO_YAML_KEYS:
+        raise CTFModelException(
+            "Scenario YAML must have exactly top-level keys "
+            f"{sorted(CANONICAL_SCENARIO_YAML_KEYS)!r}, got {sorted(raw.keys())!r}"
+        )
+    sec = raw["secrets"]
+    svc = raw["service_configs"]
+    if not isinstance(sec, dict):
+        raise CTFModelException("'secrets' must be a mapping")
+    if not isinstance(svc, dict):
+        raise CTFModelException("'service_configs' must be a mapping")
+    for name in sec:
+        if "__" in str(name):
+            raise InvalidDynamicSecretKeyException(
+                f"secrets key {name!r} must not contain '__' "
+                "(Jinja uses secret_map__<name>)."
+            )
+    return raw
+
 
 class VolumeConfig(BaseModel):
     src_path: str
@@ -59,17 +88,17 @@ class ServiceConfig(BaseModel):
 
 class ScenarioConfig(BaseModel):
     scenario_name: str
-    dynamic_secrets: dict[str, str] = Field(default_factory=dict)
+    secrets: dict[str, str] = Field(default_factory=dict)
     service_configs: dict[str, ServiceConfig] = Field(default_factory=dict)
 
     class Builder:
         def __init__(self, scenario_name: str):
             self._scenario_name = scenario_name
-            self._dynamic_secrets: dict[str, str] = {}
+            self._secrets: dict[str, str] = {}
             self._service_configs: dict[str, ServiceConfig] = {}
 
         def add_secret(self, key: str, value: str) -> Self:
-            self._dynamic_secrets[key] = value
+            self._secrets[key] = value
             return self
 
         def add_service(self, service_name: str, service_config: ServiceConfig) -> Self:
@@ -79,7 +108,7 @@ class ScenarioConfig(BaseModel):
         def build(self) -> "ScenarioConfig":
             return ScenarioConfig(
                 scenario_name=self._scenario_name,
-                dynamic_secrets=self._dynamic_secrets,
+                secrets=self._secrets,
                 service_configs=self._service_configs,
             )
 
@@ -102,7 +131,12 @@ def service_config_from_dict(raw: dict) -> ServiceConfig:
 def scenario_config_from_dict(scenario_name: str, raw: dict) -> ScenarioConfig:
     """Build ScenarioConfig from a YAML/dump dict (per setup.yaml scenario_configs)."""
     builder = ScenarioConfig.Builder(scenario_name)
-    for name, value in raw.get("dynamic_secrets", {}).items():
+    for name, value in raw.get("secrets", {}).items():
+        if "__" in str(name):
+            raise InvalidDynamicSecretKeyException(
+                f"secrets key {name!r} must not contain '__' "
+                "(Jinja uses secret_map__<name>)."
+            )
         builder.add_secret(name, value if isinstance(value, str) else str(value))
     for service_name, svc_raw in raw.get("service_configs", {}).items():
         if not isinstance(svc_raw, dict):

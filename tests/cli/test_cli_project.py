@@ -36,7 +36,9 @@ def test_list(cli_data: CLIData):
         asyncio.run(ctf_app.prj_mgr.disable_project(prj))
 
     result = cli_runner.invoke(cli, cmd)
-    assert re.match("No project found!", result.output)
+    f = StringIO(result.output)
+    rows = [i for i in csv.reader(f)]
+    assert len(rows[1:]) == 0
 
     cmd = "project ls -a -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -121,7 +123,9 @@ def test_used_ports(cli_data: CLIData):
 
     cmd = "project reserved-ports -f csv".split()
     result = cli_runner.invoke(cli, cmd)
-    assert re.match("No project found!", result.output)
+    f = StringIO(result.output)
+    rows = [i for i in csv.reader(f)]
+    assert len(rows[1:]) == 0
 
 
 def test_leaderboard(cli_data: CLIData):

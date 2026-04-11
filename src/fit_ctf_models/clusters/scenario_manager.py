@@ -6,7 +6,13 @@ import shutil
 from typing import TYPE_CHECKING
 
 from fit_ctf_components.base import BaseComponent
+from fit_ctf_models.clusters.config_models import ScenarioConfig
+from fit_ctf_models.clusters.scenario_config_validation import (
+    validate_secrets_vs_templates,
+    validate_service_configs_vs_scaffold,
+)
 from fit_ctf_models.utils.exceptions import (
+    CTFModelException,
     ScenarioExistException,
     ScenarioNotExistException,
 )
@@ -21,6 +27,7 @@ if TYPE_CHECKING:
 _VOL_MAP_TPL_PARAM_RE = re.compile(r"^(.+?)__volume_map__(.+?)__(.+)$")
 # `{service}__port_map__`, `__env_map__`, `__volume_map__{volume}` (three segments).
 _SC_TRIPLE_RE = re.compile(r"^(.*)__(.*)__(.*)$")
+_SECRET_MAP_RE = re.compile(r"^secret_map__(.+)$")
 
 
 class ScenarioManager(BaseComponent):
@@ -68,7 +75,7 @@ class ScenarioManager(BaseComponent):
         path.mkdir(parents=True)
         try:
             with open(path / "scenario_compose.yaml.j2", "w") as f:
-                template = get_template("scenario_compose.yaml.j2")
+                template = get_template("scenario_base_compose.yaml.j2")
                 f.write(template.render(name=scenario_name))
             shutil.copytree(TEMPLATE_PATH_MAP["volumes"], path / "volumes")
 
@@ -138,6 +145,53 @@ class ScenarioManager(BaseComponent):
                         ] = ""
 
         return var_dict
+
+    @staticmethod
+    def _secret_names_from_jinja_vars(variables: set[str]) -> set[str]:
+        keys: set[str] = set()
+        for v in variables:
+            m = _SECRET_MAP_RE.fullmatch(v)
+            if not m:
+                continue
+            name = m.group(1)
+            if not name or "__" in name:
+                continue
+            keys.add(name)
+        return keys
+
+    def fetch_secret_keys(self, scenario_name: str) -> list[str]:
+        """Secret names used as ``secret_map__<name>`` in compose and volume templates."""
+        scenario_dir = self.get_scenario_dir(scenario_name)
+        keys = self._secret_names_from_jinja_vars(
+            get_jinja_variables("scenario_compose.yaml.j2", scenario_dir)
+        )
+        vol_root = scenario_dir / "volumes"
+        if vol_root.is_dir():
+            for item in vol_root.iterdir():
+                if not item.name.endswith(".template"):
+                    continue
+                keys |= self._secret_names_from_jinja_vars(
+                    get_jinja_variables(item.name, vol_root)
+                )
+        return sorted(keys)
+
+    def validate_scenario_config_against_templates(
+        self, scenario_name: str, config: ScenarioConfig
+    ) -> list[str]:
+        """Raise :class:`CTFModelException` if required template slots are missing.
+
+        Returns warning strings for unused config keys.
+        """
+        required_secrets = frozenset(self.fetch_secret_keys(scenario_name))
+        scaffold = self.fetch_variables(scenario_name)
+        se, sw = validate_secrets_vs_templates(required_secrets, config.secrets)
+        ve, vw = validate_service_configs_vs_scaffold(scaffold, config.service_configs)
+        errors = se + ve
+        if errors:
+            raise CTFModelException(
+                "Scenario config does not satisfy templates: " + "; ".join(errors)
+            )
+        return sw + vw
 
     def list_scenarios(self) -> list[str]:
         """List all available scenario templates.

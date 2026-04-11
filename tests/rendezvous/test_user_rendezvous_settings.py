@@ -1,4 +1,7 @@
+import os
 from pathlib import Path
+
+import pytest
 
 from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_components.types import PathDict, UserRole
@@ -10,6 +13,9 @@ from fit_ctf_rendezvous.user_rendezvous_settings import (
     load,
     save,
 )
+
+if os.getenv("ENABLE_RENDEZVOUS_TESTING", "0") == "0":
+    pytest.skip("Rendezvous TUI app testing not enabled", allow_module_level=True)
 
 
 def _paths(tmp_path: Path) -> PathManagement:

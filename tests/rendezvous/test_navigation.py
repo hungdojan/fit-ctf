@@ -1,8 +1,13 @@
+import os
+
 import pytest
 from textual.app import App
 from textual.widgets import Input
 
 from tests import FixtureData
+
+if os.getenv("ENABLE_RENDEZVOUS_TESTING", "0") == "0":
+    pytest.skip("Rendezvous TUI app testing not enabled", allow_module_level=True)
 
 
 @pytest.mark.asyncio

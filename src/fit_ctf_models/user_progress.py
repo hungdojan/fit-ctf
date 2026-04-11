@@ -50,7 +50,7 @@ class UserProgressManager(BaseComponent):
         return user_cluster, project_cluster
 
     def submit_secret(self, enrollment: "enroll.Enrollment", value: str):
-        """Validate submitted string against merged cluster dynamic_secrets; log every attempt."""
+        """Validate submitted string against merged cluster secrets; log every attempt."""
         progress = enrollment.progress
         now = datetime.now().astimezone()
         progress.submission_log.append(

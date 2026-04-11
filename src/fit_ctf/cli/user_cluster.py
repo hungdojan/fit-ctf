@@ -2,7 +2,6 @@
 
 import asyncio
 import pathlib
-from typing import Any
 
 import click
 
@@ -17,10 +16,42 @@ from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
 from fit_ctf_components.exceptions import ConfigurationFileNotEditedException
 from fit_ctf_components.utils import yaml_doc_editor
-from fit_ctf_models.clusters import ScenarioConfig, ServiceConfig, VolumeConfig
+from fit_ctf_models.clusters import ScenarioConfig, ServiceConfig
+from fit_ctf_models.clusters.config_models import (
+    scenario_config_from_dict,
+    validate_canonical_scenario_yaml_dict,
+)
+from fit_ctf_models.clusters.scenario_manager import ScenarioManager
 from fit_ctf_models.utils.exceptions import (
     CTFModelException,
+    InvalidDynamicSecretKeyException,
 )
+
+
+def _warnings_after_secrets_trial(
+    scenario_mgr: ScenarioManager,
+    scenario_name: str,
+    scenario_config: ScenarioConfig,
+    secrets_delta: dict[str, str | None],
+) -> list[str]:
+    """Deep-copy ``scenario_config``, apply ``secrets_delta``, validate vs templates.
+
+    ``None`` in ``secrets_delta`` removes that secret key. May raise
+    :class:`CTFModelException` when the post-mutation config is invalid.
+    Returns template validation warning strings.
+    """
+    trial = scenario_config.model_copy(deep=True)
+    for k, v in secrets_delta.items():
+        if v is None:
+            trial.secrets.pop(k, None)
+        else:
+            trial.secrets[k] = v
+    return scenario_mgr.validate_scenario_config_against_templates(scenario_name, trial)
+
+
+def _echo_cli_warning(message: str) -> None:
+    """Print one warning line to stderr (template validation, secret trial, etc.)."""
+    click.echo(f"Warning: {message}", err=True)
 
 
 @click.group(name="user-cluster")
@@ -53,25 +84,6 @@ def add_scenario_to_cluster(
 ):
     """Add a scenario to a user's cluster."""
 
-    def parse_dict_values(raw_dict: dict) -> dict[str, Any]:
-        service_configs = {}
-        for service, config in raw_dict.items():
-            sc = ServiceConfig.Builder()
-            for name, value in config.get("env_map", {}).items():
-                sc = sc.add_env(name, value)
-            for name, value in config.get("port_map", {}).items():
-                sc = sc.add_port(name, value)
-            for name, value in config.get("volume_map", {}).items():
-                sc = sc.add_volume(
-                    name,
-                    VolumeConfig(
-                        src_path=value.get("src_path", ""),
-                        template_params=value.get("template_params", {}),
-                    ),
-                )
-            service_configs[service] = sc.build()
-        return service_configs
-
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
     try:
@@ -81,23 +93,28 @@ def add_scenario_to_cluster(
 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
-        service_configs_raw = {}
+        raw: dict
         if interactive:
-            vars = ctf_app.scenario_mgr.fetch_variables(scenario)
-            service_configs_raw = yaml_doc_editor(vars)
+            doc = {
+                "secrets": {
+                    k: "" for k in ctf_app.scenario_mgr.fetch_secret_keys(scenario)
+                },
+                "service_configs": ctf_app.scenario_mgr.fetch_variables(scenario),
+            }
+            raw = yaml_doc_editor(doc)
         elif file:
-            service_configs_raw = YamlParser.load_data_file(file)
+            raw = YamlParser.load_data_file(file)
         else:
             click.echo("`--interactive` or `--file` must be set")
             ctx.exit(1)
 
-        scenario_config = ScenarioConfig.Builder(scenario)
-        for name, sc in parse_dict_values(service_configs_raw).items():
-            scenario_config.add_service(name, sc)
-        scenario_config = scenario_config.build()
+        validate_canonical_scenario_yaml_dict(raw)
+        scenario_config = scenario_config_from_dict(scenario, raw)
 
         ctf_app.user_cluster_mgr.create_or_update_scenario_config(
-            cluster, scenario_config
+            cluster,
+            scenario_config,
+            template_warning_sink=_echo_cli_warning,
         )
 
         click.echo(
@@ -192,6 +209,17 @@ def edit_service_config(
 
             # Update service config
             scenario_config.service_configs[service] = ServiceConfig(**updated_data)
+            try:
+                tmpl_warnings = (
+                    ctf_app.scenario_mgr.validate_scenario_config_against_templates(
+                        scenario, scenario_config
+                    )
+                )
+            except CTFModelException as e:
+                click.echo(f"Error: {e}")
+                ctx.exit(1)
+            for w in tmpl_warnings:
+                _echo_cli_warning(w)
             ctf_app.user_cluster_mgr.update_doc(cluster)
 
             click.echo(
@@ -200,7 +228,9 @@ def edit_service_config(
 
             # Ask if user wants to compile now
             if yes or click.confirm("\nCompile scenario now?", default=True):
-                ctf_app.user_cluster_mgr.compile_scenario(cluster, scenario)
+                ctf_app.user_cluster_mgr.compile_scenario(
+                    cluster, scenario, template_warning_sink=_echo_cli_warning
+                )
                 click.echo(f"Scenario '{scenario}' compiled successfully")
 
         except ConfigurationFileNotEditedException:
@@ -218,7 +248,7 @@ def edit_service_config(
 @click.option("-k", "--key", required=True, help="Secret key")
 @click.option("-v", "--value", required=True, help="Secret value")
 @click.pass_context
-def add_dynamic_secret(
+def add_secret(
     ctx: click.Context,
     username: str,
     project_name: str,
@@ -242,13 +272,23 @@ def add_dynamic_secret(
 
         scenario_config = cluster.scenario_configs[scenario]
 
-        if key in scenario_config.dynamic_secrets:
+        if "__" in key:
+            raise InvalidDynamicSecretKeyException(
+                f"secrets key {key!r} must not contain '__'"
+            )
+
+        if key in scenario_config.secrets:
             click.echo(
                 f"Error: Secret '{key}' already exists. Use update-secret to modify."
             )
             ctx.exit(1)
 
-        scenario_config.dynamic_secrets[key] = value
+        for w in _warnings_after_secrets_trial(
+            ctf_app.scenario_mgr, scenario, scenario_config, {key: value}
+        ):
+            _echo_cli_warning(w)
+
+        scenario_config.secrets[key] = value
         ctf_app.user_cluster_mgr.update_doc(cluster)
         click.echo(f"Secret '{key}' added to scenario '{scenario}'")
 
@@ -264,7 +304,7 @@ def add_dynamic_secret(
 @click.option("-k", "--key", required=True, help="Secret key")
 @click.option("-v", "--value", required=True, help="Secret value")
 @click.pass_context
-def update_dynamic_secret(
+def update_secret(
     ctx: click.Context,
     username: str,
     project_name: str,
@@ -288,11 +328,16 @@ def update_dynamic_secret(
 
         scenario_config = cluster.scenario_configs[scenario]
 
-        if key not in scenario_config.dynamic_secrets:
+        if key not in scenario_config.secrets:
             click.echo(f"Error: Secret '{key}' not found in scenario '{scenario}'")
             ctx.exit(1)
 
-        scenario_config.dynamic_secrets[key] = value
+        for w in _warnings_after_secrets_trial(
+            ctf_app.scenario_mgr, scenario, scenario_config, {key: value}
+        ):
+            _echo_cli_warning(w)
+
+        scenario_config.secrets[key] = value
         ctf_app.user_cluster_mgr.update_doc(cluster)
         click.echo(f"Secret '{key}' updated in scenario '{scenario}'")
 
@@ -308,7 +353,7 @@ def update_dynamic_secret(
 @click.option("-k", "--key", required=True, help="Secret key to remove")
 @click.option("-y", "--yes", is_flag=True, help="Confirm removal")
 @click.pass_context
-def remove_dynamic_secret(
+def remove_secret(
     ctx: click.Context,
     username: str,
     project_name: str,
@@ -332,7 +377,7 @@ def remove_dynamic_secret(
 
         scenario_config = cluster.scenario_configs[scenario]
 
-        if key not in scenario_config.dynamic_secrets:
+        if key not in scenario_config.secrets:
             click.echo(f"Error: Secret '{key}' not found in scenario '{scenario}'")
             ctx.exit(1)
 
@@ -340,7 +385,18 @@ def remove_dynamic_secret(
             click.echo("Cancelled")
             return
 
-        del scenario_config.dynamic_secrets[key]
+        # pre-run check
+        try:
+            warnings = _warnings_after_secrets_trial(
+                ctf_app.scenario_mgr, scenario, scenario_config, {key: None}
+            )
+        except CTFModelException as e:
+            click.echo(f"Error: {e}")
+            ctx.exit(1)
+
+        scenario_config.secrets.pop(key, None)
+        for w in warnings:
+            _echo_cli_warning(w)
         ctf_app.user_cluster_mgr.update_doc(cluster)
         click.echo(f"Secret '{key}' removed from scenario '{scenario}'")
 
@@ -355,7 +411,7 @@ def remove_dynamic_secret(
 @click.option("-s", "--scenario", required=True, help="Scenario name")
 @format_option
 @click.pass_context
-def list_dynamic_secrets(
+def list_secrets(
     ctx: click.Context,
     username: str,
     project_name: str,
@@ -378,12 +434,12 @@ def list_dynamic_secrets(
 
         scenario_config = cluster.scenario_configs[scenario]
 
-        if not scenario_config.dynamic_secrets:
+        if not scenario_config.secrets:
             click.echo(f"No secrets in scenario '{scenario}'")
             return
 
         headers = ["Key"]
-        values = [[key] for key in scenario_config.dynamic_secrets.keys()]
+        values = [[key] for key in scenario_config.secrets.keys()]
 
         get_view(format).print_data(headers, values)
 
@@ -414,12 +470,12 @@ def list_cluster_scenarios(
             click.echo(f"No scenarios in cluster for {username}@{project_name}")
             return
 
-        headers = ["Scenario", "Services", "Dynamic Secrets"]
+        headers = ["Scenario", "Services", "Secrets"]
         values = [
             [
                 name,
                 len(config.service_configs),
-                len(config.dynamic_secrets),
+                len(config.secrets),
             ]
             for name, config in cluster.scenario_configs.items()
         ]
@@ -456,10 +512,8 @@ def cluster_info(ctx: click.Context, username: str, project_name: str):
         for scenario_name, config in cluster.scenario_configs.items():
             click.echo(f"  - {scenario_name}")
             click.echo(f"    Services: {len(config.service_configs)}")
-            if config.dynamic_secrets:
-                click.echo(
-                    f"    Dynamic Secrets: {', '.join(config.dynamic_secrets.keys())}"
-                )
+            if config.secrets:
+                click.echo(f"    Secrets: {', '.join(config.secrets.keys())}")
             for service_name, service_config in config.service_configs.items():
                 click.echo(f"      • {service_name}")
                 if service_config.env_map:
@@ -497,12 +551,16 @@ def compile_cluster(
             if scenario not in cluster.scenario_configs:
                 click.echo(f"Error: Scenario '{scenario}' not found in cluster")
                 ctx.exit(1)
-            ctf_app.user_cluster_mgr.compile_scenario(cluster, scenario)
+            ctf_app.user_cluster_mgr.compile_scenario(
+                cluster, scenario, template_warning_sink=_echo_cli_warning
+            )
             click.echo(f"Scenario '{scenario}' compiled for {username}@{project_name}")
         else:
             # Compile all scenarios
             for scenario_name in cluster.scenario_configs.keys():
-                ctf_app.user_cluster_mgr.compile_scenario(cluster, scenario_name)
+                ctf_app.user_cluster_mgr.compile_scenario(
+                    cluster, scenario_name, template_warning_sink=_echo_cli_warning
+                )
             click.echo(
                 f"All scenarios compiled for {username}@{project_name} "
                 f"({len(cluster.scenario_configs)} scenarios)"

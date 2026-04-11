@@ -105,9 +105,6 @@ def list_projects(ctx: click.Context, format: str, _all: bool):
     """
     prj_mgr: ProjectManager = ctx.parent.obj["ctf_app"].prj_mgr  # pyright: ignore
     lof_prj = prj_mgr.get_projects_raw(include_inactive=_all)
-    if not lof_prj:
-        click.echo("No project found!")
-        return
     header_order = ["name", "active", "active_users", "max_nof_users"]
     headers = ["Name", "Active", "Users", "Capacity"]
     values = [[i[key] for key in header_order] for i in lof_prj]

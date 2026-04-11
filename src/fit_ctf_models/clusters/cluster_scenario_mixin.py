@@ -2,19 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 import shutil
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
 from fit_ctf_models.base import BaseManagerInterface
 from fit_ctf_models.clusters.cluster_document import ClusterDocument
 from fit_ctf_models.clusters.config_models import ScenarioConfig
+from fit_ctf_models.clusters.constants import CLUSTER_LOGGER_NAME
 from fit_ctf_models.clusters.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
 )
+from fit_ctf_models.clusters.scenario_manager import ScenarioManager
 from fit_ctf_models.utils.exceptions import ScenarioNotExistException
 
 ClusterT = TypeVar("ClusterT", bound=ClusterDocument)
@@ -48,21 +51,45 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
         """Keys merged into the compose template render (e.g. ``project_name``, ``username``)."""
 
     def create_or_update_scenario_config(
-        self, cluster: ClusterT, scenario_config: ScenarioConfig
+        self,
+        cluster: ClusterT,
+        scenario_config: ScenarioConfig,
+        *,
+        template_warning_sink: Callable[[str], None] | None = None,
     ) -> None:
         cluster.scenario_configs[scenario_config.scenario_name] = scenario_config
         self.update_doc(cluster)
-        self.compile_scenario(cluster, scenario_config.scenario_name)
+        self.compile_scenario(
+            cluster,
+            scenario_config.scenario_name,
+            template_warning_sink=template_warning_sink,
+        )
 
-    def compile_scenario(self, cluster: ClusterT, scenario_name: str) -> None:
+    def compile_scenario(
+        self,
+        cluster: ClusterT,
+        scenario_name: str,
+        *,
+        template_warning_sink: Callable[[str], None] | None = None,
+    ) -> None:
         if scenario_name not in cluster.scenario_configs:
             raise ScenarioNotExistException(
                 f"Scenario {scenario_name} not found in {cluster.name}"
             )
+        scenario_cfg = cluster.scenario_configs[scenario_name]
+        sm = ScenarioManager(self.ctf_base)
+        warnings = sm.validate_scenario_config_against_templates(
+            scenario_name, scenario_cfg
+        )
+        log = logging.getLogger(CLUSTER_LOGGER_NAME)
+        for w in warnings:
+            if template_warning_sink is not None:
+                template_warning_sink(w)
+            else:
+                log.warning(w)
         src_path, dst_path = self._scenario_global_and_destination(
             cluster, scenario_name
         )
-        scenario_cfg = cluster.scenario_configs[scenario_name]
         compile_ctx = ScenarioCompileContext(
             paths_dict=cast(Mapping[str, Path], self.paths.paths_dict),
             scenario_global_root=src_path,

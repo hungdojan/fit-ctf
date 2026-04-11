@@ -87,8 +87,8 @@ def test_leaderboard(connected_data: FixtureData):
     enrollment = ctf_app.enroll_mgr.get_enrollment(user, prj)
     uc = ctf_app.user_cluster_mgr.get_cluster(enrollment)
     cfg = uc.scenario_configs["login_node"]
-    cfg.dynamic_secrets["dyn1"] = "secret-value1"
-    cfg.dynamic_secrets["dyn2"] = "secret-value2"
+    cfg.secrets["dyn1"] = "secret-value1"
+    cfg.secrets["dyn2"] = "secret-value2"
     ctf_app.user_cluster_mgr.create_or_update_scenario_config(uc, cfg)
 
     enrollment = ctf_app.enroll_mgr.get_enrollment(user, prj)

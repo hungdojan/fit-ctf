@@ -134,7 +134,7 @@ class SecretNameAlreadyExistsException(CTFModelException):
 
 
 class InvalidDynamicSecretKeyException(CTFModelException):
-    """A ``dynamic_secrets`` key is not allowed (e.g. contains ``__``)."""
+    """A ``secrets`` key is not allowed (e.g. contains ``__``)."""
 
     pass
 

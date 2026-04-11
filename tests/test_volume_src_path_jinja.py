@@ -11,7 +11,7 @@ from fit_ctf_models.utils.exceptions import (
 from fit_ctf_templates import (
     build_volume_file_template_context,
     materialize_volume_src_for_compose,
-    merge_dynamic_secrets_into_volume_template_context,
+    merge_secrets_into_volume_template_context,
     render_volume_file_template,
     resolve_volume_src_path,
 )
@@ -42,17 +42,17 @@ def test_resolve_volume_src_path_missing_variable():
         resolve_volume_src_path("{{ unknown }}", {"scenario_dir": "/x"})
 
 
-def test_merge_dynamic_secrets_into_volume_template_context():
+def test_merge_secrets_into_volume_template_context():
     ctx = build_volume_file_template_context("web", "cfg", {"x": "1"})
-    merge_dynamic_secrets_into_volume_template_context(ctx, {"flag": "F"})
+    merge_secrets_into_volume_template_context(ctx, {"flag": "F"})
     assert ctx["secret_map__flag"] == "F"
     assert ctx["web__volume_map__cfg__x"] == "1"
 
 
-def test_merge_dynamic_secrets_rejects_double_underscore_in_name():
+def test_merge_secrets_rejects_double_underscore_in_name():
     ctx = {}
     with pytest.raises(InvalidDynamicSecretKeyException, match="must not contain '__'"):
-        merge_dynamic_secrets_into_volume_template_context(ctx, {"bad__key": "v"})
+        merge_secrets_into_volume_template_context(ctx, {"bad__key": "v"})
 
 
 def test_build_volume_file_template_context():
@@ -85,7 +85,7 @@ def test_render_volume_file_template():
 def test_render_volume_file_template_with_secret_map():
     body = "TOKEN={{ secret_map__api_key }}"
     ctx = build_volume_file_template_context("web", "cfg", {})
-    merge_dynamic_secrets_into_volume_template_context(ctx, {"api_key": "secret123"})
+    merge_secrets_into_volume_template_context(ctx, {"api_key": "secret123"})
     assert render_volume_file_template(body, ctx) == "TOKEN=secret123"
 
 
@@ -105,6 +105,6 @@ def test_materialize_volume_src_for_compose_passes_secret_map_to_template(
         service_name="svc",
         volume_name="data",
         template_params={},
-        dynamic_secrets={"k": "v9"},
+        secrets={"k": "v9"},
     )
     assert Path(out).read_text(encoding="utf-8") == "value=v9"

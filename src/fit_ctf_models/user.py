@@ -239,7 +239,10 @@ class UserManager(BaseManagerInterface[User]):
         root_dir = self.paths.user_path(username)
         root_dir.mkdir(parents=True)
         shadow_file = root_dir / "shadow"
-        (root_dir / "home").mkdir(parents=True, mode=0o777)
+        home_dir = root_dir / "home"
+        home_dir.mkdir(parents=True, mode=0o777)
+        # mkdir() still applies the process umask; chmod forces bind-mount-friendly perms
+        home_dir.chmod(0o777)
 
         # generate shadow from file
         self.ctf_base.logger.debug(f"Generating `{str(shadow_file.resolve())}`")
@@ -314,6 +317,7 @@ class UserManager(BaseManagerInterface[User]):
         # create required file
         ssh_dirpath = self.paths.user_path(user_or_username) / "home" / ".ssh"
         ssh_dirpath.mkdir(parents=True, exist_ok=True)
+        ssh_dirpath.chmod(0o700)
         authorized_keys_file = ssh_dirpath / "authorized_keys"
 
         # read content and then rewrite it
@@ -324,6 +328,7 @@ class UserManager(BaseManagerInterface[User]):
         key_set.add(pub_key)
         with open(authorized_keys_file, "wb") as f:
             f.writelines(key_set)
+        authorized_keys_file.chmod(0o600)
 
     def get_users_info(self, active: bool | None = None) -> list[UserInfoDict]:
         """Get list of all users.

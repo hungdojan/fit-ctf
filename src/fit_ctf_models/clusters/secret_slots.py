@@ -1,5 +1,5 @@
 """
-Composite secret ids and flattening UserCluster + ProjectCluster dynamic_secrets for submission.
+Composite secret ids and flattening UserCluster + ProjectCluster secrets for submission.
 """
 
 from __future__ import annotations
@@ -34,14 +34,14 @@ def format_composite_for_display(composite_id: str) -> str:
     return composite_id.replace(COMPOSITE_SEP, "/")
 
 
-def flatten_scenario_dynamic_secrets(
+def flatten_scenario_secrets(
     cluster_kind: ClusterKind,
     scenario_configs: dict[str, ScenarioConfig],
 ) -> dict[str, str]:
     """Map composite_id -> expected secret string (opaque; may be human-chosen or random)."""
     out: dict[str, str] = {}
     for scenario_name, cfg in scenario_configs.items():
-        for local_name, val in cfg.dynamic_secrets.items():
+        for local_name, val in cfg.secrets.items():
             cid = composite_secret_id(cluster_kind, scenario_name, local_name)
             out[cid] = val
     return out
@@ -53,15 +53,9 @@ def merged_submission_secret_map(
 ) -> dict[str, str]:
     m: dict[str, str] = {}
     if project_cluster is not None:
-        m.update(
-            flatten_scenario_dynamic_secrets(
-                "project", project_cluster.scenario_configs
-            )
-        )
+        m.update(flatten_scenario_secrets("project", project_cluster.scenario_configs))
     if user_cluster is not None:
-        m.update(
-            flatten_scenario_dynamic_secrets("user", user_cluster.scenario_configs)
-        )
+        m.update(flatten_scenario_secrets("user", user_cluster.scenario_configs))
     return m
 
 

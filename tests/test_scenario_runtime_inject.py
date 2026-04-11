@@ -19,7 +19,9 @@ from fit_ctf_models.clusters.config_models import (
     ServiceConfig,
     VolumeConfig,
     scenario_config_from_dict,
+    validate_canonical_scenario_yaml_dict,
 )
+from fit_ctf_models.utils.exceptions import CTFModelException
 from fit_ctf_models.clusters.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
@@ -170,5 +172,50 @@ def test_inject_full_compile_writes_compose(tmp_path: Path):
 
 def test_injected_scenarios_fixture_tree_exists(injected_scenarios_source: Path):
     """Sanity check: expected fixture dirs are present for contributors."""
-    for name in ("s_port", "s_tpl", "minimal", "s_round", "s_full"):
+    for name in ("s_port", "s_tpl", "minimal", "s_round", "s_full", "s_secrets"):
         assert (injected_scenarios_source / name / "scenario_compose.yaml.j2").is_file()
+
+
+def test_inject_fetch_secret_keys(tmp_path: Path):
+    copy_injected_scenario(tmp_path, "s_secrets")
+    mgr = scenario_manager_for_scenarios_root(tmp_path)
+    assert mgr.fetch_secret_keys("s_secrets") == ["flag"]
+
+
+def test_validate_scenario_config_missing_secret(tmp_path: Path):
+    copy_injected_scenario(tmp_path, "s_secrets")
+    mgr = scenario_manager_for_scenarios_root(tmp_path)
+    cfg = ScenarioConfig(scenario_name="s_secrets", secrets={}, service_configs={})
+    with pytest.raises(CTFModelException, match="missing secrets"):
+        mgr.validate_scenario_config_against_templates("s_secrets", cfg)
+
+
+def test_validate_scenario_config_extra_secret_warning(tmp_path: Path):
+    copy_injected_scenario(tmp_path, "minimal")
+    mgr = scenario_manager_for_scenarios_root(tmp_path)
+    cfg = ScenarioConfig(
+        scenario_name="minimal",
+        secrets={"orphan": "v"},
+        service_configs={},
+    )
+    w = mgr.validate_scenario_config_against_templates("minimal", cfg)
+    assert any("orphan" in x and "unused" in x for x in w)
+
+
+def test_validate_canonical_scenario_yaml_dict_ok():
+    raw = validate_canonical_scenario_yaml_dict(
+        {"secrets": {"a": "1"}, "service_configs": {"w": {}}}
+    )
+    assert raw["secrets"]["a"] == "1"
+
+
+def test_validate_canonical_scenario_yaml_dict_rejects_wrong_keys():
+    with pytest.raises(CTFModelException, match="exactly top-level"):
+        validate_canonical_scenario_yaml_dict(
+            {"service_configs": {}, "secrets": {}, "extra": 1}
+        )
+
+
+def test_validate_canonical_scenario_yaml_dict_rejects_flat_layout():
+    with pytest.raises(CTFModelException, match="exactly top-level"):
+        validate_canonical_scenario_yaml_dict({"web": {"env_map": {}}})

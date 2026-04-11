@@ -50,7 +50,7 @@ enrollments:
       last_submit_time: "2025-09-27T18:09:25.594Z"
     cluster.scenario_configs:
       login_node:
-        dynamic_secrets:
+        secrets:
           key1: value1
           key2: value2
         service_configs:
@@ -75,7 +75,7 @@ enrollments:
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
-        dynamic_secrets:
+        secrets:
           key3: value3
         service_configs:
           login_node:
@@ -97,7 +97,7 @@ enrollments:
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
-        dynamic_secrets: {}
+        secrets: {}
         service_configs:
           login_node:
             volume_map:
@@ -118,7 +118,7 @@ enrollments:
       last_submit_time: null
     cluster.scenario_configs:
       login_node:
-        dynamic_secrets: {}
+        secrets: {}
         service_configs:
           login_node:
             volume_map:

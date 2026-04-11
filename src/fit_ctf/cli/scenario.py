@@ -4,6 +4,7 @@ import click
 
 from fit_ctf.cli.utils import format_option, requires_database
 from fit_ctf.ctf_app import CTFApp
+from fit_ctf_components.data_parser.yaml_parser import YamlParser
 from fit_ctf_components.data_view import get_view
 from fit_ctf_components.utils import file_editor
 from fit_ctf_models.utils.exceptions import CTFModelException, ScenarioNotExistException
@@ -185,7 +186,32 @@ def scenario_info(ctx: click.Context, name: str):
         ctx.exit(1)
 
 
-@scenario.command(name="list")
+@scenario.command(name="vars-template")
+@click.option("-n", "--name", required=True, help="Scenario name")
+@click.option(
+    "-of",
+    "--output-format",
+    type=click.Choice(["yaml", "json"]),
+    default="yaml",
+    help="Output format.",
+)
+@click.pass_context
+def variables(ctx: click.Context, name: str, output_format: str):
+    """Generate template file with variables for scenario configs."""
+    import json
+
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    doc = {
+        "secrets": {k: "" for k in ctf_app.scenario_mgr.fetch_secret_keys(name)},
+        "service_configs": ctf_app.scenario_mgr.fetch_variables(name),
+    }
+    if output_format == "yaml":
+        click.echo(YamlParser.dump_data(doc).rstrip())
+    else:
+        click.echo(json.dumps(doc))
+
+
+@scenario.command(name="ls")
 @format_option
 @click.pass_context
 def list_scenarios(ctx: click.Context, format: str):

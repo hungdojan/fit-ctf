@@ -92,7 +92,7 @@ def resolve_volume_src_path(
 
     `context` should include `paths__*`, `scenario_dir`, optional
     `user_scenario_dir` / `project_scenario_dir`, `project_name`, and `username` (user clusters).
-    Dynamic secrets are **not** available here; use ``secret_map__*`` only inside
+    Per-scenario ``secrets`` are **not** available here; use ``secret_map__*`` only inside
     ``volumes/*.template`` files (see :func:`materialize_volume_src_for_compose`).
     When built by :class:`ScenarioCompiler`, `paths__scenarios` is the current scenario
     template directory (same as `scenario_dir`) for this resolution step only.
@@ -118,7 +118,7 @@ def build_volume_file_template_context(
     `{service}__volume_map__{volume}__{key}`. Keys must not contain `__`.
 
     :func:`materialize_volume_src_for_compose` also injects ``secret_map__<name>`` for each
-    entry in the scenario's ``dynamic_secrets`` (names must not contain ``__``).
+    entry in the scenario's ``secrets`` (names must not contain ``__``).
     """
     out: dict[str, Any] = {}
     for k, v in template_params.items():
@@ -149,17 +149,17 @@ def render_volume_file_template(
     return env.from_string(source).render(**context)
 
 
-def merge_dynamic_secrets_into_volume_template_context(
+def merge_secrets_into_volume_template_context(
     context: dict[str, Any],
-    dynamic_secrets: Mapping[str, str] | None,
+    secrets: Mapping[str, str] | None,
 ) -> None:
-    """Add ``secret_map__<name>`` keys for each ``dynamic_secrets`` entry (mutates ``context``)."""
-    if not dynamic_secrets:
+    """Add ``secret_map__<name>`` keys for each ``secrets`` entry (mutates ``context``)."""
+    if not secrets:
         return
-    for name, value in dynamic_secrets.items():
+    for name, value in secrets.items():
         if "__" in name:
             raise InvalidDynamicSecretKeyException(
-                f"dynamic_secrets key {name!r} must not contain '__' "
+                f"secrets key {name!r} must not contain '__' "
                 "(Jinja variables are secret_map__<name>)."
             )
         context[f"secret_map__{name}"] = value
@@ -173,13 +173,13 @@ def materialize_volume_src_for_compose(
     service_name: str,
     volume_name: str,
     template_params: dict[str, Any],
-    dynamic_secrets: Mapping[str, str] | None = None,
+    secrets: Mapping[str, str] | None = None,
 ) -> str:
     """If `resolved_src_path` is a `*.template` file under `scenario_root`, render it into
     `compile_dst_root` (same relative path without `.template`) and return that path for
     compose bind mounts. Otherwise return `resolved_src_path` unchanged.
 
-    ``dynamic_secrets`` from the scenario config are exposed in the template context as
+    ``secrets`` from the scenario config are exposed in the template context as
     ``secret_map__<secret_name>`` (same style as expanded ``template_params``), e.g.
     ``{{ secret_map__flag }}``.
     """
@@ -188,7 +188,7 @@ def materialize_volume_src_for_compose(
         return resolved_src_path
 
     ctx = build_volume_file_template_context(service_name, volume_name, template_params)
-    merge_dynamic_secrets_into_volume_template_context(ctx, dynamic_secrets)
+    merge_secrets_into_volume_template_context(ctx, secrets)
     text = p.read_text(encoding="utf-8")
     rendered = render_volume_file_template(
         text,
@@ -211,7 +211,7 @@ __all__ = [
     "get_template",
     "get_jinja_variables_from_string",
     "materialize_volume_src_for_compose",
-    "merge_dynamic_secrets_into_volume_template_context",
+    "merge_secrets_into_volume_template_context",
     "render_volume_file_template",
     "resolve_volume_src_path",
     "validate_volume_src_path_variables",
