@@ -20,14 +20,27 @@ def enrollment(ctx: click.Context):
 @enrollment.command(name="enroll")
 @user_option
 @project_option
+@click.option(
+    "--login-node-type",
+    type=click.Choice(["ssh_debian", "ssh_ubi"]),
+    default=None,
+    help="Create a login node for the user (optional)",
+)
 @click.pass_context
-def enroll(ctx: click.Context, username: str, project_name: str):
+def enroll(
+    ctx: click.Context, username: str, project_name: str, login_node_type: str | None
+):
     """Enroll a user to a project."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         user = ctf_app.user_mgr.get_user(username)
         prj = ctf_app.prj_mgr.get_project(project_name)
-        ctf_app.enroll_mgr.enroll_user_to_project(user, prj)
+        ctf_app.enroll_mgr.enroll_user_to_project(
+            user,
+            prj,
+            create_login_node=login_node_type is not None,
+            login_node_type=login_node_type,
+        )
         click.echo(f"User `{user.username}` was enrolled to the project `{prj.name}`.")
     except CTFBaseException as e:
         click.echo(e)
@@ -43,9 +56,18 @@ def enroll(ctx: click.Context, username: str, project_name: str):
     help="Filepath to a file with new usernames.",
     type=click.Path(path_type=pathlib.Path),
 )
+@click.option(
+    "--login-node-type",
+    type=click.Choice(["ssh_debian", "ssh_ubi"]),
+    default=None,
+    help="Create a login node for each user (optional)",
+)
 @click.pass_context
 def enroll_multiple_to_project(
-    ctx: click.Context, project_name: str, input_file: pathlib.Path
+    ctx: click.Context,
+    project_name: str,
+    input_file: pathlib.Path,
+    login_node_type: str | None,
 ):
     """Enroll multiple users to the project."""
 
@@ -56,7 +78,10 @@ def enroll_multiple_to_project(
             usernames = [line.strip() for line in f]
 
         enrollments = ctf_app.enroll_mgr.enroll_multiple_users_to_project(
-            usernames, project_name
+            usernames,
+            project_name,
+            create_login_node=login_node_type is not None,
+            login_node_type=login_node_type,
         )
         user_ids = [enrollment.user_id.id for enrollment in enrollments]
         new_users = {

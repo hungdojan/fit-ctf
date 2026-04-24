@@ -90,12 +90,14 @@ class ScenarioConfig(BaseModel):
     scenario_name: str
     secrets: dict[str, str] = Field(default_factory=dict)
     service_configs: dict[str, ServiceConfig] = Field(default_factory=dict)
+    config_params: dict[str, Any] = Field(default_factory=dict)
 
     class Builder:
         def __init__(self, scenario_name: str):
             self._scenario_name = scenario_name
             self._secrets: dict[str, str] = {}
             self._service_configs: dict[str, ServiceConfig] = {}
+            self._config_params: dict[str, Any] = {}
 
         def add_secret(self, key: str, value: str) -> Self:
             self._secrets[key] = value
@@ -105,11 +107,16 @@ class ScenarioConfig(BaseModel):
             self._service_configs[service_name] = service_config
             return self
 
+        def add_config_param(self, key: str, value: Any) -> Self:
+            self._config_params[key] = value
+            return self
+
         def build(self) -> "ScenarioConfig":
             return ScenarioConfig(
                 scenario_name=self._scenario_name,
                 secrets=self._secrets,
                 service_configs=self._service_configs,
+                config_params=self._config_params,
             )
 
 
@@ -142,4 +149,6 @@ def scenario_config_from_dict(scenario_name: str, raw: dict) -> ScenarioConfig:
         if not isinstance(svc_raw, dict):
             continue
         builder.add_service(service_name, service_config_from_dict(svc_raw))
+    for name, value in raw.get("config_params", {}).items():
+        builder.add_config_param(name, value)
     return builder.build()

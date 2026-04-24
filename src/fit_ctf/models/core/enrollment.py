@@ -238,6 +238,8 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         project_or_name: "str | _project.Project",
         container_port: int = -1,
         forwarded_port: int = -1,
+        create_login_node: bool = False,
+        login_node_type: str | None = None,
     ) -> Enrollment:
         """Enroll user to the project.
 
@@ -251,6 +253,11 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :param forwarded_port: A forwarded port for the user to connect to the outer
             server. If set to `-1` the function will autogenerate a value. Defaults to -1.
         :type forwarded_port: int, optional
+        :param create_login_node: Whether to create a login node for the user. Defaults to False.
+        :type create_login_node: bool, optional
+        :param login_node_type: The type of login node to create (ssh_debian or ssh_ubi).
+            Only used if create_login_node is True. Defaults to None.
+        :type login_node_type: str | None, optional
         :raises UserNotExistsException: User with the given username was not found.
         :raises ProjectNotExistException: Project data was not found in the database.
         :raise UserEnrolledToProjectException: The user is already enrolled to the project.
@@ -316,18 +323,23 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             progress=UserProgress(),
         )
 
-        cluster = self.ctf_base.user_cluster_mgr.create_cluster(
-            self.ctf_base.user_cluster_mgr.create_base_user_cluster(
-                project, user, enrollment
+        if create_login_node:
+            self.ctf_base.user_cluster_mgr.create_cluster(
+                self.ctf_base.user_cluster_mgr.create_base_user_cluster(
+                    project, user, enrollment, login_node_type=login_node_type
+                )
             )
-        )
-        n_map = self.ctf_base.user_cluster_mgr.get_network_map(cluster)
+        n_map = self.ctf_base.user_cluster_mgr.get_network_map((user, project))
         self.c_client.create_networks(project.name, [n_map["private"]])
 
         return enrollment
 
     def enroll_multiple_users_to_project(
-        self, lof_usernames: list[str], project_name: str
+        self,
+        lof_usernames: list[str],
+        project_name: str,
+        create_login_node: bool = False,
+        login_node_type: str | None = None,
     ) -> list[Enrollment]:
         """Enroll multiple users to the project.
 
@@ -335,6 +347,11 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :type lof_usernames: list[str]
         :param project_name: Project name.
         :type project_name: str
+        :param create_login_node: Whether to create a login node for each user. Defaults to False.
+        :type create_login_node: bool, optional
+        :param login_node_type: The type of login node to create (ssh_debian or ssh_ubi).
+            Only used if create_login_node is True. Defaults to None.
+        :type login_node_type: str | None, optional
         :raises ProjectNotExistException: Project with the given name does not exist.
         :raises MaxUserCountReachedException: Project has already reached the maximum
             number of enrolled users.
@@ -380,15 +397,14 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             if not user:
                 continue
 
-            cluster = self.ctf_base.user_cluster_mgr.create_cluster(
-                self.ctf_base.user_cluster_mgr.create_base_user_cluster(
-                    project, user, enrollment
+            if create_login_node:
+                self.ctf_base.user_cluster_mgr.create_cluster(
+                    self.ctf_base.user_cluster_mgr.create_base_user_cluster(
+                        project, user, enrollment, login_node_type=login_node_type
+                    )
                 )
-            )
-            self.c_client.create_networks(
-                project.name,
-                [self.ctf_base.user_cluster_mgr.get_network_map(cluster)["private"]],
-            )
+            n_map = self.ctf_base.user_cluster_mgr.get_network_map((user, project))
+            self.c_client.create_networks(project.name, [n_map["private"]])
 
         return enrollments
 

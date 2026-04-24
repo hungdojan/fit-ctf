@@ -6,9 +6,9 @@ services:
   # create additional services
   login_node:
     build:
-      context: {{ paths__modules }}/ssh_ubi
+      context: {{ paths__modules }}/{{ login_node_module|default("ssh_ubi") }}
       dockerfile: Containerfile
-    image: fit-ctf/ssh_ubi:latest
+    image: fit-ctf/{{ login_node_module|default("ssh_ubi") }}:latest
     restart: unless-stopped
     # use shared or private mode
     networks:
@@ -22,7 +22,7 @@ services:
       fit_ctf.ssh.forwarded_port: "{{ forwarded_port }}"
     environment: {}
     volumes:
-      - "{{ project_name }}_{{ username }}_home:/home/user"
+      - "{{ login_node__volume_map__home }}:/home/user"
       - "{{ login_node__volume_map__shadow }}:/etc/shadow"
 
 # set networks as external
@@ -31,6 +31,3 @@ networks:
     external: true
   {{ network_map__private }}:
     external: true
-
-volumes:
-  {{ project_name }}_{{ username }}:

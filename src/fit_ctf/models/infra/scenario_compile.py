@@ -71,6 +71,7 @@ class ScenarioCompiler:
         param_map: dict[str, Any] = {
             **{f"paths__{k}": str(v) for k, v in self._c.paths_dict.items()},
             **{f"network_map__{k}": v for k, v in self._c.network_map.items()},
+            **scenario_config.config_params,  # Add scenario-level config params
         }
         for s_name, s_content in scenario_config.service_configs.items():
             for vol_name, config in s_content.volume_map.items():

@@ -102,7 +102,10 @@ def workflow1_setup_through_compile(cli_run: CliRunner, ctf_base) -> SimpleNames
         scenario_dir / "volumes" / "flag.template",
     )
 
-    run_cli(cli_run, f"enrollment enroll -u {user['u']} -pn {prj['pn']}")
+    run_cli(
+        cli_run,
+        f"enrollment enroll -u {user['u']} -pn {prj['pn']} --login-node-type ssh_ubi",
+    )
     enrolled_path = ctf_base.paths.enrolled_user_path(
         ctf_base.user_mgr.get_user(user["u"]), ctf_base.prj_mgr.get_project(prj["pn"])
     )

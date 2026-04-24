@@ -100,12 +100,14 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         project: "project.Project",
         user: "user.User",
         enrollment: "enroll.Enrollment",
+        login_node_type: str | None = None,
     ) -> UserCluster:
         return (
             UserCluster.Builder(f"{project.name}_{user.username}", enrollment)
             .add_scenario_config(
                 "login_node",
                 ScenarioConfig.Builder("login_node")
+                .add_config_param("login_node_module", login_node_type or "ssh_ubi")
                 .add_service(
                     "login_node",
                     ServiceConfig.Builder()
@@ -266,12 +268,19 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
     def _compose_template_extras(self, cluster: UserCluster) -> dict[str, Any]:
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
         enrollment = self._enrollment_for_cluster(cluster)
-        return {
+        extras = {
             "project_name": project.name,
             "username": user.username,
             "container_port": enrollment.container_port,
             "forwarded_port": enrollment.forwarded_port,
         }
+        # Add login_node_module with default value for login_node scenario
+        if "login_node" in cluster.scenario_configs:
+            login_node_cfg = cluster.scenario_configs["login_node"]
+            extras["login_node_module"] = login_node_cfg.config_params.get(
+                "login_node_module", "ssh_ubi"
+            )
+        return extras
 
     def get_scenario_compose_file(
         self, cluster: UserCluster, scenario_name: str

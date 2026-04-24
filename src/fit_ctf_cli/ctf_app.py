@@ -207,14 +207,6 @@ class CTFApp(CTFBase):
             # add a shadow file to the archive
             zf.write(filepath, arcname)
 
-            # create an empty home directory
-            zf.writestr(
-                zipfile.ZipInfo(
-                    os.path.join(self.paths.user_global.name, username, "home/")
-                ),
-                "",
-            )
-
     def _add_module_files_to_zipfile(self, zf: zipfile.ZipFile, data: dict):
         module_root_dir = self.paths.module_global
         for module_name in data["modules"]:
@@ -659,20 +651,38 @@ class CTFApp(CTFBase):
                 try:
                     enroll_copy = dict(enroll_data)
                     uc_scenarios = enroll_copy.pop(cluster_key, {}) or {}
+                    # Check if login_node scenario is requested and extract module type
+                    has_login_node = "login_node" in uc_scenarios
+                    login_node_type = None
+                    if has_login_node:
+                        # Extract login_node_module from YAML config_params if present
+                        login_node_params = uc_scenarios.get("login_node", {}).get(
+                            "config_params", {}
+                        )
+                        login_node_type = login_node_params.get(
+                            "login_node_module", "ssh_ubi"
+                        )
+
                     enrollment = self.enroll_mgr.enroll_user_to_project(
-                        enroll_copy["user"], enroll_copy["project"]
+                        enroll_copy["user"],
+                        enroll_copy["project"],
+                        create_login_node=has_login_node,
+                        login_node_type=login_node_type,
                     )
                     enrollment.progress = self._user_progress_from_import_dict(
                         enroll_copy["progress"], failed_setup_usernames
                     )
                     self.enroll_mgr.update_doc(enrollment)
                     # Optional extra scenarios on the enrollment's UserCluster
-                    uc = self.user_cluster_mgr.get_cluster(enrollment)
-                    for scenario_name, raw in uc_scenarios.items():
-                        if not isinstance(raw, dict):
-                            continue
-                        sc = scenario_config_from_dict(scenario_name, raw)
-                        self.user_cluster_mgr.create_or_update_scenario_config(uc, sc)
+                    if uc_scenarios:
+                        uc = self.user_cluster_mgr.get_cluster(enrollment)
+                        for scenario_name, raw in uc_scenarios.items():
+                            if not isinstance(raw, dict):
+                                continue
+                            sc = scenario_config_from_dict(scenario_name, raw)
+                            self.user_cluster_mgr.create_or_update_scenario_config(
+                                uc, sc
+                            )
                 except Exception as e:
                     # Compare before/after to avoid reverting pre-existing enrollments
                     has_enrollment = self._enrollment_active_exists(
