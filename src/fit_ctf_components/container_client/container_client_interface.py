@@ -82,8 +82,8 @@ class ContainerClientInterface(ABC, base_component.BaseComponent):
         raise NotImplementedError()
 
     @abstractmethod
-    def create_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
+    def create_networks(
+        self, logger_name: str, network_names: list[str], to_stdout: bool = False
     ) -> ErrorCode:
         raise NotImplementedError()
 

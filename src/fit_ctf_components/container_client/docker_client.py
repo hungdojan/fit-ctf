@@ -56,10 +56,10 @@ class DockerClient(c_client.ContainerClientInterface):
         cmd = ["docker", "images", "--format", '"{{ .Repository }}"']
         return await self._process_get_commands(cmd, contains)
 
-    def create_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
+    def create_networks(
+        self, logger_name: str, network_names: list[str], to_stdout: bool = False
     ) -> ErrorCode:
-        cmd = ["docker", "network", "create", name]
+        cmd = ["docker", "network", "create"] + network_names
         return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
     async def get_networks(self, contains: str | list[str] | None = None) -> list[str]:

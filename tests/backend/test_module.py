@@ -28,7 +28,7 @@ async def test_create_module(
     module_path = module_mgr.get_path("new_module")
     assert module_path.is_dir()
     assert set([path.name for path in module_path.iterdir()]) == set(
-        [path.name for path in (TEMPLATE_PATH_MAP["modules"]).iterdir()]
+        [path.name for path in (TEMPLATE_PATH_MAP["modules"] / "template").iterdir()]
     )
 
     # teardown

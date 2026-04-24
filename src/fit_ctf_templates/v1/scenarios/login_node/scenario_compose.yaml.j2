@@ -22,7 +22,7 @@ services:
       fit_ctf.ssh.forwarded_port: "{{ forwarded_port }}"
     environment: {}
     volumes:
-      - "{{ login_node__volume_map__home }}:/home/user"
+      - "{{ project_name }}_{{ username }}_home:/home/user"
       - "{{ login_node__volume_map__shadow }}:/etc/shadow"
 
 # set networks as external
@@ -31,3 +31,6 @@ networks:
     external: true
   {{ network_map__private }}:
     external: true
+
+volumes:
+  {{ project_name }}_{{ username }}:

@@ -239,7 +239,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         )
         n_map = self.project_cluster_mgr.get_network_map(prj)
         for n_name in n_map.values():
-            self.c_client.create_network(prj.name, str(n_name))
+            self.c_client.create_networks(prj.name, [str(n_name)])
 
         return prj
 

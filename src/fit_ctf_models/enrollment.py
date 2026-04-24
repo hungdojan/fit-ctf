@@ -322,7 +322,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             )
         )
         n_map = self.ctf_base.user_cluster_mgr.get_network_map(cluster)
-        self.c_client.create_network(project.name, n_map["private"])
+        self.c_client.create_networks(project.name, [n_map["private"]])
 
         return enrollment
 
@@ -380,10 +380,14 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             if not user:
                 continue
 
-            self.ctf_base.user_cluster_mgr.create_cluster(
+            cluster = self.ctf_base.user_cluster_mgr.create_cluster(
                 self.ctf_base.user_cluster_mgr.create_base_user_cluster(
                     project, user, enrollment
                 )
+            )
+            self.c_client.create_networks(
+                project.name,
+                [self.ctf_base.user_cluster_mgr.get_network_map(cluster)["private"]],
             )
 
         return enrollments

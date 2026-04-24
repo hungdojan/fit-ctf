@@ -16,8 +16,8 @@ class MockClient(c_client.ContainerClientInterface):
     ) -> list[str]:  # pragma: no cover
         return []
 
-    def create_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
+    def create_networks(
+        self, logger_name: str, network_names: list[str], to_stdout: bool = False
     ) -> ErrorCode:  # pragma: no cover
         return 0
 

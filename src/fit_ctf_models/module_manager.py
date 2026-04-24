@@ -18,12 +18,13 @@ from fit_ctf_models.utils.exceptions import (
     ModuleInUseException,
     ModuleNotExistsException,
 )
-from fit_ctf_templates import TEMPLATE_DIRNAME
+from fit_ctf_templates import TEMPLATE_PATH_MAP
 
 if TYPE_CHECKING:
     import fit_ctf.ctf_base as ctf_base
     import fit_ctf_models.enrollment as enroll
     import fit_ctf_models.project as prj
+    import fit_ctf_models.user as _user
 
 
 class ModuleManager(BaseComponent):
@@ -57,7 +58,7 @@ class ModuleManager(BaseComponent):
         if dst_path.is_dir():
             raise ModuleExistsException(f"Module `{module_name}` already exists.")
 
-        src_path = pathlib.Path(TEMPLATE_DIRNAME) / "v1" / "modules"
+        src_path = TEMPLATE_PATH_MAP["modules"] / "template"
         copytree(src_path, dst_path)
 
     def list_modules(self) -> dict[str, pathlib.Path]:
@@ -126,7 +127,7 @@ class ModuleManager(BaseComponent):
                     module_acc[module_name] += count
             return module_acc
 
-        def _user_usage(user: "u.User", project: "prj.Project") -> dict[str, int]:
+        def _user_usage(user: "_user.User", project: "prj.Project") -> dict[str, int]:
             module_acc = defaultdict(int)
             user_root = self.paths.enrolled_user_path(user, project)
             if not user_root.is_dir():

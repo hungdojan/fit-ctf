@@ -18,10 +18,10 @@ class PodmanClient(c_client.ContainerClientInterface):
         cmd = ["podman", "images", "--format", '"{{ .Repository }}"']
         return await self._process_get_commands(cmd, contains)
 
-    def create_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
+    def create_networks(
+        self, logger_name: str, network_names: list[str], to_stdout: bool = False
     ) -> ErrorCode:
-        cmd = ["podman", "network", "create", name]
+        cmd = ["podman", "network", "create", *network_names]
         # TODO: subnets
         # TODO: create if not exist
         return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
