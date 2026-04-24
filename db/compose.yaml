@@ -2,15 +2,15 @@ name: ctf_backend
 
 services:
   mongodb:
-    image: docker.io/library/mongo:7.0
+    image: docker.io/library/mongo:latest
     container_name: ctf-database-mongo
     restart: unless-stopped
     env_file:
       - path: ../.env
         required: true
       # create .admin_env from admin_env_example file
-      - path: .admin_env
-        required: true
+      # - path: .admin_env
+      #   required: true
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${DB_ADMIN_USERNAME}"
       MONGO_INITDB_ROOT_PASSWORD: "${DB_ADMIN_PASSWORD}"

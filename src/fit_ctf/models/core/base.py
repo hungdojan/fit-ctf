@@ -1,0 +1,223 @@
+from abc import ABC
+from typing import Any, Generic, Type, TypeVar
+
+from bson import ObjectId
+from pydantic import BaseModel, ConfigDict, Field
+from pymongo.collection import Collection
+from pymongo.database import Database
+
+import fit_ctf.ctf_base
+import fit_ctf.path_mgmt as path_mgmt
+from fit_ctf.components.base import BaseComponent
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+
+
+class Base(ABC, BaseModel):
+    """A base class that all entities derive from.
+
+    :param _id: Object ID.
+    :type _id: ObjectId
+    :param active: Active status of the object. When an object is set as `False`, the
+        object is considered as deleted and can be only used for displaying information.
+    :type active: bool
+    :param config: Some additional options that is used by the app but will not be
+        stored in the database. Defaults to an empty dictionary.
+    :type config:dict
+    :type active: dict[str, str]
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, use_enum_values=True)
+
+    id: ObjectId = Field(default_factory=ObjectId, alias="_id")
+    active: bool = True
+
+    def model_dump(self, by_alias: bool = True, **kw) -> dict[str, Any]:
+        return super().model_dump(by_alias=by_alias, **kw)
+
+
+T = TypeVar("T", bound=Base)
+
+
+class BaseManagerInterface(ABC, Generic[T], BaseComponent):
+    """A base manager class that all CTF managers derive from."""
+
+    def __init__(
+        self,
+        ctf_base: "fit_ctf.ctf_base.CTFBase",
+        db: Database,
+        coll: Collection,
+        model_cls: Type[T],
+    ):
+        """Constructor method.
+
+        :param db: MongoDB database object.
+        :type db: Database
+        :param coll: MongoDB collection object.
+        :type coll: Collection
+        :param path: A path to a directory where contents of <T> are stored.
+        :type path: pathlib.Path
+        """
+        BaseComponent.__init__(self, ctf_base)
+        self._db = db
+        self._coll = coll
+        self.model_cls = model_cls
+
+    @property
+    def collection(self) -> Collection:
+        """Return collection of the manager.
+
+        :return: Collection of the manager.
+        :rtype: Collection
+        """
+        return self._coll
+
+    @property
+    def c_client(self) -> ContainerClientInterface:
+        return self.ctf_base.c_client
+
+    @property
+    def paths(self) -> "path_mgmt.PathManagement":
+        return self.ctf_base.paths
+
+    def get_doc_by_id(self, _id: ObjectId) -> T | None:
+        """Search for a document using ObjectId.
+
+        :param _id: ID of the document.
+        :type _id: ObjectId
+        :return: A document object (subclass of `Base`) if found.
+        :rtype: T | None
+        """
+        res = self._coll.find_one({"_id": _id})
+        return self.model_cls(**res) if res else None
+
+    def get_doc_by_id_raw(self, _id: ObjectId, projection: dict | None = None):
+        """Search for a document using ObjectId in raw format.
+
+        :param _id: ID of the document.
+        :type _id: ObjectId
+        :param projection: A projection query.
+        :type projection: dict[str, Any] | None
+        :return: Result of query.
+        """
+        projection = {} if projection is None else projection
+        return self._coll.find_one({"_id": _id}, projection)
+
+    def get_doc_by_filter(self, **kw) -> T | None:
+        """Search for a document with filter.
+
+        :return: A document object (subclass of `Base`) if found.
+        :rtype: T | None
+        """
+        res = self._coll.find_one(filter=kw)
+        return self.model_cls(**res) if res else None
+
+    def get_doc_by_filter_raw(
+        self, filter: dict | None = None, projection: dict | None = None
+    ):
+        """Search for a document with filter and project in raw format.
+
+        :param filter: A filter query.
+        :type filter: dict | None
+        :param projection: A projection query.
+        :type projection: dict | None
+        :return: Result of query.
+        """
+        filter = {} if filter is None else filter
+        projection = {} if projection is None else projection
+        return self._coll.find_one(filter=filter, projection=projection)
+
+    def get_docs(self, **filter) -> list[T]:
+        """Search for all documents using filter.
+
+        :return: A list of found documents.
+        :rtype: T | None.
+        """
+        res = self._coll.find(filter=filter)
+        return [self.model_cls(**data) for data in res]
+
+    def create_and_insert_doc(self, **kw) -> T:  # pragma no cover
+        """Insert a document of a given class.
+
+        :return: A new document.
+        :rtype: T
+        """
+        doc = self.model_cls(**kw)
+        self.insert_doc(doc)
+        return doc
+
+    def get_docs_raw(self, filter: dict[str, Any], projection: dict[str, Any]) -> list:
+        """Search for all documents using filter and return results in raw format.
+
+        :param filter: A filter query.
+        :type filter: dict[str, Any]
+        :param projection: A projection query.
+        :type projection: dict[str, Any]
+        :return: List of found documents in raw format.
+        :rtype: list
+        """
+        return [i for i in self._coll.find(filter=filter, projection=projection)]
+
+    def insert_doc(self, doc: T):
+        """Insert one document.
+
+        :param doc: A document to insert into the database.
+        :type doc: T
+        """
+        dict_obj = doc.model_dump()
+        self.ctf_base.logger.debug(f"Inserting {dict_obj}")
+        self._coll.insert_one(dict_obj)
+
+    def update_doc(self, doc: T):
+        """Update the whole document.
+
+        :param doc: A new version of the document.
+        :type doc: T
+        """
+        dict_obj = doc.model_dump()
+        self.ctf_base.logger.debug(f"Updating {dict_obj}")
+        self._coll.replace_one({"_id": doc.id}, dict_obj)
+
+    def remove_doc_by_id(self, _id: ObjectId) -> bool:
+        """Remove a document using ObjectId.
+
+        :param _id: ID of a document to remove.
+        :type _id: ObjectId
+
+        :return: `True` if a document was found and successfully deleted.
+        :rtype: bool
+        """
+        self.ctf_base.logger.debug(f"Deleting document `{_id}`")
+        res = self._coll.delete_one({"_id": _id})
+        return res.deleted_count > 0
+
+    def remove_doc_by_filter(self, **filter) -> bool:
+        """Remove a document using filter.
+
+        :return: `True` if a document was found and successfully deleted.
+        :rtype: bool
+        """
+        self.ctf_base.logger.debug(f"Deleting document using filter {filter}")
+        res = self._coll.delete_one(filter=filter)
+        return res.deleted_count > 0
+
+    def remove_docs_by_id(self, ids: list[ObjectId]) -> int:
+        """Remove multiple documents by ObjectIDs.
+
+        :param ids: List of document IDs.
+        :type ids: list[ObjectId]
+        :return: Number of removed documents.
+        :rtype: int
+        """
+        res = self._coll.delete_many({"_id": {"$in": ids}})
+        return res.deleted_count
+
+    def remove_docs_by_filter(self, **filter) -> int:
+        """Remove multiple documents by filter.
+
+        :return: Number of removed documents.
+        :rtype: int
+        """
+        res = self._coll.delete_many(filter=filter)
+        return res.deleted_count

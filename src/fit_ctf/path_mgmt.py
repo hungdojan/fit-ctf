@@ -1,11 +1,11 @@
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from fit_ctf_components.types import PathDict
+from fit_ctf.components.types import PathDict
 
 if TYPE_CHECKING:
-    import fit_ctf_models.project as _prj
-    import fit_ctf_models.user as _user
+    import fit_ctf.models.core.project as _prj
+    import fit_ctf.models.core.user as _user
 
 
 class PathManagement:

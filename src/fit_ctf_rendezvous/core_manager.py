@@ -2,14 +2,14 @@ import re
 from typing import Any, Callable
 
 from fit_ctf.ctf_base import CTFBase
-from fit_ctf_components.auth.auth_interface import AuthInterface
-from fit_ctf_components.auth.local_auth import LocalAuth
-from fit_ctf_components.constants import DEFAULT_PASSWORD_LENGTH
-from fit_ctf_components.exceptions import CTFBaseException, LoginException
-from fit_ctf_models.enrollment import Enrollment
-from fit_ctf_models.project import Project
-from fit_ctf_models.user import User
-from fit_ctf_models.utils.exceptions import (
+from fit_ctf.components.auth.auth_interface import AuthInterface
+from fit_ctf.components.auth.local_auth import LocalAuth
+from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
+from fit_ctf.components.exceptions import CTFBaseException, LoginException
+from fit_ctf.models.core.enrollment import Enrollment
+from fit_ctf.models.core.project import Project
+from fit_ctf.models.core.user import User
+from fit_ctf.models.utils.exceptions import (
     PublicKeyUploadFail,
     SecretAlreadySubmittedException,
     SecretNotFoundException,

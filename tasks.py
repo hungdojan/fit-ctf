@@ -19,13 +19,13 @@ def root_dirpath() -> Path:
 @task
 def db_start(ctx: Context):
     print("Starting DB...")
-    ctx.run("podman-compose -f ./db/compose.yaml --env-file .env up -d")
+    ctx.run("docker compose -f ./db/compose.yaml --env-file .env up -d")
 
 
 @task
 def db_stop(ctx: Context):
     print("Stoping DB...")
-    ctx.run("podman-compose -f ./db/compose.yaml --env-file .env down")
+    ctx.run("docker compose -f ./db/compose.yaml --env-file .env down")
 
 
 @task(pre=[db_stop], post=[db_start])
@@ -36,7 +36,7 @@ def db_restart(_: Context):
 @task
 def db_shell(_: Context):
     cmd = (
-        "podman exec "
+        "docker exec "
         "-it ctf-database-mongo mongosh "
         f"-u {os.getenv('DB_USERNAME')} "
         f"-p {os.getenv('DB_PASSWORD')} "

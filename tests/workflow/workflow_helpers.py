@@ -11,9 +11,9 @@ from typing import Any
 
 from click.testing import CliRunner, Result
 
-from fit_ctf.cli import cli
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_models.clusters.config_models import (
+from fit_ctf_cli.cli import cli
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf.models.infra.config_models import (
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )

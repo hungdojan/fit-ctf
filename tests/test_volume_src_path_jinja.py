@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from fit_ctf_models.utils.exceptions import (
+from fit_ctf.models.utils.exceptions import (
     InvalidDynamicSecretKeyException,
     MissingJinjaVariableException,
 )
-from fit_ctf_templates import (
+from fit_ctf.templates import (
     build_volume_file_template_context,
     materialize_volume_src_for_compose,
     merge_secrets_into_volume_template_context,

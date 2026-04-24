@@ -4,7 +4,7 @@ import re
 from io import StringIO
 from pathlib import Path
 
-from fit_ctf.cli import cli
+from fit_ctf_cli.cli import cli
 from tests import CLIData
 
 

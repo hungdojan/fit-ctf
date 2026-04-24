@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from fit_ctf_models.clusters.config_models import ScenarioConfig
-from fit_ctf_models.clusters.scenario_compile import (
+from fit_ctf.models.infra.config_models import ScenarioConfig
+from fit_ctf.models.infra.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
 )

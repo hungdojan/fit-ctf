@@ -2,8 +2,8 @@ import re
 
 import pytest
 
-from fit_ctf_models.project import ProjectManager
-from fit_ctf_models.utils.exceptions import (
+from fit_ctf.models.core.project import ProjectManager
+from fit_ctf.models.utils.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
     ProjectNotExistException,

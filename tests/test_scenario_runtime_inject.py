@@ -14,20 +14,20 @@ import pytest
 
 from tests import fixture_path
 
-from fit_ctf_models.clusters.config_models import (
+from fit_ctf.models.infra.config_models import (
     ScenarioConfig,
     ServiceConfig,
     VolumeConfig,
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )
-from fit_ctf_models.utils.exceptions import CTFModelException
-from fit_ctf_models.clusters.scenario_compile import (
+from fit_ctf.models.utils.exceptions import CTFModelException
+from fit_ctf.models.infra.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
 )
-from fit_ctf_models.clusters.scenario_manager import ScenarioManager
-from fit_ctf_models.utils.exceptions import ScenarioNotExistException
+from fit_ctf.models.infra.scenario_manager import ScenarioManager
+from fit_ctf.models.utils.exceptions import ScenarioNotExistException
 
 INJECTED_SCENARIOS = fixture_path() / "injected_scenarios"
 

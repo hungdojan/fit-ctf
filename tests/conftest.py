@@ -11,10 +11,10 @@ from click.testing import CliRunner
 from dotenv import load_dotenv
 from textual.app import App
 
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf_components.constants import get_env_info
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_components.types import PathDict
+from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.components.constants import get_env_info
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf.components.types import PathDict
 from fit_ctf_rendezvous import i18n as rendezvous_i18n
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 

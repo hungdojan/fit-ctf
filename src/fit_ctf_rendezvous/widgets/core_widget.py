@@ -1,4 +1,4 @@
-from fit_ctf_models.user import User
+from fit_ctf.models.core.user import User
 from fit_ctf_rendezvous.core_manager import CoreManager
 from fit_ctf_rendezvous.exceptions import UserNotLoggedIn
 from fit_ctf_rendezvous.i18n import tr

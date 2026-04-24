@@ -8,7 +8,7 @@ private network. ``login_node`` can reach Mongo on ``template_service`` and HTTP
 
 from __future__ import annotations
 
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from tests import ComplexData
 from tests.workflow.workflow_helpers import (
     run_cli,

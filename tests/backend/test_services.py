@@ -2,9 +2,9 @@
 #
 # import pytest
 #
-# from fit_ctf.ctf_app import CTFApp
-# from fit_ctf_models.cluster import ClusterConfig, ClusterConfigManager, Service
-# from fit_ctf_models.utils.exceptions import (
+# from fit_ctf_cli.ctf_app import CTFApp
+# from fit_ctf.models.core.cluster import ClusterConfig, ClusterConfigManager, Service
+# from fit_ctf.models.utils.exceptions import (
 #     ServiceExistException,
 #     ServiceNotExistException,
 # )

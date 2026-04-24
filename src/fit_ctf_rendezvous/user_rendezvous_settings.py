@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Literal, TypedDict, cast
 
 from fit_ctf.path_mgmt import PathManagement
-from fit_ctf_models.user import User
+from fit_ctf.models.core.user import User
 
 SETTINGS_FILENAME = "rendezvous_settings.json"
 SCHEMA_VERSION = 1

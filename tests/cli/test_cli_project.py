@@ -3,8 +3,8 @@ import csv
 import re
 from io import StringIO
 
-from fit_ctf.cli import cli
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
+from fit_ctf_cli.cli import cli
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from tests import CLIData
 
 

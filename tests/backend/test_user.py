@@ -2,9 +2,9 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 
-from fit_ctf_components.auth.local_auth import LocalAuth
-from fit_ctf_components.exceptions import LoginException
-from fit_ctf_models.utils.exceptions import (
+from fit_ctf.components.auth.local_auth import LocalAuth
+from fit_ctf.components.exceptions import LoginException
+from fit_ctf.models.utils.exceptions import (
     PublicKeyUploadFail,
     UserExistsException,
     UserNotExistsException,

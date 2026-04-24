@@ -2,7 +2,7 @@
 
 from jinja2 import Environment
 
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from tests import ComplexData, fixture_path
 from tests.workflow.workflow_helpers import (
     csv_data_rows,

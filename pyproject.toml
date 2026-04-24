@@ -7,10 +7,8 @@ readme = "README.md"
 repository = "https://github.com/hungdojan/FIT_CTF"
 packages = [
     { include = "fit_ctf", from = "src" },
-    { include = "fit_ctf_components", from = "src" },
-    { include = "fit_ctf_models", from = "src" },
+    { include = "fit_ctf_cli", from = "src" },
     { include = "fit_ctf_rendezvous", from = "src" },
-    { include = "fit_ctf_templates", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -82,10 +80,10 @@ directory = "tests/reports/htmlcov"
 [tool.coverage.run]
 omit = [
     "tests/*",
-    "src/fit_ctf_components/*.py",
-    "src/fit_ctf_components/container_client/*",
+    "src/fit_ctf/components/*.py",
+    "src/fit_ctf/components/container_client/*",
     "**/__init__.py",
-    "src/fit_ctf_templates/v1/*",
+    "src/fit_ctf/templates/v1/*",
 
     # system dirs
     "/opt/*",
@@ -108,5 +106,5 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-fit-ctf = "fit_ctf.__main__:main"
+fit-ctf = "fit_ctf_cli.__main__:main"
 fit-rendezvous = "fit_ctf_rendezvous.__main__:main"

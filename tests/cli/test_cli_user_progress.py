@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 
-from fit_ctf.cli import cli
+from fit_ctf_cli.cli import cli
 from tests import CLIData
 
 

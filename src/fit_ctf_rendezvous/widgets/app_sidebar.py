@@ -7,7 +7,7 @@ from textual.reactive import Reactive, reactive
 from textual.widget import Widget
 from textual.widgets import Button, Label, Rule
 
-from fit_ctf_models.project import Project
+from fit_ctf.models.core.project import Project
 from fit_ctf_rendezvous.i18n import tr
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 from fit_ctf_rendezvous.widgets.core_widget import CoreWidget

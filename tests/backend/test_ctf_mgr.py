@@ -7,8 +7,8 @@ from unittest.mock import patch
 import pytest
 
 from fit_ctf.exceptions import CTFBaseException
-from fit_ctf_components.data_parser.yaml_parser import YamlParser
-from fit_ctf_models.utils.exceptions import ProjectNotExistException
+from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf.models.utils.exceptions import ProjectNotExistException
 from tests import FixtureData, fixture_path
 
 

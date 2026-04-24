@@ -1,11 +1,11 @@
 import pytest
 
-from fit_ctf_models.utils.exceptions import (
+from fit_ctf.models.utils.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,
 )
-from fit_ctf_templates import TEMPLATE_PATH_MAP
+from fit_ctf.templates import TEMPLATE_PATH_MAP
 from tests import FixtureData
 
 

@@ -3,20 +3,20 @@ from typing import TYPE_CHECKING, overload
 import pymongo
 from pymongo.database import Database
 
-import fit_ctf_components.container_client.container_client_interface as c_client_interface
+import fit_ctf.components.container_client.container_client_interface as c_client_interface
 from fit_ctf.exceptions import ManagerNotFound
 from fit_ctf.path_mgmt import PathManagement
-from fit_ctf_components.base import BaseComponent, ComponentType
-from fit_ctf_components.logger.default_logger import DefaultLogger
-from fit_ctf_components.logger.logger_interface import LoggerInterface
-from fit_ctf_components.types import EnvInfo, PathDict
+from fit_ctf.components.base import BaseComponent, ComponentType
+from fit_ctf.components.logger.default_logger import DefaultLogger
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.components.types import EnvInfo, PathDict
 
 if TYPE_CHECKING:
-    import fit_ctf_models.clusters as clusters
-    import fit_ctf_models.enrollment as enroll
-    import fit_ctf_models.module_manager as module_manager
-    import fit_ctf_models.project as prj
-    import fit_ctf_models.user as user
+    import fit_ctf.models.infra as clusters
+    import fit_ctf.models.core.enrollment as enroll
+    import fit_ctf.models.core.module_manager as module_manager
+    import fit_ctf.models.core.project as prj
+    import fit_ctf.models.core.user as user
 
 
 class CTFBase:
@@ -55,7 +55,7 @@ class CTFBase:
         :return: A project manager initialized in CTFApp.
         :rtype: ProjectManager
         """
-        from fit_ctf_models.project import ProjectManager
+        from fit_ctf.models.core.project import ProjectManager
 
         if self._managers.get("project", None) is None:
             self._managers["project"] = ProjectManager(self, self.ctf_db)
@@ -68,7 +68,7 @@ class CTFBase:
         :return: A user manager initialized in CTFApp.
         :rtype: UserManager
         """
-        from fit_ctf_models.user import UserManager
+        from fit_ctf.models.core.user import UserManager
 
         if self._managers.get("user", None) is None:
             self._managers["user"] = UserManager(self, self.ctf_db)
@@ -81,7 +81,7 @@ class CTFBase:
         :return: An enrollment manager initialized in CTFApp.
         :rtype: EnrollmentManager
         """
-        from fit_ctf_models.enrollment import EnrollmentManager
+        from fit_ctf.models.core.enrollment import EnrollmentManager
 
         if self._managers.get("enrollment", None) is None:
             self._managers["enrollment"] = EnrollmentManager(self, self.ctf_db)
@@ -94,7 +94,7 @@ class CTFBase:
         :return: An enrollment manager initialized in CTFApp.
         :rtype: EnrollmentManager
         """
-        from fit_ctf_models.module_manager import ModuleManager
+        from fit_ctf.models.core.module_manager import ModuleManager
 
         if self._managers.get("module", None) is None:
             self._managers["module"] = ModuleManager(self)
@@ -102,7 +102,7 @@ class CTFBase:
 
     @property
     def user_cluster_mgr(self) -> "clusters.UserClusterManager":
-        from fit_ctf_models.clusters import UserClusterManager
+        from fit_ctf.models.infra import UserClusterManager
 
         if self._managers.get("user_cluster", None) is None:
             self._managers["user_cluster"] = UserClusterManager(self, self.ctf_db)
@@ -110,7 +110,7 @@ class CTFBase:
 
     @property
     def project_cluster_mgr(self) -> "clusters.ProjectClusterManager":
-        from fit_ctf_models.clusters import ProjectClusterManager
+        from fit_ctf.models.infra import ProjectClusterManager
 
         if self._managers.get("project_cluster", None) is None:
             self._managers["project_cluster"] = ProjectClusterManager(self, self.ctf_db)
@@ -118,7 +118,7 @@ class CTFBase:
 
     @property
     def scenario_mgr(self) -> "clusters.ScenarioManager":
-        from fit_ctf_models.clusters import ScenarioManager
+        from fit_ctf.models.infra import ScenarioManager
 
         if self._managers.get("scenario", None) is None:
             self._managers["scenario"] = ScenarioManager(self)

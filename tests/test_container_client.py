@@ -27,7 +27,7 @@ def test_client(client: str):
 #
 # from fit_ctf_backend.ctf_manager import CTFApp
 # from fit_ctf_utils.exceptions import UserNotEnrolledToProjectException
-# from fit_ctf_models.project import Project
+# from fit_ctf.models.core.project import Project
 # from fit_ctf_utils.container_client.podman_client import PodmanClient
 # from . import FixtureData
 #

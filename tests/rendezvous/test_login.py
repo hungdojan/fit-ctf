@@ -4,7 +4,7 @@ import pytest
 from textual.app import App
 from textual.widgets import Input, Label
 
-from fit_ctf_models.utils.sessions import LoginSession
+from fit_ctf.models.utils.sessions import LoginSession
 from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from tests import FixtureData
 
