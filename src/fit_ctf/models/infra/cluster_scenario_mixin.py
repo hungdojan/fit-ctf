@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, TypeVar, cast
 
 from fit_ctf.models.core.base import BaseManagerInterface
-from fit_ctf.models.infra.cluster_document import ClusterDocument
+from fit_ctf.models.infra.base_cluster import BaseCluster
 from fit_ctf.models.infra.config_models import ScenarioConfig
 from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.scenario_compile import (
@@ -20,7 +20,7 @@ from fit_ctf.models.infra.scenario_compile import (
 from fit_ctf.models.infra.scenario_manager import ScenarioManager
 from fit_ctf.models.utils.exceptions import ScenarioNotExistException
 
-ClusterT = TypeVar("ClusterT", bound=ClusterDocument)
+ClusterT = TypeVar("ClusterT", bound=BaseCluster)
 
 
 class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):

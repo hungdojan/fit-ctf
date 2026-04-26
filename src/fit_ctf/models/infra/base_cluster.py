@@ -6,7 +6,7 @@ from fit_ctf.models.core.base import Base
 from fit_ctf.models.infra.config_models import ScenarioConfig
 
 
-class ClusterDocument(Base):
+class BaseCluster(Base):
     """Base for cluster documents with scenario configuration (DB + compile)."""
 
     name: str

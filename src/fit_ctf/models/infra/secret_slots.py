@@ -4,10 +4,14 @@ Composite secret ids and flattening UserCluster + ProjectCluster secrets for sub
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from fit_ctf.models.infra.cluster_document import ClusterDocument
 from fit_ctf.models.infra.config_models import ScenarioConfig
+
+if TYPE_CHECKING:
+    import fit_ctf.models.infra.project_cluster as project_cluster
+    import fit_ctf.models.infra.user_cluster as user_cluster
+
 
 ClusterKind = Literal["user", "project"]
 
@@ -48,8 +52,8 @@ def flatten_scenario_secrets(
 
 
 def merged_submission_secret_map(
-    user_cluster: ClusterDocument | None,
-    project_cluster: ClusterDocument | None,
+    user_cluster: "user_cluster.UserCluster | None",
+    project_cluster: "project_cluster.ProjectCluster | None",
 ) -> dict[str, str]:
     m: dict[str, str] = {}
     if project_cluster is not None:
@@ -60,7 +64,7 @@ def merged_submission_secret_map(
 
 
 def count_submittable_secret_slots(
-    user_cluster: ClusterDocument | None,
-    project_cluster: ClusterDocument | None,
+    user_cluster: "user_cluster.UserCluster | None",
+    project_cluster: "project_cluster.ProjectCluster | None",
 ) -> int:
     return len(merged_submission_secret_map(user_cluster, project_cluster))

@@ -16,7 +16,7 @@ from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.models.core.repository import EntityRepository
 import fit_ctf.models.core.project as project_module
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, ProjectNetworkMap
-from fit_ctf.models.infra.cluster_document import ClusterDocument
+from fit_ctf.models.infra.base_cluster import BaseCluster
 from fit_ctf.models.infra.cluster_scenario_mixin import ClusterScenarioMixin
 from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.config_models import ScenarioConfig
@@ -31,7 +31,7 @@ if TYPE_CHECKING:
     import fit_ctf.models.core.project as project
 
 
-class ProjectCluster(ClusterDocument):
+class ProjectCluster(BaseCluster):
     """ProjectCluster model representing project-level deployed scenarios."""
 
     project_id: DBRef

@@ -16,7 +16,7 @@ from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.models.core.repository import EntityRepository
 import fit_ctf.models.core.enrollment as enroll
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, UserNetworkMap
-from fit_ctf.models.infra.cluster_document import ClusterDocument
+from fit_ctf.models.infra.base_cluster import BaseCluster
 from fit_ctf.models.infra.cluster_scenario_mixin import ClusterScenarioMixin
 from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.config_models import (
@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     import fit_ctf.models.infra.project_cluster as project_cluster
 
 
-class UserCluster(ClusterDocument):
+class UserCluster(BaseCluster):
     enrollment_id: DBRef
 
     class Builder:
@@ -584,7 +584,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :return: An exit code
         :rtype: ErrorCode
         """
-        user, project = self.get_user_and_project(cluster.enrollment_id.id)
+        _, project = self.get_user_and_project(cluster.enrollment_id.id)
         return await self.c_client.compose_build(
             project.name,
             self.get_compose_files(cluster),
