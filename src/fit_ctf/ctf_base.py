@@ -42,7 +42,7 @@ class CTFBase:
         from fit_ctf.models.core.user import User, UserManager
         from fit_ctf.models.core.enrollment import Enrollment, EnrollmentManager
         from fit_ctf.models.core.module_manager import ModuleManager
-        from fit_ctf.models.core.repository import EntityRepository
+        from fit_ctf.models.utils.repository import EntityRepository
         from fit_ctf.models.infra import (
             UserCluster,
             UserClusterManager,

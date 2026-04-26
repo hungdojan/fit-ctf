@@ -14,13 +14,13 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.models.core.repository import EntityRepository
+from fit_ctf.models.utils.repository import EntityRepository
 from fit_ctf.components.types import (
     LeaderBoardItem,
     RawEnrolledProjectsDict,
 )
 from fit_ctf.components.utils import get_missing_in_sequence
-from fit_ctf.models.core.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.infra.secret_slots import count_submittable_secret_slots
 from fit_ctf.models.core.user_progress import UserProgress, UserProgressManager
 from fit_ctf.models.utils.exceptions import (

@@ -8,27 +8,27 @@ from argon2.exceptions import VerifyMismatchError
 from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from passlib.hash import sha512_crypt
-from pymongo.database import Database
 from pymongo.collection import Collection
+from pymongo.database import Database
 
-from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.auth.auth_interface import AuthInterface
+from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
-from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.models.core.repository import EntityRepository
-from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.types import NewUserDict, UserInfoDict, UserRole
-from fit_ctf.models.core.base import Base, BaseManagerInterface
+from fit_ctf.exceptions import CTFBaseException
+from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.utils.exceptions import (
     PublicKeyUploadFail,
     UserExistsException,
     UserNotExistsException,
 )
 from fit_ctf.models.utils.mongo_queries import MongoQueries
+from fit_ctf.models.utils.repository import EntityRepository
 from fit_ctf.models.utils.sessions import LoginSession
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.templates import TEMPLATE_PATH_MAP, get_template
 
 # suppress deprecation warning for `crypt` module used by `passlib` when generating shadow

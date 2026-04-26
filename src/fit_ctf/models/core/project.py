@@ -3,23 +3,21 @@ import re
 import shutil
 from typing import TYPE_CHECKING
 
-from pymongo.database import Database
 from pymongo.collection import Collection
+from pymongo.database import Database
 
-from fit_ctf.exceptions import CTFBaseException
+import fit_ctf.models.infra.project_cluster as prj_cluster
+from fit_ctf.components.constants import DEFAULT_STARTING_PORT
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
-from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.models.core.repository import EntityRepository
-import fit_ctf.models.infra.project_cluster as prj_cluster
-from fit_ctf.components.constants import DEFAULT_STARTING_PORT
 from fit_ctf.components.types import (
     ProjectPortListingDict,
     RawProjectDict,
 )
-from fit_ctf.models.core.base import Base, BaseManagerInterface
+from fit_ctf.exceptions import CTFBaseException
+from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.utils.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
@@ -27,6 +25,8 @@ from fit_ctf.models.utils.exceptions import (
     SSHPortOutOfRangeException,
 )
 from fit_ctf.models.utils.mongo_queries import MongoQueries
+from fit_ctf.models.utils.repository import EntityRepository
+from fit_ctf.path_mgmt import PathManagement
 
 if TYPE_CHECKING:
     import fit_ctf.models.core.enrollment as enroll

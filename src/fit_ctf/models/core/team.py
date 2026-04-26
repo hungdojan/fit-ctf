@@ -1,7 +1,7 @@
 from bson import ObjectId
 from pydantic import Field
 
-from fit_ctf.models.core.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.core.user import User
 
 

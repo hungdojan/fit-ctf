@@ -1,5 +1,3 @@
-"""Shared scenario config, compile, and teardown for project vs user cluster managers."""
-
 from __future__ import annotations
 
 import logging
@@ -9,8 +7,9 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
-from fit_ctf.models.core.base import BaseManagerInterface
-from fit_ctf.models.infra.base_cluster import BaseCluster
+from pydantic import Field
+
+from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.infra.config_models import ScenarioConfig
 from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.scenario_compile import (
@@ -19,6 +18,15 @@ from fit_ctf.models.infra.scenario_compile import (
 )
 from fit_ctf.models.infra.scenario_manager import ScenarioManager
 from fit_ctf.models.utils.exceptions import ScenarioNotExistException
+
+
+class BaseCluster(Base):
+    """Base for cluster documents with scenario configuration (DB + compile)."""
+
+    name: str
+    scenario_configs: dict[str, ScenarioConfig] = Field(default_factory=dict)
+    scenario_names: list[str] = Field(default_factory=list)
+
 
 ClusterT = TypeVar("ClusterT", bound=BaseCluster)
 
