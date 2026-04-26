@@ -9,7 +9,7 @@ from fit_ctf_cli.cli.utils import (
     project_option,
     requires_database,
 )
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.utils import color_state

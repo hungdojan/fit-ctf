@@ -4,7 +4,7 @@ import pathlib
 import click
 
 from fit_ctf_cli.cli.utils import format_option, requires_database, user_option
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.auth.auth_interface import AuthInterface
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH

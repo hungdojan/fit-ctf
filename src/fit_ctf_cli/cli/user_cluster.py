@@ -11,7 +11,7 @@ from fit_ctf_cli.cli.utils import (
     requires_database,
     user_option,
 )
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.exceptions import ConfigurationFileNotEditedException
@@ -620,7 +620,9 @@ def start_cluster(ctx: click.Context, username: str, project_name: str, verbose:
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.start_cluster(cluster, verbose=verbose)
+            ctf_app.user_cluster_mgr.start_cluster(
+                cluster, ctf_app.enroll_mgr, verbose=verbose
+            )
         )
 
         if error_code == 0:
@@ -651,7 +653,9 @@ def stop_cluster(ctx: click.Context, username: str, project_name: str, verbose: 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.stop_cluster(cluster, verbose=verbose)
+            ctf_app.user_cluster_mgr.stop_cluster(
+                cluster, ctf_app.enroll_mgr, verbose=verbose
+            )
         )
 
         if error_code == 0:
@@ -684,7 +688,9 @@ def restart_cluster(
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.restart_cluster(cluster, verbose=verbose)
+            ctf_app.user_cluster_mgr.restart_cluster(
+                cluster, ctf_app.enroll_mgr, verbose=verbose
+            )
         )
 
         if error_code == 0:

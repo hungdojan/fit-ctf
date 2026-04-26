@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, TypeAlias
 from click.testing import CliRunner
 
 if TYPE_CHECKING:
-    import fit_ctf_cli.ctf_app as ctf_app
+    import fit_ctf.ctf_app as ctf_app
     import fit_ctf_rendezvous.rendezvous_app as rendezvous
 
 FixtureData: TypeAlias = tuple["ctf_app.CTFApp", pathlib.Path]

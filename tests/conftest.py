@@ -11,7 +11,7 @@ from click.testing import CliRunner
 from dotenv import load_dotenv
 from textual.app import App
 
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.constants import get_env_info
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.types import PathDict

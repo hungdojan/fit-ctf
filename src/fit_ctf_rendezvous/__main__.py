@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.ctf_base import CTFBase
 from fit_ctf.components.constants import get_env_info, get_paths
 from fit_ctf.components.container_client import get_c_client_by_name

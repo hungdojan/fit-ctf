@@ -3,7 +3,7 @@ import asyncio
 import click
 
 from fit_ctf_cli.cli.utils import format_option, project_option, requires_database
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view

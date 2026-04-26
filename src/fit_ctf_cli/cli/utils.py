@@ -4,7 +4,7 @@ import pathlib
 import click
 import pymongo.errors
 
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.constants import get_env_info
 
 project_option = click.option(

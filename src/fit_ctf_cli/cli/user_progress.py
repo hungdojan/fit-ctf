@@ -6,7 +6,7 @@ from fit_ctf_cli.cli.utils import (
     user_option,
     requires_database,
 )
-from fit_ctf_cli.ctf_app import CTFApp
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_view import get_view
 from fit_ctf.models.core.enrollment import Enrollment
 from fit_ctf.models.utils.exceptions import (
