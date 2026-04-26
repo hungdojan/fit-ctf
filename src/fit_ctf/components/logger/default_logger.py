@@ -2,9 +2,12 @@ import logging
 import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import fit_ctf.ctf_base as ctf_base
 from fit_ctf.components.logger.logger_interface import LoggerInterface
+
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as ctf_base
 
 
 class DefaultLogger(LoggerInterface):

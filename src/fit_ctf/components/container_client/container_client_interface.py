@@ -3,18 +3,23 @@ import subprocess
 from abc import ABC, abstractmethod
 from asyncio.subprocess import Process
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import fit_ctf.ctf_base as ctf_base
-import fit_ctf.components.base as base_component
 import fit_ctf.components.utils
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as _ctf_base
 
-class ContainerClientInterface(ABC, base_component.BaseComponent):
 
-    def __init__(self, ctf_base: "ctf_base.CTFBase") -> None:
-        super().__init__(ctf_base)
+class ContainerClientInterface(ABC):
+
+    def __init__(self, ctf_base: "_ctf_base.CTFBase") -> None:
+        self._ctf_base = ctf_base
+
+    @property
+    def ctf_base(self) -> "_ctf_base.CTFBase":
+        return self._ctf_base
 
     async def _process_get_commands(
         self, cmd: list[str], contains: str | list[str] | None = None

@@ -1,12 +1,17 @@
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
-import fit_ctf.ctf_base as ctf_base
-from fit_ctf.components.base import BaseComponent
+if TYPE_CHECKING:
+    import fit_ctf.ctf_base as _ctf_base
 
 
-class LoggerInterface(ABC, BaseComponent):
-    def __init__(self, ctf_base: "ctf_base.CTFBase", **kwargs):
-        BaseComponent.__init__(self, ctf_base, **kwargs)
+class LoggerInterface(ABC):
+    def __init__(self, ctf_base: "_ctf_base.CTFBase", **kwargs):
+        self._ctf_base = ctf_base
+
+    @property
+    def ctf_base(self) -> "_ctf_base.CTFBase":
+        return self._ctf_base
 
     @abstractmethod
     def info(self, msg: str, **kwargs):

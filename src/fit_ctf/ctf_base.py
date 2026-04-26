@@ -1,12 +1,10 @@
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING
 
 import pymongo
 from pymongo.database import Database
 
 import fit_ctf.components.container_client.container_client_interface as c_client_interface
-from fit_ctf.exceptions import ManagerNotFound
 from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.components.base import BaseComponent, ComponentType
 from fit_ctf.components.logger.default_logger import DefaultLogger
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.components.types import EnvInfo, PathDict
@@ -37,10 +35,6 @@ class CTFBase:
 
         # Initialize managers eagerly to avoid circular dependency issues
         self._init_managers()
-
-        self._components: dict[str, BaseComponent] = {
-            "logger": self._logger,
-        }
 
     def _init_managers(self):
         """Initialize all managers in linear order (no circular dependencies)."""
@@ -201,24 +195,3 @@ class CTFBase:
     @property
     def paths(self) -> PathManagement:
         return self._path_mgmt
-
-    @overload
-    def get_component(self, name: str) -> BaseComponent: ...
-
-    @overload
-    def get_component(self, name: str, _type: type[ComponentType]) -> ComponentType: ...
-
-    def get_component(
-        self, name: str, _type: type[ComponentType] | None = None
-    ) -> ComponentType | BaseComponent:
-        mgr = self._components.get(name)
-        if not mgr:
-            raise ManagerNotFound(f"Manager {name} was not found.")
-        if _type is not None:
-            # wrong type
-            if not isinstance(mgr, _type):
-                raise ManagerNotFound(f"Manager {name} was not found.")
-        return mgr
-
-    def register_component(self, name: str, component: BaseComponent):
-        self._components[name] = component
