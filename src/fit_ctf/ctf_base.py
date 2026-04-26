@@ -31,12 +31,117 @@ class CTFBase:
         self._env_info = env_info
         self._mongo_client = mongo_client
         self._ctf_db: Database | None = None
-        self._c_client = _c_client(self)
-        self._managers = {}
         self._path_mgmt = PathManagement(paths)
+        self._logger = logger_cls(self)
+        self._c_client = _c_client(self)
+
+        # Initialize managers eagerly to avoid circular dependency issues
+        self._init_managers()
+
         self._components: dict[str, BaseComponent] = {
-            "logger": logger_cls(self),
+            "logger": self._logger,
         }
+
+    def _init_managers(self):
+        """Initialize all managers in correct order to handle circular dependencies."""
+        from fit_ctf.models.core.project import Project, ProjectManager
+        from fit_ctf.models.core.user import User, UserManager
+        from fit_ctf.models.core.enrollment import Enrollment, EnrollmentManager
+        from fit_ctf.models.core.module_manager import ModuleManager
+        from fit_ctf.models.infra import (
+            UserCluster,
+            UserClusterManager,
+            ProjectCluster,
+            ProjectClusterManager,
+            ScenarioManager,
+        )
+
+        # Create project_cluster_mgr first (depends only on prj_mgr, will be set later)
+        self._project_cluster_mgr: "clusters.ProjectClusterManager" = (
+            ProjectClusterManager(
+                db=self.ctf_db,
+                coll=self.ctf_db["project_cluster"],
+                model_cls=ProjectCluster,
+                prj_mgr=None,  # Will be set after prj_mgr is created
+                c_client=self._c_client,
+                paths=self._path_mgmt,
+                logger=self._logger,
+            )
+        )
+
+        # Create user_cluster_mgr (depends on prj_mgr, enroll_mgr, project_cluster_mgr)
+        self._user_cluster_mgr: "clusters.UserClusterManager" = UserClusterManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["user_cluster"],
+            model_cls=UserCluster,
+            prj_mgr=None,  # Will be set later
+            enroll_mgr=None,  # Will be set later
+            project_cluster_mgr=self._project_cluster_mgr,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+            logger=self._logger,
+        )
+
+        # Create enroll_mgr (depends on prj_mgr, user_mgr, cluster managers)
+        self._enroll_mgr: "enroll.EnrollmentManager" = EnrollmentManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["enrollment"],
+            model_cls=Enrollment,
+            prj_mgr=None,  # Will be set later
+            user_mgr=None,  # Will be set later
+            user_cluster_mgr=self._user_cluster_mgr,
+            project_cluster_mgr=self._project_cluster_mgr,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+            logger=self._logger,
+        )
+
+        # Create prj_mgr (depends on enroll_mgr, cluster managers)
+        self._prj_mgr: "prj.ProjectManager" = ProjectManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["project"],
+            model_cls=Project,
+            enroll_mgr=self._enroll_mgr,
+            project_cluster_mgr=self._project_cluster_mgr,
+            user_cluster_mgr=self._user_cluster_mgr,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+            logger=self._logger,
+        )
+
+        # Create user_mgr (depends on enroll_mgr, user_cluster_mgr)
+        self._user_mgr: "user.UserManager" = UserManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["user"],
+            model_cls=User,
+            enroll_mgr=self._enroll_mgr,
+            user_cluster_mgr=self._user_cluster_mgr,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+            logger=self._logger,
+        )
+
+        # Now fix circular dependencies by setting the managers that were None
+        self._project_cluster_mgr._prj_mgr = self._prj_mgr
+        self._user_cluster_mgr._prj_mgr = self._prj_mgr
+        self._user_cluster_mgr._enroll_mgr = self._enroll_mgr
+        self._enroll_mgr._prj_mgr = self._prj_mgr
+        self._enroll_mgr._user_mgr = self._user_mgr
+
+        # Create module_mgr (depends on prj_mgr, enroll_mgr)
+        self._module_mgr: "module_manager.ModuleManager" = ModuleManager(
+            prj_mgr=self._prj_mgr,
+            enroll_mgr=self._enroll_mgr,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+        )
+
+        # Create scenario_mgr (depends on user_cluster_mgr, enroll_mgr)
+        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(
+            paths=self._path_mgmt,
+            user_cluster_mgr=self._user_cluster_mgr,
+            enroll_mgr=self._enroll_mgr,
+        )
 
     @property
     def mongo_client(self) -> pymongo.MongoClient:
@@ -55,11 +160,7 @@ class CTFBase:
         :return: A project manager initialized in CTFApp.
         :rtype: ProjectManager
         """
-        from fit_ctf.models.core.project import ProjectManager
-
-        if self._managers.get("project", None) is None:
-            self._managers["project"] = ProjectManager(self, self.ctf_db)
-        return self._managers["project"]
+        return self._prj_mgr
 
     @property
     def user_mgr(self) -> "user.UserManager":
@@ -68,11 +169,7 @@ class CTFBase:
         :return: A user manager initialized in CTFApp.
         :rtype: UserManager
         """
-        from fit_ctf.models.core.user import UserManager
-
-        if self._managers.get("user", None) is None:
-            self._managers["user"] = UserManager(self, self.ctf_db)
-        return self._managers["user"]
+        return self._user_mgr
 
     @property
     def enroll_mgr(self) -> "enroll.EnrollmentManager":
@@ -81,48 +178,28 @@ class CTFBase:
         :return: An enrollment manager initialized in CTFApp.
         :rtype: EnrollmentManager
         """
-        from fit_ctf.models.core.enrollment import EnrollmentManager
-
-        if self._managers.get("enrollment", None) is None:
-            self._managers["enrollment"] = EnrollmentManager(self, self.ctf_db)
-        return self._managers["enrollment"]
+        return self._enroll_mgr
 
     @property
     def module_mgr(self) -> "module_manager.ModuleManager":
-        """Returns an enrollment manager.
+        """Returns a module manager.
 
-        :return: An enrollment manager initialized in CTFApp.
-        :rtype: EnrollmentManager
+        :return: A module manager initialized in CTFApp.
+        :rtype: ModuleManager
         """
-        from fit_ctf.models.core.module_manager import ModuleManager
-
-        if self._managers.get("module", None) is None:
-            self._managers["module"] = ModuleManager(self)
-        return self._managers["module"]
+        return self._module_mgr
 
     @property
     def user_cluster_mgr(self) -> "clusters.UserClusterManager":
-        from fit_ctf.models.infra import UserClusterManager
-
-        if self._managers.get("user_cluster", None) is None:
-            self._managers["user_cluster"] = UserClusterManager(self, self.ctf_db)
-        return self._managers["user_cluster"]
+        return self._user_cluster_mgr
 
     @property
     def project_cluster_mgr(self) -> "clusters.ProjectClusterManager":
-        from fit_ctf.models.infra import ProjectClusterManager
-
-        if self._managers.get("project_cluster", None) is None:
-            self._managers["project_cluster"] = ProjectClusterManager(self, self.ctf_db)
-        return self._managers["project_cluster"]
+        return self._project_cluster_mgr
 
     @property
     def scenario_mgr(self) -> "clusters.ScenarioManager":
-        from fit_ctf.models.infra import ScenarioManager
-
-        if self._managers.get("scenario", None) is None:
-            self._managers["scenario"] = ScenarioManager(self)
-        return self._managers["scenario"]
+        return self._scenario_mgr
 
     @property
     def c_client(self) -> "c_client_interface.ContainerClientInterface":
@@ -130,7 +207,7 @@ class CTFBase:
 
     @property
     def logger(self) -> LoggerInterface:
-        return self.get_component("logger", LoggerInterface)
+        return self._logger
 
     @property
     def paths(self) -> PathManagement:

@@ -7,7 +7,6 @@ instead of large inline strings in this module.
 from __future__ import annotations
 
 import shutil
-from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
@@ -60,8 +59,20 @@ def scenario_manager_for_scenarios_root(scenarios_root: Path) -> ScenarioManager
     """Build a :class:`ScenarioManager`
     whose scenario root is `scenarios_root` (no DB / full CTFApp).
     """
-    base = SimpleNamespace(paths=SimpleNamespace(scenario_global=scenarios_root))
-    return ScenarioManager(base)  # type: ignore[arg-type]
+    from unittest.mock import Mock
+    from fit_ctf.path_mgmt import PathManagement
+
+    # Create minimal path management with just scenario_global
+    paths = Mock(spec=PathManagement)
+    paths.scenario_global = scenarios_root
+
+    # Create mocks for dependencies not used in these tests
+    user_cluster_mgr = Mock()
+    enroll_mgr = Mock()
+
+    return ScenarioManager(
+        paths=paths, user_cluster_mgr=user_cluster_mgr, enroll_mgr=enroll_mgr
+    )
 
 
 def test_inject_fetch_variables_port_env_volume(tmp_path: Path):

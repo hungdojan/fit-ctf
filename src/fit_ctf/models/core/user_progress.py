@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
-from fit_ctf.components.base import BaseComponent
 from fit_ctf.components.types import SecretInfo
 from fit_ctf.models.infra.secret_slots import (
     format_composite_for_display,
@@ -18,8 +17,10 @@ from fit_ctf.models.utils.exceptions import (
 from fit_ctf.models.utils.sessions import ProgressSession
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base as ctf_base
     import fit_ctf.models.core.enrollment as enroll
+    import fit_ctf.models.core.project as project
+    import fit_ctf.models.infra.user_cluster as user_cluster
+    import fit_ctf.models.infra.project_cluster as project_cluster
 
 
 class UserProgress(BaseModel):
@@ -30,21 +31,30 @@ class UserProgress(BaseModel):
     sessions: list[ProgressSession] = Field(default_factory=list)
 
 
-class UserProgressManager(BaseComponent):
-    def __init__(self, ctf_base: "ctf_base.CTFBase"):
-        super().__init__(ctf_base)
+class UserProgressManager:
+    def __init__(
+        self,
+        prj_mgr: "project.ProjectManager",
+        user_cluster_mgr: "user_cluster.UserClusterManager",
+        project_cluster_mgr: "project_cluster.ProjectClusterManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+    ):
+        self._prj_mgr = prj_mgr
+        self._user_cluster_mgr = user_cluster_mgr
+        self._project_cluster_mgr = project_cluster_mgr
+        self._enroll_mgr = enroll_mgr
 
     def _clusters_for_submission(self, enrollment: "enroll.Enrollment"):
         from fit_ctf.models.utils.exceptions import ProjectClusterNotExistException
 
-        user_cluster = self.ctf_base.user_cluster_mgr.get_doc_by_filter(
+        user_cluster = self._user_cluster_mgr.get_doc_by_filter(
             **{"enrollment_id.$id": enrollment.id}
         )
-        project = self.ctf_base.prj_mgr.get_doc_by_id(enrollment.project_id.id)
+        project = self._prj_mgr.get_doc_by_id(enrollment.project_id.id)
         project_cluster = None
         if project:
             try:
-                project_cluster = self.ctf_base.project_cluster_mgr.get_cluster(project)
+                project_cluster = self._project_cluster_mgr.get_cluster(project)
             except ProjectClusterNotExistException:
                 project_cluster = None
         return user_cluster, project_cluster
@@ -61,12 +71,12 @@ class UserProgressManager(BaseComponent):
         merged = merged_submission_secret_map(user_cluster, project_cluster)
         matching = [cid for cid, expected in merged.items() if expected == value]
         if not matching:
-            self.ctf_base.enroll_mgr.update_doc(enrollment)
+            self._enroll_mgr.update_doc(enrollment)
             raise SecretNotFoundException("Submitted secret not found.")
 
         composite_id = sorted(matching)[0]
         if composite_id in progress.solved_secrets:
-            self.ctf_base.enroll_mgr.update_doc(enrollment)
+            self._enroll_mgr.update_doc(enrollment)
             raise SecretAlreadySubmittedException("This secret was already submitted")
 
         kind, scenario_name, local_name = parse_composite_secret_id(composite_id)
@@ -80,7 +90,7 @@ class UserProgressManager(BaseComponent):
         )
         progress.found_secrets = len(progress.solved_secrets)
         progress.last_submit_time = now
-        self.ctf_base.enroll_mgr.update_doc(enrollment)
+        self._enroll_mgr.update_doc(enrollment)
 
     def list_secrets_for_display(
         self, enrollment: "enroll.Enrollment", show_flag: bool = False
@@ -114,4 +124,4 @@ class UserProgressManager(BaseComponent):
         enrollment.progress.sessions.append(
             ProgressSession(timestamp=timestamp, state=state, info=info)
         )
-        self.ctf_base.enroll_mgr.update_doc(enrollment)
+        self._enroll_mgr.update_doc(enrollment)

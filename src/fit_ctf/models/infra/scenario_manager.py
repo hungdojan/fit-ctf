@@ -5,7 +5,7 @@ import re
 import shutil
 from typing import TYPE_CHECKING
 
-from fit_ctf.components.base import BaseComponent
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.models.infra.config_models import ScenarioConfig
 from fit_ctf.models.infra.scenario_config_validation import (
     validate_secrets_vs_templates,
@@ -20,8 +20,9 @@ from fit_ctf.models.utils.mongo_queries import MongoQueries
 from fit_ctf.templates import TEMPLATE_PATH_MAP, get_jinja_variables, get_template
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base
+    import fit_ctf.models.core.enrollment as enrollment
     import fit_ctf.models.core.project as project
+    import fit_ctf.models.infra.user_cluster as user_cluster
 
 # `volumes/*.template`: `{service}__volume_map__{volume}__{param}` (four segments).
 _VOL_MAP_TPL_PARAM_RE = re.compile(r"^(.+?)__volume_map__(.+?)__(.+)$")
@@ -30,16 +31,27 @@ _SC_TRIPLE_RE = re.compile(r"^(.*)__(.*)__(.*)$")
 _SECRET_MAP_RE = re.compile(r"^secret_map__(.+)$")
 
 
-class ScenarioManager(BaseComponent):
+class ScenarioManager:
     """Manager for CTF scenario templates and configurations."""
 
-    def __init__(self, ctf_base: "fit_ctf.ctf_base.CTFBase"):
+    def __init__(
+        self,
+        paths: PathManagement,
+        user_cluster_mgr: "user_cluster.UserClusterManager",
+        enroll_mgr: "enrollment.EnrollmentManager",
+    ):
         """Initialize ScenarioManager.
 
-        :param ctf_base: CTF base instance
-        :type ctf_base: fit_ctf.ctf_base.CTFBase
+        :param paths: Path management instance
+        :type paths: PathManagement
+        :param user_cluster_mgr: User cluster manager instance
+        :type user_cluster_mgr: UserClusterManager
+        :param enroll_mgr: Enrollment manager instance
+        :type enroll_mgr: EnrollmentManager
         """
-        super().__init__(ctf_base)
+        self._paths = paths
+        self._user_cluster_mgr = user_cluster_mgr
+        self._enroll_mgr = enroll_mgr
 
     @property
     def scenario_root(self) -> pathlib.Path:
@@ -48,7 +60,7 @@ class ScenarioManager(BaseComponent):
         :return: Path to scenario root directory
         :rtype: pathlib.Path
         """
-        return self.ctf_base.paths.scenario_global
+        return self._paths.scenario_global
 
     @property
     def user_cluster_mgr(self):
@@ -56,7 +68,7 @@ class ScenarioManager(BaseComponent):
 
         :return: UserClusterManager instance
         """
-        return self.ctf_base.user_cluster_mgr
+        return self._user_cluster_mgr
 
     def create_scenario(self, scenario_name: str):
         """Create a new scenario template.
@@ -209,16 +221,12 @@ class ScenarioManager(BaseComponent):
                 return set()
             return set(d.name for d in path.iterdir() if d.is_dir)
 
-        usage = _fetch_scenarios(self.ctf_base.paths.project_scenarios(project))
+        usage = _fetch_scenarios(self._paths.project_scenarios(project))
         if include_users:
-            enrolled_users = self.ctf_base.enroll_mgr.get_enrollments_for_project(
-                project
-            )
+            enrolled_users = self._enroll_mgr.get_enrollments_for_project(project)
             for user in enrolled_users:
                 usage.update(
-                    _fetch_scenarios(
-                        self.ctf_base.paths.enrolled_user_path(user, project)
-                    )
+                    _fetch_scenarios(self._paths.enrolled_user_path(user, project))
                 )
         return list(usage)
 

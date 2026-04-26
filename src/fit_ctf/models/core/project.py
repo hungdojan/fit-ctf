@@ -4,8 +4,14 @@ import shutil
 from typing import TYPE_CHECKING
 
 from pymongo.database import Database
+from pymongo.collection import Collection
 
 from fit_ctf.exceptions import CTFBaseException
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.path_mgmt import PathManagement
 import fit_ctf.models.infra.project_cluster as prj_cluster
 from fit_ctf.components.constants import DEFAULT_STARTING_PORT
 from fit_ctf.components.types import (
@@ -22,8 +28,8 @@ from fit_ctf.models.utils.exceptions import (
 from fit_ctf.models.utils.mongo_queries import MongoQueries
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base as ctf_base
     import fit_ctf.models.core.enrollment as enroll
+    import fit_ctf.models.infra.user_cluster as user_cluster
 
 
 class Project(Base):
@@ -62,35 +68,41 @@ class ProjectManager(BaseManagerInterface[Project]):
 
     def __init__(
         self,
-        ctf_base: "ctf_base.CTFBase",
         db: Database,
+        coll: Collection,
+        model_cls: type[Project],
+        enroll_mgr: "enroll.EnrollmentManager",
+        project_cluster_mgr: "prj_cluster.ProjectClusterManager",
+        user_cluster_mgr: "user_cluster.UserClusterManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+        logger: LoggerInterface,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param paths: A list of content paths.
-        :type paths: PathDict
+        :param coll: MongoDB collection object.
+        :type coll: Collection
+        :param model_cls: Model class for Project.
+        :type model_cls: type[Project]
+        :param enroll_mgr: Enrollment manager instance.
+        :type enroll_mgr: EnrollmentManager
+        :param project_cluster_mgr: Project cluster manager instance.
+        :type project_cluster_mgr: ProjectClusterManager
+        :param user_cluster_mgr: User cluster manager instance.
+        :type user_cluster_mgr: UserClusterManager
+        :param c_client: Container client interface.
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance.
+        :type paths: PathManagement
+        :param logger: Logger interface.
+        :type logger: LoggerInterface
         """
-        super().__init__(ctf_base, db, db["project"], Project)
-
-    @property
-    def enroll_mgr(self) -> "enroll.EnrollmentManager":
-        """Returns an enrollment manager.
-
-        :return: An enrollment manager initialized in ProjectManager.
-        :rtype: _enroll.EnrollmentManager
-        """
-        return self.ctf_base.enroll_mgr
-
-    @property
-    def project_cluster_mgr(self) -> "prj_cluster.ProjectClusterManager":
-        """Returns project cluster manager.
-
-        :return: Project cluster manager from CTF base.
-        :rtype: ProjectClusterManager
-        """
-        return self.ctf_base.project_cluster_mgr
+        super().__init__(db, coll, model_cls, c_client, paths, logger)
+        self._enroll_mgr = enroll_mgr
+        self._project_cluster_mgr = project_cluster_mgr
+        self._user_cluster_mgr = user_cluster_mgr
 
     def get_project(
         self, project_or_name: str | Project, active: bool | None = True
@@ -234,10 +246,10 @@ class ProjectManager(BaseManagerInterface[Project]):
             description=description,
         )
 
-        self.project_cluster_mgr.create_cluster(
+        self._project_cluster_mgr.create_cluster(
             prj_cluster.ProjectCluster.Builder(prj.name, prj).build()
         )
-        n_map = self.project_cluster_mgr.get_network_map(prj)
+        n_map = self._project_cluster_mgr.get_network_map(prj)
         for n_name in n_map.values():
             self.c_client.create_networks(prj.name, [str(n_name)])
 
@@ -258,7 +270,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         """
         prj = self.get_project(project_or_name)
 
-        lof_user_enrolls = self.enroll_mgr.get_docs_raw(
+        lof_user_enrolls = self._enroll_mgr.get_docs_raw(
             filter={"project_id.$id": prj.id, "active": True},
             projection={"_id": 0, "container_port": 1, "forwarded_port": 1},
         )
@@ -291,15 +303,15 @@ class ProjectManager(BaseManagerInterface[Project]):
 
         # Stop project cluster if exists
         try:
-            cluster = self.project_cluster_mgr.get_cluster(prj)
-            await self.project_cluster_mgr.stop_cluster(cluster)
+            cluster = self._project_cluster_mgr.get_cluster(prj)
+            await self._project_cluster_mgr.stop_cluster(cluster)
             # Stop all user clusters
-            await self.ctf_base.user_cluster_mgr.stop_all_user_clusters(prj)
+            await self._user_cluster_mgr.stop_all_user_clusters(prj)
 
         except CTFBaseException:  # pragma: no cover
             pass  # No cluster exists
-        await self.enroll_mgr.disable_multiple_enrollments(
-            [(user, prj) for user in self.enroll_mgr.get_enrollments_for_project(prj)]
+        await self._enroll_mgr.disable_multiple_enrollments(
+            [(user, prj) for user in self._enroll_mgr.get_enrollments_for_project(prj)]
         )
 
         prj.active = False
@@ -322,17 +334,17 @@ class ProjectManager(BaseManagerInterface[Project]):
         if path.exists():
             shutil.rmtree(path)
 
-        await self.enroll_mgr.flush_multiple_enrollments(
+        await self._enroll_mgr.flush_multiple_enrollments(
             [
                 (user, prj)
-                for user in self.enroll_mgr.get_enrollments_for_project(prj, True)
+                for user in self._enroll_mgr.get_enrollments_for_project(prj, True)
             ]
         )
-        await self.project_cluster_mgr.delete_cluster(
-            self.project_cluster_mgr.get_cluster(prj)
+        await self._project_cluster_mgr.delete_cluster(
+            self._project_cluster_mgr.get_cluster(prj)
         )
         self.remove_doc_by_id(prj.id)
-        n_map = self.project_cluster_mgr.get_network_map(prj)
+        n_map = self._project_cluster_mgr.get_network_map(prj)
         for n_name in n_map.values():
             self.c_client.rm_network(prj.name, str(n_name))
 

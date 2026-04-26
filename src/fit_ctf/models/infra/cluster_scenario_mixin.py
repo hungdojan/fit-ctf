@@ -78,7 +78,13 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
                 f"Scenario {scenario_name} not found in {cluster.name}"
             )
         scenario_cfg = cluster.scenario_configs[scenario_name]
-        sm = ScenarioManager(self.ctf_base)
+        # Create temporary ScenarioManager for validation
+        # Subclasses (UserClusterManager, ProjectClusterManager) have these dependencies
+        sm = ScenarioManager(
+            paths=self.paths,
+            user_cluster_mgr=getattr(self, "_user_cluster_mgr", self),
+            enroll_mgr=getattr(self, "_enroll_mgr", None),
+        )
         warnings = sm.validate_scenario_config_against_templates(
             scenario_name, scenario_cfg
         )

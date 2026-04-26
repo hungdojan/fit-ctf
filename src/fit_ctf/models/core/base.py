@@ -6,12 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 from pymongo.collection import Collection
 from pymongo.database import Database
 
-import fit_ctf.ctf_base
 import fit_ctf.path_mgmt as path_mgmt
-from fit_ctf.components.base import BaseComponent
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
+from fit_ctf.components.logger.logger_interface import LoggerInterface
 
 
 class Base(ABC, BaseModel):
@@ -40,15 +39,17 @@ class Base(ABC, BaseModel):
 T = TypeVar("T", bound=Base)
 
 
-class BaseManagerInterface(ABC, Generic[T], BaseComponent):
+class BaseManagerInterface(ABC, Generic[T]):
     """A base manager class that all CTF managers derive from."""
 
     def __init__(
         self,
-        ctf_base: "fit_ctf.ctf_base.CTFBase",
         db: Database,
         coll: Collection,
         model_cls: Type[T],
+        c_client: ContainerClientInterface,
+        paths: "path_mgmt.PathManagement",
+        logger: LoggerInterface,
     ):
         """Constructor method.
 
@@ -56,13 +57,21 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :type db: Database
         :param coll: MongoDB collection object.
         :type coll: Collection
-        :param path: A path to a directory where contents of <T> are stored.
-        :type path: pathlib.Path
+        :param model_cls: Model class for this manager.
+        :type model_cls: Type[T]
+        :param c_client: Container client interface.
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance.
+        :type paths: PathManagement
+        :param logger: Logger interface.
+        :type logger: LoggerInterface
         """
-        BaseComponent.__init__(self, ctf_base)
         self._db = db
         self._coll = coll
         self.model_cls = model_cls
+        self._c_client = c_client
+        self._paths = paths
+        self._logger = logger
 
     @property
     def collection(self) -> Collection:
@@ -75,11 +84,15 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
 
     @property
     def c_client(self) -> ContainerClientInterface:
-        return self.ctf_base.c_client
+        return self._c_client
 
     @property
     def paths(self) -> "path_mgmt.PathManagement":
-        return self.ctf_base.paths
+        return self._paths
+
+    @property
+    def logger(self) -> LoggerInterface:
+        return self._logger
 
     def get_doc_by_id(self, _id: ObjectId) -> T | None:
         """Search for a document using ObjectId.
@@ -166,7 +179,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :type doc: T
         """
         dict_obj = doc.model_dump()
-        self.ctf_base.logger.debug(f"Inserting {dict_obj}")
+        self.logger.debug(f"Inserting {dict_obj}")
         self._coll.insert_one(dict_obj)
 
     def update_doc(self, doc: T):
@@ -176,7 +189,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :type doc: T
         """
         dict_obj = doc.model_dump()
-        self.ctf_base.logger.debug(f"Updating {dict_obj}")
+        self.logger.debug(f"Updating {dict_obj}")
         self._coll.replace_one({"_id": doc.id}, dict_obj)
 
     def remove_doc_by_id(self, _id: ObjectId) -> bool:
@@ -188,7 +201,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :return: `True` if a document was found and successfully deleted.
         :rtype: bool
         """
-        self.ctf_base.logger.debug(f"Deleting document `{_id}`")
+        self.logger.debug(f"Deleting document `{_id}`")
         res = self._coll.delete_one({"_id": _id})
         return res.deleted_count > 0
 
@@ -198,7 +211,7 @@ class BaseManagerInterface(ABC, Generic[T], BaseComponent):
         :return: `True` if a document was found and successfully deleted.
         :rtype: bool
         """
-        self.ctf_base.logger.debug(f"Deleting document using filter {filter}")
+        self.logger.debug(f"Deleting document using filter {filter}")
         res = self._coll.delete_one(filter=filter)
         return res.deleted_count > 0
 

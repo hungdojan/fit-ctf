@@ -3,10 +3,17 @@ from typing import Any
 
 from bson import DBRef
 from pymongo.database import Database
+from pymongo.collection import Collection
 
-import fit_ctf.ctf_base as ctf_base
 import fit_ctf.models.core.project as _project
 import fit_ctf.models.core.user as _user
+import fit_ctf.models.infra.user_cluster as user_cluster
+import fit_ctf.models.infra.project_cluster as project_cluster
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.components.types import (
     LeaderBoardItem,
     RawEnrolledProjectsDict,
@@ -63,36 +70,50 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
 
     def __init__(
         self,
-        ctf_base: "ctf_base.CTFBase",
         db: Database,
+        coll: Collection,
+        model_cls: type[Enrollment],
+        prj_mgr: "_project.ProjectManager",
+        user_mgr: "_user.UserManager",
+        user_cluster_mgr: "user_cluster.UserClusterManager",
+        project_cluster_mgr: "project_cluster.ProjectClusterManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+        logger: LoggerInterface,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param paths: A list of content paths.
-        :type paths: PathDict
+        :param coll: MongoDB collection object.
+        :type coll: Collection
+        :param model_cls: Model class for Enrollment.
+        :type model_cls: type[Enrollment]
+        :param prj_mgr: Project manager instance.
+        :type prj_mgr: ProjectManager
+        :param user_mgr: User manager instance.
+        :type user_mgr: UserManager
+        :param user_cluster_mgr: User cluster manager instance.
+        :type user_cluster_mgr: UserClusterManager
+        :param project_cluster_mgr: Project cluster manager instance.
+        :type project_cluster_mgr: ProjectClusterManager
+        :param c_client: Container client interface.
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance.
+        :type paths: PathManagement
+        :param logger: Logger interface.
+        :type logger: LoggerInterface
         """
-        BaseManagerInterface.__init__(self, ctf_base, db, db["enrollment"], Enrollment)
-        UserProgressManager.__init__(self, ctf_base)
-
-    @property
-    def prj_mgr(self) -> "_project.ProjectManager":
-        """Returns a project manager.
-
-        :return: A project manager initialized in EnrollmentManager.
-        :rtype: _project.ProjectManager
-        """
-        return self.ctf_base.prj_mgr
-
-    @property
-    def user_mgr(self) -> "_user.UserManager":
-        """Returns a user manager.
-
-        :return: A user manager initialized in EnrollmentManager.
-        :rtype: _user.UserManager
-        """
-        return self.ctf_base.user_mgr
+        BaseManagerInterface.__init__(
+            self, db, coll, model_cls, c_client, paths, logger
+        )
+        UserProgressManager.__init__(
+            self, prj_mgr, user_cluster_mgr, project_cluster_mgr, self
+        )
+        self._prj_mgr = prj_mgr
+        self._user_mgr = user_mgr
+        self._user_cluster_mgr = user_cluster_mgr
+        self._project_cluster_mgr = project_cluster_mgr
 
     def _get_user_and_project(
         self,
@@ -122,7 +143,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             function.
         :rtype: _user.User
         """
-        return self.user_mgr.get_user(user_or_username)
+        return self._user_mgr.get_user(user_or_username)
 
     def _get_project(
         self, project_or_name: "str | _project.Project"
@@ -135,7 +156,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :return: Found project or passed project object.
         :rtype: _project.Project
         """
-        return self.prj_mgr.get_project(project_or_name)
+        return self._prj_mgr.get_project(project_or_name)
 
     def user_is_enrolled_to_project(
         self, user: "_user.User", project: "_project.Project"
@@ -324,12 +345,12 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         )
 
         if create_login_node:
-            self.ctf_base.user_cluster_mgr.create_cluster(
-                self.ctf_base.user_cluster_mgr.create_base_user_cluster(
+            self._user_cluster_mgr.create_cluster(
+                self._user_cluster_mgr.create_base_user_cluster(
                     project, user, enrollment, login_node_type=login_node_type
                 )
             )
-        n_map = self.ctf_base.user_cluster_mgr.get_network_map((user, project))
+        n_map = self._user_cluster_mgr.get_network_map((user, project))
         self.c_client.create_networks(project.name, [n_map["private"]])
 
         return enrollment
@@ -360,7 +381,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :rtype: list[Enrollment]
         """
         # check project existence
-        project = self.prj_mgr.get_project(project_name)
+        project = self._prj_mgr.get_project(project_name)
 
         nof_existing_users = len(self.get_enrollments_for_project_raw(project))
         new_users = self.filter_users_not_in_project(project, lof_usernames)
@@ -376,7 +397,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         ]
         available_ports = sorted(list(set(all_ports).difference(set(ports))))
 
-        users = self.user_mgr.get_docs(username={"$in": new_users}, active=True)
+        users = self._user_mgr.get_docs(username={"$in": new_users}, active=True)
         enrollments = []
         for i, user in enumerate(users):
             self.paths.enrolled_user_path(user, project).mkdir(parents=True)
@@ -393,17 +414,17 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         self._coll.insert_many([uc.model_dump() for uc in enrollments])
 
         for enrollment in enrollments:
-            user = self.user_mgr.get_doc_by_id(enrollment.user_id.id)
+            user = self._user_mgr.get_doc_by_id(enrollment.user_id.id)
             if not user:
                 continue
 
             if create_login_node:
-                self.ctf_base.user_cluster_mgr.create_cluster(
-                    self.ctf_base.user_cluster_mgr.create_base_user_cluster(
+                self._user_cluster_mgr.create_cluster(
+                    self._user_cluster_mgr.create_base_user_cluster(
                         project, user, enrollment, login_node_type=login_node_type
                     )
                 )
-            n_map = self.ctf_base.user_cluster_mgr.get_network_map((user, project))
+            n_map = self._user_cluster_mgr.get_network_map((user, project))
             self.c_client.create_networks(project.name, [n_map["private"]])
 
         return enrollments
@@ -620,7 +641,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
 
         try:
-            project_cluster = self.ctf_base.project_cluster_mgr.get_cluster(project)
+            project_cluster = self._project_cluster_mgr.get_cluster(project)
         except ProjectClusterNotExistException:
             project_cluster = None
 
@@ -629,7 +650,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             out: list[LeaderBoardItem] = []
             for obj in items:
                 eid = obj["_id"]
-                user_cluster = self.ctf_base.user_cluster_mgr.get_doc_by_filter(
+                user_cluster = self._user_cluster_mgr.get_doc_by_filter(
                     **{"enrollment_id.$id": eid}
                 )
                 total = count_submittable_secret_slots(user_cluster, project_cluster)
@@ -681,10 +702,10 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                 f"User `{user.username}` is not enrolled to the project `{project.name}`"
             )
 
-        cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
-        await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+        cluster = self._user_cluster_mgr.get_cluster(enrollment)
+        await self._user_cluster_mgr.stop_cluster(cluster)
         # self.c_client.rm_network(
-        #     project.name, self.ctf_base.user_cluster_mgr.get_network_map(cluster)["private"]
+        #     project.name, self._user_cluster_mgr.get_network_map(cluster)["private"]
         # )
 
         enrollment.active = False
@@ -711,12 +732,12 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             )
             if enrollment:
                 # Find cluster for this enrollment
-                cluster = self.ctf_base.user_cluster_mgr.get_doc_by_filter(
+                cluster = self._user_cluster_mgr.get_doc_by_filter(
                     **{"enrollment_id.$id": enrollment.id}
                 )
                 if cluster:
                     # clusters_to_delete.append(cluster)
-                    await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+                    await self._user_cluster_mgr.stop_cluster(cluster)
 
                 enroll_ids.append(enrollment.id)
 
@@ -741,8 +762,8 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :raises UserExistsException: When the user document is still active.
         """
         try:
-            user = self.user_mgr.get_user(user_or_username, None)
-            project = self.prj_mgr.get_project(project_or_name, None)
+            user = self._user_mgr.get_user(user_or_username, None)
+            project = self._prj_mgr.get_project(project_or_name, None)
         except (UserNotExistsException, ProjectNotExistException):
             return
 
@@ -761,11 +782,11 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
             )
 
         # Get and delete cluster (this will clean up scenarios)
-        cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
-        n_map = self.ctf_base.user_cluster_mgr.get_network_map(cluster)
+        cluster = self._user_cluster_mgr.get_cluster(enrollment)
+        n_map = self._user_cluster_mgr.get_network_map(cluster)
         self.c_client.rm_network(project.name, n_map["private"])
 
-        await self.ctf_base.user_cluster_mgr.delete_cluster(cluster)
+        await self._user_cluster_mgr.delete_cluster(cluster)
 
         # Remove enrollment directory (should be empty after cluster deletion)
         enrolled_user_path = self.paths.enrolled_user_path(user, project)
@@ -827,10 +848,10 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :type project_or_name: str | _project.Project
         :raises ProjectNotExistException: Project data was not found in the database.
         """
-        project = self.prj_mgr.get_project(project_or_name, None)
+        project = self._prj_mgr.get_project(project_or_name, None)
         pairs_user_project = [
             (user, project)
-            for user in self.user_mgr.get_docs(username={"$in": lof_usernames})
+            for user in self._user_mgr.get_docs(username={"$in": lof_usernames})
         ]
         await self.disable_multiple_enrollments(pairs_user_project)
         await self.flush_multiple_enrollments(pairs_user_project)
@@ -844,7 +865,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :type project_or_name: str | _project.Project
         :raises ProjectNotExistException: Project data was not found in the database.
         """
-        project = self.prj_mgr.get_project(project_or_name, None)
+        project = self._prj_mgr.get_project(project_or_name, None)
         pairs_user_project = [
             (user, project) for user in self.get_enrollments_for_project(project)
         ]
@@ -868,5 +889,5 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
 
     async def delete_all(self):
         """Remove all canceled enrollments."""
-        for prj in self.prj_mgr.get_docs():
+        for prj in self._prj_mgr.get_docs():
             await self.cancel_all_project_enrollments(prj)

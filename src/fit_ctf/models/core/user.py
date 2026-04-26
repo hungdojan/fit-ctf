@@ -9,9 +9,15 @@ from cryptography.exceptions import UnsupportedAlgorithm
 from cryptography.hazmat.primitives import serialization
 from passlib.hash import sha512_crypt
 from pymongo.database import Database
+from pymongo.collection import Collection
 
 from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.auth.auth_interface import AuthInterface
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.types import NewUserDict, UserInfoDict, UserRole
 from fit_ctf.models.core.base import Base, BaseManagerInterface
@@ -28,8 +34,8 @@ from fit_ctf.templates import TEMPLATE_PATH_MAP, get_template
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="passlib")
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base as ctf_base
     import fit_ctf.models.core.enrollment as enroll
+    import fit_ctf.models.infra.user_cluster as user_cluster
 
 
 class User(Base):
@@ -73,26 +79,37 @@ class UserManager(BaseManagerInterface[User]):
 
     def __init__(
         self,
-        ctf_base: "ctf_base.CTFBase",
         db: Database,
+        coll: Collection,
+        model_cls: type[User],
+        enroll_mgr: "enroll.EnrollmentManager",
+        user_cluster_mgr: "user_cluster.UserClusterManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+        logger: LoggerInterface,
     ):
         """Constructor method.
 
         :param db: A MongoDB database object.
         :type db: Database
-        :param paths: A list of content paths.
-        :type paths: PathDict
+        :param coll: MongoDB collection object.
+        :type coll: Collection
+        :param model_cls: Model class for User.
+        :type model_cls: type[User]
+        :param enroll_mgr: Enrollment manager instance.
+        :type enroll_mgr: EnrollmentManager
+        :param user_cluster_mgr: User cluster manager instance.
+        :type user_cluster_mgr: UserClusterManager
+        :param c_client: Container client interface.
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance.
+        :type paths: PathManagement
+        :param logger: Logger interface.
+        :type logger: LoggerInterface
         """
-        super().__init__(ctf_base, db, db["user"], User)
-
-    @property
-    def enroll_mgr(self) -> "enroll.EnrollmentManager":
-        """Returns a user enroll manager.
-
-        :return: An enrollment manager initialized in UserManager.
-        :rtype: enrollment.EnrollmentManager
-        """
-        return self.ctf_base.enroll_mgr
+        super().__init__(db, coll, model_cls, c_client, paths, logger)
+        self._enroll_mgr = enroll_mgr
+        self._user_cluster_mgr = user_cluster_mgr
 
     def get_user(
         self, user_or_username: str | User, active: bool | None = True
@@ -197,7 +214,7 @@ class UserManager(BaseManagerInterface[User]):
         shadow_path = self.paths.user_path(user) / "shadow"
 
         # calculate and update hash for shadow
-        self.ctf_base.logger.debug(f"Updating `{shadow_path.resolve()}`")
+        self.logger.debug(f"Updating `{shadow_path.resolve()}`")
         self._generate_shadow(user.username, password, str(shadow_path.resolve()))
 
         # calculate hash to store to the database
@@ -245,7 +262,7 @@ class UserManager(BaseManagerInterface[User]):
         home_dir.chmod(0o777)
 
         # generate shadow from file
-        self.ctf_base.logger.debug(f"Generating `{str(shadow_file.resolve())}`")
+        self.logger.debug(f"Generating `{str(shadow_file.resolve())}`")
         self._generate_shadow(username, password, str(shadow_file.resolve()))
 
         user = self.create_and_insert_doc(
@@ -354,16 +371,16 @@ class UserManager(BaseManagerInterface[User]):
         """
         user = self.get_user(username)
 
-        lof_projects = self.enroll_mgr.get_enrolled_projects(user.username)
+        lof_projects = self._enroll_mgr.get_enrolled_projects(user.username)
         for project in lof_projects:
             try:
-                enrollment = self.enroll_mgr.get_enrollment(user, project)
-                cluster = self.ctf_base.user_cluster_mgr.get_cluster(enrollment)
-                await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+                enrollment = self._enroll_mgr.get_enrollment(user, project)
+                cluster = self._user_cluster_mgr.get_cluster(enrollment)
+                await self._user_cluster_mgr.stop_cluster(cluster)
             except CTFBaseException:  # pragma: no cover
                 pass  # Cluster doesn't exist or already stopped
 
-        await self.enroll_mgr.cancel_user_from_all_projects(user)
+        await self._enroll_mgr.cancel_user_from_all_projects(user)
         user.active = False
         self.update_doc(user)
 
@@ -399,12 +416,12 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(user)
+            await self._user_cluster_mgr.stop_all_clusters_of_a_user(user)
             pairs.extend(
-                [(user, prj) for prj in self.enroll_mgr.get_enrolled_projects(user)]
+                [(user, prj) for prj in self._enroll_mgr.get_enrolled_projects(user)]
             )
 
-        await self.enroll_mgr.disable_multiple_enrollments(pairs)
+        await self._enroll_mgr.disable_multiple_enrollments(pairs)
         self.collection.update_many(
             {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
         )
@@ -425,14 +442,14 @@ class UserManager(BaseManagerInterface[User]):
             pairs.extend(
                 [
                     (user, prj)
-                    for prj in self.enroll_mgr.get_enrolled_projects(user, True)
+                    for prj in self._enroll_mgr.get_enrolled_projects(user, True)
                 ]
             )
             path = self.paths.user_path(user)
             if path.exists():
                 shutil.rmtree(path)
 
-        await self.enroll_mgr.flush_multiple_enrollments(pairs)
+        await self._enroll_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
     async def delete_a_user(self, username: str):

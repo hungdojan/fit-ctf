@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, Self, cast, overload
 
 from bson import DBRef
 from pymongo.database import Database
+from pymongo.collection import Collection
 
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.path_mgmt import PathManagement
 import fit_ctf.models.core.project as project_module
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, ProjectNetworkMap
 from fit_ctf.models.infra.cluster_document import ClusterDocument
@@ -21,7 +27,6 @@ from fit_ctf.models.utils.exceptions import (
 )
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base
     import fit_ctf.models.core.project as project
 
 
@@ -77,15 +82,35 @@ class ProjectCluster(ClusterDocument):
 class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
     """Manager for project cluster operations and lifecycle."""
 
-    def __init__(self, ctf_base: "fit_ctf.ctf_base.CTFBase", db: Database):
+    def __init__(
+        self,
+        db: Database,
+        coll: Collection,
+        model_cls: type[ProjectCluster],
+        prj_mgr: "project.ProjectManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+        logger: LoggerInterface,
+    ):
         """Initialize ProjectClusterManager.
 
-        :param ctf_base: CTF base instance
-        :type ctf_base: fit_ctf.ctf_base.CTFBase
         :param db: MongoDB database instance
         :type db: Database
+        :param coll: MongoDB collection object
+        :type coll: Collection
+        :param model_cls: Model class for ProjectCluster
+        :type model_cls: type[ProjectCluster]
+        :param prj_mgr: Project manager instance
+        :type prj_mgr: ProjectManager
+        :param c_client: Container client interface
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance
+        :type paths: PathManagement
+        :param logger: Logger interface
+        :type logger: LoggerInterface
         """
-        super().__init__(ctf_base, db, db["project_cluster"], ProjectCluster)
+        super().__init__(db, coll, model_cls, c_client, paths, logger)
+        self._prj_mgr = prj_mgr
 
     def get_project(self, cluster: ProjectCluster) -> "project.Project":
         """Get project from cluster.
@@ -96,7 +121,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :rtype: project.Project
         :raises ProjectNotExistException: If project not found
         """
-        project = self.ctf_base.prj_mgr.get_doc_by_id(cluster.project_id.id)
+        project = self._prj_mgr.get_doc_by_id(cluster.project_id.id)
         if not project:
             raise ProjectNotExistException(
                 f"Project {str(cluster.project_id.id)} not found"
@@ -242,7 +267,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :raises ProjectNotExistException: If project doesn't exist
         """
         # Validate project exists
-        project = self.ctf_base.prj_mgr.get_doc_by_id(cluster.project_id.id)
+        project = self._prj_mgr.get_doc_by_id(cluster.project_id.id)
         if not project:
             raise ProjectNotExistException(
                 f"Project {cluster.project_id.id} not found."
@@ -320,14 +345,14 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
 
         # Check if already running before starting
         if await self.cluster_is_running(cluster):
-            self.ctf_base.logger.info(
+            self.logger.info(
                 f"project_cluster start skipped (already running) cluster={cluster.name} "
                 f"project={project.name}",
                 logger_name=CLUSTER_LOGGER_NAME,
             )
             return 0
 
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster start cluster={cluster.name} project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
@@ -336,7 +361,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             self.get_compose_files(cluster),
             to_stdout=verbose,
         )
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster start done cluster={cluster.name} project={project.name} "
             f"exit_code={error_code}",
             logger_name=CLUSTER_LOGGER_NAME,
@@ -356,7 +381,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :rtype: ErrorCode
         """
         project = self.get_project(cluster)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster stop cluster={cluster.name} project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
@@ -365,7 +390,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             self.get_compose_files(cluster),
             to_stdout=verbose,
         )
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster stop done cluster={cluster.name} project={project.name} "
             f"exit_code={error_code} teardown={ran_teardown}",
             logger_name=CLUSTER_LOGGER_NAME,
@@ -395,13 +420,13 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :rtype: ErrorCode
         """
         project = self.get_project(cluster)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster restart cluster={cluster.name} project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
         stop_code = await self.stop_cluster(cluster, verbose=verbose)
         start_code = await self.start_cluster(cluster, verbose=verbose)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"project_cluster restart done cluster={cluster.name} project={project.name} "
             f"stop_exit={stop_code} start_exit={start_code}",
             logger_name=CLUSTER_LOGGER_NAME,

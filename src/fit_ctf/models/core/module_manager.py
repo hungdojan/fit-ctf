@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 import yaml
 
 from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.components.base import BaseComponent
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
@@ -21,32 +20,24 @@ from fit_ctf.models.utils.exceptions import (
 from fit_ctf.templates import TEMPLATE_PATH_MAP
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base as ctf_base
     import fit_ctf.models.core.enrollment as enroll
     import fit_ctf.models.core.project as prj
     import fit_ctf.models.core.user as _user
 
 
-class ModuleManager(BaseComponent):
+class ModuleManager:
 
-    def __init__(self, ctf_base: "ctf_base.CTFBase"):
-        super().__init__(ctf_base)
-
-    @property
-    def prj_mgr(self) -> "prj.ProjectManager":
-        return self.ctf_base.prj_mgr
-
-    @property
-    def enroll_mgr(self) -> "enroll.EnrollmentManager":
-        return self.ctf_base.enroll_mgr
-
-    @property
-    def c_client(self) -> ContainerClientInterface:
-        return self.ctf_base.c_client
-
-    @property
-    def paths(self) -> PathManagement:
-        return self.ctf_base.paths
+    def __init__(
+        self,
+        prj_mgr: "prj.ProjectManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+    ):
+        self._prj_mgr = prj_mgr
+        self._enroll_mgr = enroll_mgr
+        self._c_client = c_client
+        self._paths = paths
 
     def create_module(self, module_name: str):
         """Create a template module.
@@ -54,7 +45,7 @@ class ModuleManager(BaseComponent):
         :param module_name: A name of the module.
         :type module_name: str
         """
-        dst_path = self.paths.module_global / module_name
+        dst_path = self._paths.module_global / module_name
         if dst_path.is_dir():
             raise ModuleExistsException(f"Module `{module_name}` already exists.")
 
@@ -64,14 +55,14 @@ class ModuleManager(BaseComponent):
     def list_modules(self) -> dict[str, pathlib.Path]:
         """Get a listing of modules on the host."""
         out = {}
-        for path in self.paths.module_global.iterdir():
+        for path in self._paths.module_global.iterdir():
             if path.is_dir():
                 out[path.name] = path.resolve()
         return out
 
     def get_path(self, module_name: str) -> pathlib.Path:
         """Get path to the module."""
-        dir_path = self.paths.module_global / module_name
+        dir_path = self._paths.module_global / module_name
         if not dir_path.is_dir():
             raise ModuleNotExistsException(
                 f"Cannot locate a path to module `{module_name}`."
@@ -92,7 +83,7 @@ class ModuleManager(BaseComponent):
         """
         dir_path = self.get_path(module_name)
         image_name = f"fit-ctf/{module_name}"
-        return await self.c_client.build_image(
+        return await self._c_client.build_image(
             logger_name=__name__,
             context_path=dir_path,
             image_name=image_name,
@@ -118,7 +109,7 @@ class ModuleManager(BaseComponent):
 
         def _project_usage(prj: "prj.Project") -> dict[str, int]:
             module_acc = defaultdict(int)
-            for s in self.paths.project_scenarios(prj).iterdir():
+            for s in self._paths.project_scenarios(prj).iterdir():
                 if not s.is_dir() or not (s / "scenario_compose.yaml").exists():
                     continue
                 for module_name, count in _fetch_modules(
@@ -129,7 +120,7 @@ class ModuleManager(BaseComponent):
 
         def _user_usage(user: "_user.User", project: "prj.Project") -> dict[str, int]:
             module_acc = defaultdict(int)
-            user_root = self.paths.enrolled_user_path(user, project)
+            user_root = self._paths.enrolled_user_path(user, project)
             if not user_root.is_dir():
                 return module_acc
             for s in user_root.iterdir():
@@ -145,7 +136,7 @@ class ModuleManager(BaseComponent):
             out = defaultdict(int)
             context_parser = re.compile(r"^services.[^.]*.build.context$")
             image_parser = re.compile(r"^services.[^.]*.image$")
-            module_root = str(self.paths.module_global.resolve())
+            module_root = str(self._paths.module_global.resolve())
 
             try:
                 raw = yaml.safe_load(file_path.read_text())
@@ -168,15 +159,15 @@ class ModuleManager(BaseComponent):
             return out
 
         if project_name:
-            prjs = [self.ctf_base.prj_mgr.get_project(project_name)]
+            prjs = [self._prj_mgr.get_project(project_name)]
         else:
-            prjs = self.ctf_base.prj_mgr.get_docs()
+            prjs = self._prj_mgr.get_docs()
         modules = defaultdict(int)
         for p in prjs:
-            if self.paths.project_scenarios(p).exists():
+            if self._paths.project_scenarios(p).exists():
                 for k, v in _project_usage(p).items():
                     modules[k] += v
-            for u in self.enroll_mgr.get_enrollments_for_project(p):
+            for u in self._enroll_mgr.get_enrollments_for_project(p):
                 for k, v in _user_usage(u, p).items():
                     modules[k] += v
 
@@ -190,5 +181,5 @@ class ModuleManager(BaseComponent):
             raise ModuleInUseException(
                 f"Module `{module_name}` is still used by some services."
             )
-        _ = await self.c_client.rm_images(__name__, module_name, True)
+        _ = await self._c_client.rm_images(__name__, module_name, True)
         rmtree(module_path)

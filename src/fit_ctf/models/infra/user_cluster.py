@@ -6,7 +6,13 @@ from typing import TYPE_CHECKING, Any, Self, cast, overload
 
 from bson import DBRef, ObjectId
 from pymongo.database import Database
+from pymongo.collection import Collection
 
+from fit_ctf.components.container_client.container_client_interface import (
+    ContainerClientInterface,
+)
+from fit_ctf.components.logger.logger_interface import LoggerInterface
+from fit_ctf.path_mgmt import PathManagement
 import fit_ctf.models.core.enrollment as enroll
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, UserNetworkMap
 from fit_ctf.models.infra.cluster_document import ClusterDocument
@@ -30,9 +36,9 @@ from fit_ctf.models.utils.exceptions import (
 from fit_ctf.models.utils.sessions import ProgressSession
 
 if TYPE_CHECKING:
-    import fit_ctf.ctf_base
     import fit_ctf.models.core.project as project
     import fit_ctf.models.core.user as user
+    import fit_ctf.models.infra.project_cluster as project_cluster
 
 
 class UserCluster(ClusterDocument):
@@ -85,15 +91,43 @@ class UserCluster(ClusterDocument):
 class UserClusterManager(ClusterScenarioMixin[UserCluster]):
     """Manager for cluster operations and lifecycle."""
 
-    def __init__(self, ctf_base: "fit_ctf.ctf_base.CTFBase", db: Database):
+    def __init__(
+        self,
+        db: Database,
+        coll: Collection,
+        model_cls: type[UserCluster],
+        prj_mgr: "project.ProjectManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+        project_cluster_mgr: "project_cluster.ProjectClusterManager",
+        c_client: ContainerClientInterface,
+        paths: PathManagement,
+        logger: LoggerInterface,
+    ):
         """Initialize UserClusterManager.
 
-        :param ctf_base: CTF base instance
-        :type ctf_base: fit_ctf.ctf_base.CTFBase
         :param db: MongoDB database instance
         :type db: Database
+        :param coll: MongoDB collection object
+        :type coll: Collection
+        :param model_cls: Model class for UserCluster
+        :type model_cls: type[UserCluster]
+        :param prj_mgr: Project manager instance
+        :type prj_mgr: ProjectManager
+        :param enroll_mgr: Enrollment manager instance
+        :type enroll_mgr: EnrollmentManager
+        :param project_cluster_mgr: Project cluster manager instance
+        :type project_cluster_mgr: ProjectClusterManager
+        :param c_client: Container client interface
+        :type c_client: ContainerClientInterface
+        :param paths: Path management instance
+        :type paths: PathManagement
+        :param logger: Logger interface
+        :type logger: LoggerInterface
         """
-        super().__init__(ctf_base, db, db["user_cluster"], UserCluster)
+        super().__init__(db, coll, model_cls, c_client, paths, logger)
+        self._prj_mgr = prj_mgr
+        self._enroll_mgr = enroll_mgr
+        self._project_cluster_mgr = project_cluster_mgr
 
     @staticmethod
     def create_base_user_cluster(
@@ -145,19 +179,19 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :raises UserNotExistsException: If user not found
         :raises ProjectNotExistException: If project not found
         """
-        enrollment = self.ctf_base.enroll_mgr.get_doc_by_id(enrollment_id)
+        enrollment = self._enroll_mgr.get_doc_by_id(enrollment_id)
         if not enrollment:
             raise EnrollmentNotExistException(
                 f"Enrollment document {str(enrollment_id)} not found."
             )
 
-        user = self.ctf_base.user_mgr.get_doc_by_id(enrollment.user_id.id)
+        user = self._enroll_mgr._user_mgr.get_doc_by_id(enrollment.user_id.id)
         if not user:
             raise UserNotExistsException(
                 f"User document {str(enrollment.user_id.id)} not found."
             )
 
-        project = self.ctf_base.prj_mgr.get_doc_by_id(enrollment.project_id.id)
+        project = self._prj_mgr.get_doc_by_id(enrollment.project_id.id)
         if not project:
             raise ProjectNotExistException(
                 f"Project document {enrollment.project_id.id} not found."
@@ -245,7 +279,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return cast(dict[str, str], dict(self.get_network_map((user, project))))
 
     def _enrollment_for_cluster(self, cluster: UserCluster) -> "enroll.Enrollment":
-        enrollment = self.ctf_base.enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
+        enrollment = self._enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
         if not enrollment:
             raise EnrollmentNotExistException(
                 f"Enrollment {cluster.enrollment_id.id} not found for cluster compile."
@@ -332,7 +366,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :raises EnrollmentNotExistException: If enrollment doesn't exist
         """
         # Validate enrollment exists
-        enrollment = self.ctf_base.enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
+        enrollment = self._enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
         if not enrollment:
             raise EnrollmentNotExistException(
                 f"Enrollment {cluster.enrollment_id.id} not found."
@@ -411,37 +445,35 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
 
         # Ensure project cluster is running first
         try:
-            project_cluster = self.ctf_base.project_cluster_mgr.get_cluster(project)
-            if not await self.ctf_base.project_cluster_mgr.cluster_is_running(
-                project_cluster
-            ):
-                await self.ctf_base.project_cluster_mgr.start_cluster(
+            project_cluster = self._project_cluster_mgr.get_cluster(project)
+            if not await self._project_cluster_mgr.cluster_is_running(project_cluster):
+                await self._project_cluster_mgr.start_cluster(
                     project_cluster, verbose=verbose
                 )
         except ProjectClusterNotExistException:
-            self.ctf_base.logger.debug(
+            self.logger.debug(
                 f"No project cluster for project={project.name}; skipping dependency start",
                 logger_name=CLUSTER_LOGGER_NAME,
             )
         except Exception as e:
-            self.ctf_base.logger.warning(
+            self.logger.warning(
                 f"Could not ensure project cluster is running for project={project.name}: {e}",
                 logger_name=CLUSTER_LOGGER_NAME,
             )
 
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"user_cluster start cluster={cluster.name} user={user.username} "
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
-        enrollment = self.ctf_base.enroll_mgr.get_enrollment(user, project)
-        self.ctf_base.enroll_mgr.record_session(enrollment, ProgressSession.State.START)
+        enrollment = self._enroll_mgr.get_enrollment(user, project)
+        self._enroll_mgr.record_session(enrollment, ProgressSession.State.START)
         error_code = await self.c_client.compose_up(
             project.name,
             self.get_compose_files(cluster),
             to_stdout=verbose,
         )
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"user_cluster start done cluster={cluster.name} user={user.username} "
             f"project={project.name} exit_code={error_code}",
             logger_name=CLUSTER_LOGGER_NAME,
@@ -461,22 +493,20 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :rtype: ErrorCode
         """
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"user_cluster stop cluster={cluster.name} user={user.username} "
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
-        enrollment = self.ctf_base.enroll_mgr.get_enrollment(user, project, None)
+        enrollment = self._enroll_mgr.get_enrollment(user, project, None)
         error_code, success = await self.c_client.compose_down(
             project.name,
             self.get_compose_files(cluster),
             to_stdout=verbose,
         )
         if success:
-            self.ctf_base.enroll_mgr.record_session(
-                enrollment, ProgressSession.State.STOP
-            )
-        self.ctf_base.logger.info(
+            self._enroll_mgr.record_session(enrollment, ProgressSession.State.STOP)
+        self.logger.info(
             f"user_cluster stop done cluster={cluster.name} user={user.username} "
             f"project={project.name} exit_code={error_code} teardown={success}",
             logger_name=CLUSTER_LOGGER_NAME,
@@ -506,14 +536,14 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :rtype: ErrorCode
         """
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"user_cluster restart cluster={cluster.name} user={user.username} "
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
         stop_code = await self.stop_cluster(cluster, verbose=verbose)
         start_code = await self.start_cluster(cluster, verbose=verbose)
-        self.ctf_base.logger.info(
+        self.logger.info(
             f"user_cluster restart done cluster={cluster.name} user={user.username} "
             f"project={project.name} stop_exit={stop_code} start_exit={start_code}",
             logger_name=CLUSTER_LOGGER_NAME,
@@ -579,7 +609,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         """
         for u in users:
             try:
-                enrollment = self.ctf_base.enroll_mgr.get_enrollment(u, project, None)
+                enrollment = self._enroll_mgr.get_enrollment(u, project, None)
                 cluster = self.get_doc_by_filter(**{"enrollment_id.$id": enrollment.id})
                 if cluster:
                     await self.stop_cluster(cluster)
@@ -592,7 +622,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :param project: Project object
         :type project: project.Project
         """
-        users = self.ctf_base.enroll_mgr.get_enrollments_for_project(project)
+        users = self._enroll_mgr.get_enrollments_for_project(project)
         await self.stop_multiple_user_clusters(users, project)
 
     async def stop_all_clusters_of_a_user(self, user: "user.User"):
@@ -601,6 +631,6 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :param user: User object
         :type user: user.User
         """
-        projects = self.ctf_base.enroll_mgr.get_enrolled_projects(user)
+        projects = self._enroll_mgr.get_enrolled_projects(user)
         for p in projects:
             await self.stop_multiple_user_clusters([user], p)
