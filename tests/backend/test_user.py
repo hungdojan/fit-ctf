@@ -73,7 +73,7 @@ async def test_disable_user(connected_data: FixtureData):
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert len(ctf_app.enroll_mgr.get_enrollments_for_project("prj2")) == 2
 
-    await ctf_app.user_mgr.disable_user("user1")
+    await ctf_app.user_mgr.disable_user("user1", ctf_app.enroll_mgr)
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert len(ctf_app.user_mgr.get_users_info(True)) == 2
     assert len(ctf_app.enroll_mgr.get_enrollments_for_project("prj2")) == 1
@@ -86,7 +86,7 @@ async def test_flush_user(connected_data: FixtureData):
     with pytest.raises(UserExistsException):
         ctf_app.user_mgr.flush_user("user1")
 
-    await ctf_app.user_mgr.disable_user("user1")
+    await ctf_app.user_mgr.disable_user("user1", ctf_app.enroll_mgr)
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert (ctf_app.paths.user_global / "user1").is_dir()
 
@@ -101,7 +101,7 @@ async def test_delete_user(connected_data: FixtureData):
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert (ctf_app.paths.user_global / "user1").is_dir()
 
-    await ctf_app.user_mgr.delete_a_user("user1")
+    await ctf_app.user_mgr.delete_a_user("user1", ctf_app.enroll_mgr)
 
     assert len(ctf_app.user_mgr.get_docs()) == 2
     assert not (ctf_app.paths.user_global / "user1").is_dir()
@@ -113,7 +113,7 @@ async def test_delete_multiple_users(connected_data: FixtureData):
     assert len(ctf_app.user_mgr.get_docs()) == 3
     assert len(list(ctf_app.paths.user_global.iterdir())) == 3
 
-    await ctf_app.user_mgr.delete_users(["user1", "user2", "user4"])
+    await ctf_app.user_mgr.delete_users(["user1", "user2", "user4"], ctf_app.enroll_mgr)
 
     assert len(ctf_app.user_mgr.get_docs()) == 1
     assert len(list(ctf_app.paths.user_global.iterdir())) == 1

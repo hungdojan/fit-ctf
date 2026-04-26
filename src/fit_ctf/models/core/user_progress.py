@@ -34,23 +34,21 @@ class UserProgress(BaseModel):
 class UserProgressManager:
     def __init__(
         self,
-        prj_mgr: "project.ProjectManager",
         user_cluster_mgr: "user_cluster.UserClusterManager",
         project_cluster_mgr: "project_cluster.ProjectClusterManager",
-        enroll_mgr: "enroll.EnrollmentManager",
     ):
-        self._prj_mgr = prj_mgr
         self._user_cluster_mgr = user_cluster_mgr
         self._project_cluster_mgr = project_cluster_mgr
-        self._enroll_mgr = enroll_mgr
 
-    def _clusters_for_submission(self, enrollment: "enroll.Enrollment"):
+    def _clusters_for_submission(
+        self, enrollment: "enroll.Enrollment", prj_mgr: "project.ProjectManager"
+    ):
         from fit_ctf.models.utils.exceptions import ProjectClusterNotExistException
 
         user_cluster = self._user_cluster_mgr.get_doc_by_filter(
             **{"enrollment_id.$id": enrollment.id}
         )
-        project = self._prj_mgr.get_doc_by_id(enrollment.project_id.id)
+        project = prj_mgr.get_doc_by_id(enrollment.project_id.id)
         project_cluster = None
         if project:
             try:
@@ -59,7 +57,13 @@ class UserProgressManager:
                 project_cluster = None
         return user_cluster, project_cluster
 
-    def submit_secret(self, enrollment: "enroll.Enrollment", value: str):
+    def submit_secret(
+        self,
+        enrollment: "enroll.Enrollment",
+        value: str,
+        prj_mgr: "project.ProjectManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+    ):
         """Validate submitted string against merged cluster secrets; log every attempt."""
         progress = enrollment.progress
         now = datetime.now().astimezone()
@@ -67,16 +71,18 @@ class UserProgressManager:
             SecretSubmissionLogEntry(value=value, timestamp=now)
         )
 
-        user_cluster, project_cluster = self._clusters_for_submission(enrollment)
+        user_cluster, project_cluster = self._clusters_for_submission(
+            enrollment, prj_mgr
+        )
         merged = merged_submission_secret_map(user_cluster, project_cluster)
         matching = [cid for cid, expected in merged.items() if expected == value]
         if not matching:
-            self._enroll_mgr.update_doc(enrollment)
+            enroll_mgr.update_doc(enrollment)
             raise SecretNotFoundException("Submitted secret not found.")
 
         composite_id = sorted(matching)[0]
         if composite_id in progress.solved_secrets:
-            self._enroll_mgr.update_doc(enrollment)
+            enroll_mgr.update_doc(enrollment)
             raise SecretAlreadySubmittedException("This secret was already submitted")
 
         kind, scenario_name, local_name = parse_composite_secret_id(composite_id)
@@ -90,12 +96,17 @@ class UserProgressManager:
         )
         progress.found_secrets = len(progress.solved_secrets)
         progress.last_submit_time = now
-        self._enroll_mgr.update_doc(enrollment)
+        enroll_mgr.update_doc(enrollment)
 
     def list_secrets_for_display(
-        self, enrollment: "enroll.Enrollment", show_flag: bool = False
+        self,
+        enrollment: "enroll.Enrollment",
+        prj_mgr: "project.ProjectManager",
+        show_flag: bool = False,
     ) -> list[SecretInfo]:
-        user_cluster, project_cluster = self._clusters_for_submission(enrollment)
+        user_cluster, project_cluster = self._clusters_for_submission(
+            enrollment, prj_mgr
+        )
         merged = merged_submission_secret_map(user_cluster, project_cluster)
         solved = enrollment.progress.solved_secrets
         items: list[SecretInfo] = []
@@ -110,18 +121,23 @@ class UserProgressManager:
             )
         return items
 
-    def count_submittable_slots(self, enrollment: "enroll.Enrollment") -> int:
-        user_cluster, project_cluster = self._clusters_for_submission(enrollment)
+    def count_submittable_slots(
+        self, enrollment: "enroll.Enrollment", prj_mgr: "project.ProjectManager"
+    ) -> int:
+        user_cluster, project_cluster = self._clusters_for_submission(
+            enrollment, prj_mgr
+        )
         return len(merged_submission_secret_map(user_cluster, project_cluster))
 
     def record_session(
         self,
         enrollment: "enroll.Enrollment",
         state: ProgressSession.State,
+        enroll_mgr: "enroll.EnrollmentManager",
         info: dict[str, Any] = {},
     ):
         timestamp = datetime.now().astimezone()
         enrollment.progress.sessions.append(
             ProgressSession(timestamp=timestamp, state=state, info=info)
         )
-        self._enroll_mgr.update_doc(enrollment)
+        enroll_mgr.update_doc(enrollment)

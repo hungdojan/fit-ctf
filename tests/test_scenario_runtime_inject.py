@@ -66,13 +66,7 @@ def scenario_manager_for_scenarios_root(scenarios_root: Path) -> ScenarioManager
     paths = Mock(spec=PathManagement)
     paths.scenario_global = scenarios_root
 
-    # Create mocks for dependencies not used in these tests
-    user_cluster_mgr = Mock()
-    enroll_mgr = Mock()
-
-    return ScenarioManager(
-        paths=paths, user_cluster_mgr=user_cluster_mgr, enroll_mgr=enroll_mgr
-    )
+    return ScenarioManager(paths=paths)
 
 
 def test_inject_fetch_variables_port_env_volume(tmp_path: Path):

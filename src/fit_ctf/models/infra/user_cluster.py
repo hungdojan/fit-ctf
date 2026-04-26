@@ -13,6 +13,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.path_mgmt import PathManagement
+from fit_ctf.models.core.repository import EntityRepository
 import fit_ctf.models.core.enrollment as enroll
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, UserNetworkMap
 from fit_ctf.models.infra.cluster_document import ClusterDocument
@@ -24,14 +25,11 @@ from fit_ctf.models.infra.config_models import (
     VolumeConfig,
 )
 from fit_ctf.models.utils.exceptions import (
-    EnrollmentNotExistException,
     ProjectClusterNotExistException,
-    ProjectNotExistException,
     ScenarioConfigNotExistException,
     UserClusterExistException,
     UserClusterNotExistException,
     UserNotEnrolledToProjectException,
-    UserNotExistsException,
 )
 from fit_ctf.models.utils.sessions import ProgressSession
 
@@ -96,8 +94,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         db: Database,
         coll: Collection,
         model_cls: type[UserCluster],
-        prj_mgr: "project.ProjectManager",
-        enroll_mgr: "enroll.EnrollmentManager",
+        repo: EntityRepository,
         project_cluster_mgr: "project_cluster.ProjectClusterManager",
         c_client: ContainerClientInterface,
         paths: PathManagement,
@@ -111,10 +108,8 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :type coll: Collection
         :param model_cls: Model class for UserCluster
         :type model_cls: type[UserCluster]
-        :param prj_mgr: Project manager instance
-        :type prj_mgr: ProjectManager
-        :param enroll_mgr: Enrollment manager instance
-        :type enroll_mgr: EnrollmentManager
+        :param repo: Entity repository
+        :type repo: EntityRepository
         :param project_cluster_mgr: Project cluster manager instance
         :type project_cluster_mgr: ProjectClusterManager
         :param c_client: Container client interface
@@ -125,8 +120,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :type logger: LoggerInterface
         """
         super().__init__(db, coll, model_cls, c_client, paths, logger)
-        self._prj_mgr = prj_mgr
-        self._enroll_mgr = enroll_mgr
+        self._repo = repo
         self._project_cluster_mgr = project_cluster_mgr
 
     @staticmethod
@@ -179,24 +173,9 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :raises UserNotExistsException: If user not found
         :raises ProjectNotExistException: If project not found
         """
-        enrollment = self._enroll_mgr.get_doc_by_id(enrollment_id)
-        if not enrollment:
-            raise EnrollmentNotExistException(
-                f"Enrollment document {str(enrollment_id)} not found."
-            )
-
-        user = self._enroll_mgr._user_mgr.get_doc_by_id(enrollment.user_id.id)
-        if not user:
-            raise UserNotExistsException(
-                f"User document {str(enrollment.user_id.id)} not found."
-            )
-
-        project = self._prj_mgr.get_doc_by_id(enrollment.project_id.id)
-        if not project:
-            raise ProjectNotExistException(
-                f"Project document {enrollment.project_id.id} not found."
-            )
-
+        enrollment = self._repo.get_enrollment_by_id(enrollment_id)
+        user = self._repo.get_user_by_id(enrollment.user_id.id)
+        project = self._repo.get_project_by_id(enrollment.project_id.id)
         return user, project
 
     @overload
@@ -279,12 +258,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return cast(dict[str, str], dict(self.get_network_map((user, project))))
 
     def _enrollment_for_cluster(self, cluster: UserCluster) -> "enroll.Enrollment":
-        enrollment = self._enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
-        if not enrollment:
-            raise EnrollmentNotExistException(
-                f"Enrollment {cluster.enrollment_id.id} not found for cluster compile."
-            )
-        return enrollment
+        return self._repo.get_enrollment_by_id(cluster.enrollment_id.id)
 
     def _volume_context_extras(
         self, cluster: UserCluster, compile_destination: pathlib.Path
@@ -366,11 +340,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :raises EnrollmentNotExistException: If enrollment doesn't exist
         """
         # Validate enrollment exists
-        enrollment = self._enroll_mgr.get_doc_by_id(cluster.enrollment_id.id)
-        if not enrollment:
-            raise EnrollmentNotExistException(
-                f"Enrollment {cluster.enrollment_id.id} not found."
-            )
+        enrollment = self._repo.get_enrollment_by_id(cluster.enrollment_id.id)
 
         # Check if cluster already exists for this enrollment
         existing_cluster = self.get_doc_by_filter(
@@ -400,11 +370,15 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
 
         return cluster
 
-    async def delete_cluster(self, cluster_or_name: str | UserCluster):
+    async def delete_cluster(
+        self, cluster_or_name: str | UserCluster, enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Delete a cluster and clean up its resources.
 
         :param cluster_or_name: UserCluster object or cluster name
         :type cluster_or_name: str | UserCluster
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         :raises UserClusterNotExistException: If cluster doesn't exist
         """
         if isinstance(cluster_or_name, str):
@@ -415,7 +389,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             cluster = cluster_or_name
 
         try:
-            await self.stop_cluster(cluster)
+            await self.stop_cluster(cluster, enroll_mgr)
         except FileNotFoundError:
             pass
         self.remove_doc_by_id(cluster.id)
@@ -430,12 +404,18 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
                 shutil.rmtree(scenario_dir)
 
     async def start_cluster(
-        self, cluster: UserCluster, *, verbose: bool = False
+        self,
+        cluster: UserCluster,
+        enroll_mgr: "enroll.EnrollmentManager",
+        *,
+        verbose: bool = False,
     ) -> ErrorCode:
         """Start a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         :param verbose: Stream compose engine output to the terminal as well as log files
         :type verbose: bool
         :return: An exit code
@@ -466,8 +446,8 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
-        enrollment = self._enroll_mgr.get_enrollment(user, project)
-        self._enroll_mgr.record_session(enrollment, ProgressSession.State.START)
+        enrollment = self._repo.get_enrollment(user, project)
+        enroll_mgr.record_session(enrollment, ProgressSession.State.START, enroll_mgr)
         error_code = await self.c_client.compose_up(
             project.name,
             self.get_compose_files(cluster),
@@ -481,12 +461,18 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return error_code
 
     async def stop_cluster(
-        self, cluster: UserCluster, *, verbose: bool = False
+        self,
+        cluster: UserCluster,
+        enroll_mgr: "enroll.EnrollmentManager",
+        *,
+        verbose: bool = False,
     ) -> ErrorCode:
         """Stop a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         :param verbose: Stream compose engine output to the terminal as well as log files
         :type verbose: bool
         :return: An exit code
@@ -498,14 +484,16 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
-        enrollment = self._enroll_mgr.get_enrollment(user, project, None)
+        enrollment = self._repo.get_enrollment(user, project, active=None)
         error_code, success = await self.c_client.compose_down(
             project.name,
             self.get_compose_files(cluster),
             to_stdout=verbose,
         )
         if success:
-            self._enroll_mgr.record_session(enrollment, ProgressSession.State.STOP)
+            enroll_mgr.record_session(
+                enrollment, ProgressSession.State.STOP, enroll_mgr
+            )
         self.logger.info(
             f"user_cluster stop done cluster={cluster.name} user={user.username} "
             f"project={project.name} exit_code={error_code} teardown={success}",
@@ -524,12 +512,18 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return len(await self.c_client.compose_ps(self.get_compose_files(cluster))) > 0
 
     async def restart_cluster(
-        self, cluster: UserCluster, *, verbose: bool = False
+        self,
+        cluster: UserCluster,
+        enroll_mgr: "enroll.EnrollmentManager",
+        *,
+        verbose: bool = False,
     ) -> ErrorCode:
         """Restart a cluster.
 
         :param cluster: UserCluster object
         :type cluster: UserCluster
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         :param verbose: Stream compose engine output to the terminal as well as log files
         :type verbose: bool
         :return: An exit code
@@ -541,8 +535,8 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             f"project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
-        stop_code = await self.stop_cluster(cluster, verbose=verbose)
-        start_code = await self.start_cluster(cluster, verbose=verbose)
+        stop_code = await self.stop_cluster(cluster, enroll_mgr, verbose=verbose)
+        start_code = await self.start_cluster(cluster, enroll_mgr, verbose=verbose)
         self.logger.info(
             f"user_cluster restart done cluster={cluster.name} user={user.username} "
             f"project={project.name} stop_exit={stop_code} start_exit={start_code}",
@@ -598,7 +592,10 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         )
 
     async def stop_multiple_user_clusters(
-        self, users: list["user.User"], project: "project.Project"
+        self,
+        users: list["user.User"],
+        project: "project.Project",
+        enroll_mgr: "enroll.EnrollmentManager",
     ):
         """Stop multiple user clusters.
 
@@ -606,31 +603,41 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :type users: list[user.User]
         :param project: Project object
         :type project: project.Project
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         """
         for u in users:
             try:
-                enrollment = self._enroll_mgr.get_enrollment(u, project, None)
+                enrollment = self._repo.get_enrollment(u, project, active=None)
                 cluster = self.get_doc_by_filter(**{"enrollment_id.$id": enrollment.id})
                 if cluster:
-                    await self.stop_cluster(cluster)
+                    await self.stop_cluster(cluster, enroll_mgr)
             except UserNotEnrolledToProjectException:
                 pass
 
-    async def stop_all_user_clusters(self, project: "project.Project"):
+    async def stop_all_user_clusters(
+        self, project: "project.Project", enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Stop all user clusters in the project.
 
         :param project: Project object
         :type project: project.Project
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         """
-        users = self._enroll_mgr.get_enrollments_for_project(project)
-        await self.stop_multiple_user_clusters(users, project)
+        users = enroll_mgr.get_enrollments_for_project(project)
+        await self.stop_multiple_user_clusters(users, project, enroll_mgr)
 
-    async def stop_all_clusters_of_a_user(self, user: "user.User"):
+    async def stop_all_clusters_of_a_user(
+        self, user: "user.User", enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Stop all running clusters of a user.
 
         :param user: User object
         :type user: user.User
+        :param enroll_mgr: Enrollment manager
+        :type enroll_mgr: EnrollmentManager
         """
-        projects = self._enroll_mgr.get_enrolled_projects(user)
+        projects = enroll_mgr.get_enrolled_projects(user)
         for p in projects:
-            await self.stop_multiple_user_clusters([user], p)
+            await self.stop_multiple_user_clusters([user], p, enroll_mgr)

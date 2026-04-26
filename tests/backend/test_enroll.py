@@ -136,17 +136,17 @@ def test_enroll_multiple_users_to_project(
 
     with pytest.raises(MaxUserCountReachedException):
         enroll_mgr.enroll_multiple_users_to_project(
-            [f"user{i+1}" for i in range(5)], "prj1"
+            [f"user{i+1}" for i in range(5)], "prj1", user_mgr
         )
 
     assert len(enroll_mgr.get_enrollments_for_project("prj1")) == 0
-    ucs = enroll_mgr.enroll_multiple_users_to_project(new_usernames, "prj1")
+    ucs = enroll_mgr.enroll_multiple_users_to_project(new_usernames, "prj1", user_mgr)
     assert len(ucs) == len(new_usernames)
     assert len(ucs) == len(enroll_mgr.get_enrollments_for_project("prj1"))
 
     assert set([uc.user_id.id for uc in ucs]) == set([u.id for u in new_users])
     ucs = enroll_mgr.enroll_multiple_users_to_project(
-        [f"user{i+3}" for i in range(3)], "prj1"
+        [f"user{i+3}" for i in range(3)], "prj1", user_mgr
     )
 
     assert len(ucs) == 1
@@ -184,7 +184,7 @@ async def test_get_enrollments_info(connected_data: FixtureData):
         and len(enroll_mgr.get_enrolled_projects_raw(user2)) == 2
     )
 
-    await prj_mgr.disable_project(prj1)
+    await prj_mgr.disable_project(prj1, ctf_app.enroll_mgr)
     all_prjs = enroll_mgr.get_all_enrolled_projects_raw(user2)
     assert len(all_prjs) == 2 and len([p for p in all_prjs if p["active"]]) == 1
 
@@ -314,7 +314,9 @@ async def test_cancel_multiple_enrollments(connected_data: FixtureData):
 
     prj1 = prj_mgr.get_project("prj1")
     assert len(enroll_mgr.get_enrollments_for_project(prj1)) == 2
-    await enroll_mgr.cancel_multiple_enrollments([f"user{i+1}" for i in range(3)], prj1)
+    await enroll_mgr.cancel_multiple_enrollments(
+        [f"user{i+1}" for i in range(3)], prj1, ctf_app.user_mgr
+    )
     assert len(enroll_mgr.get_enrollments_for_project(prj1)) == 0
 
 
@@ -345,5 +347,5 @@ async def test_delete_all(connected_data: FixtureData):
     enroll_mgr = ctf_app.enroll_mgr
 
     assert len(enroll_mgr.get_docs()) == 4
-    await enroll_mgr.delete_all()
+    await enroll_mgr.delete_all(ctf_app.prj_mgr)
     assert not enroll_mgr.get_docs()

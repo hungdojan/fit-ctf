@@ -201,8 +201,8 @@ def change_password(ctx: click.Context, username: str, password: str):
 @click.pass_context
 def delete_user(ctx: click.Context, usernames: list[str]):
     """Remove user from the database."""
-    user_mgr: UserManager = ctx.parent.obj["ctf_app"].user_mgr  # pyright: ignore
-    asyncio.run(user_mgr.delete_users(usernames))
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    asyncio.run(ctf_app.user_mgr.delete_users(usernames, ctf_app.enroll_mgr))
 
 
 @user.command(name="upload-key")

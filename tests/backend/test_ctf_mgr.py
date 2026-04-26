@@ -174,8 +174,8 @@ async def test_setup_env_from_file(empty_data: FixtureData):
     with pytest.raises(CTFBaseException):
         ctf_app.setup_env_from_file(fixture_path() / "user_data.yaml")
 
-    await ctf_app.prj_mgr.delete_all()
-    await ctf_app.user_mgr.delete_all()
+    await ctf_app.prj_mgr.delete_all(ctf_app.enroll_mgr)
+    await ctf_app.user_mgr.delete_all(ctf_app.enroll_mgr)
 
     new_users = ctf_app.setup_env_from_file(fixture_path() / "connected_data.yaml")
     assert len(ctf_app.prj_mgr.get_docs()) == 2

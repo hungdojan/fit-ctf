@@ -79,12 +79,7 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
             )
         scenario_cfg = cluster.scenario_configs[scenario_name]
         # Create temporary ScenarioManager for validation
-        # Subclasses (UserClusterManager, ProjectClusterManager) have these dependencies
-        sm = ScenarioManager(
-            paths=self.paths,
-            user_cluster_mgr=getattr(self, "_user_cluster_mgr", self),
-            enroll_mgr=getattr(self, "_enroll_mgr", None),
-        )
+        sm = ScenarioManager(paths=self.paths)
         warnings = sm.validate_scenario_config_against_templates(
             scenario_name, scenario_cfg
         )

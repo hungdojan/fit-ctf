@@ -92,7 +92,7 @@ def test_cli_remove_module(cli_data: CLIData):
     assert re.match("Cannot locate", result.output)
 
     for prj in list(ctf_app.prj_mgr.get_docs()):
-        asyncio.run(ctf_app.prj_mgr.delete_project(prj))
+        asyncio.run(ctf_app.prj_mgr.delete_project(prj, ctf_app.enroll_mgr))
 
     cmd = "module rm -mn template".split()
     result = cli_runner.invoke(cli, cmd)

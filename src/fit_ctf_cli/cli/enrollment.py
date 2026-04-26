@@ -80,6 +80,7 @@ def enroll_multiple_to_project(
         enrollments = ctf_app.enroll_mgr.enroll_multiple_users_to_project(
             usernames,
             project_name,
+            ctf_app.user_mgr,
             create_login_node=login_node_type is not None,
             login_node_type=login_node_type,
         )
@@ -132,7 +133,9 @@ def cancel_multiple_enrollment(
             usernames = [line.strip() for line in f]
 
         asyncio.run(
-            ctf_app.enroll_mgr.cancel_multiple_enrollments(usernames, project_name)
+            ctf_app.enroll_mgr.cancel_multiple_enrollments(
+                usernames, project_name, ctf_app.user_mgr
+            )
         )
     except FileNotFoundError:
         click.echo(f"File `{str(input_file.resolve())}` does not exist.")

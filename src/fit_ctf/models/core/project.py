@@ -12,6 +12,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.path_mgmt import PathManagement
+from fit_ctf.models.core.repository import EntityRepository
 import fit_ctf.models.infra.project_cluster as prj_cluster
 from fit_ctf.components.constants import DEFAULT_STARTING_PORT
 from fit_ctf.components.types import (
@@ -71,7 +72,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         db: Database,
         coll: Collection,
         model_cls: type[Project],
-        enroll_mgr: "enroll.EnrollmentManager",
+        repo: EntityRepository,
         project_cluster_mgr: "prj_cluster.ProjectClusterManager",
         user_cluster_mgr: "user_cluster.UserClusterManager",
         c_client: ContainerClientInterface,
@@ -100,7 +101,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         :type logger: LoggerInterface
         """
         super().__init__(db, coll, model_cls, c_client, paths, logger)
-        self._enroll_mgr = enroll_mgr
+        self._repo = repo
         self._project_cluster_mgr = project_cluster_mgr
         self._user_cluster_mgr = user_cluster_mgr
 
@@ -256,7 +257,11 @@ class ProjectManager(BaseManagerInterface[Project]):
         return prj
 
     def generate_port_forwarding_script(
-        self, project_or_name: str | Project, dest_ip_addr: str, filename: str
+        self,
+        project_or_name: str | Project,
+        dest_ip_addr: str,
+        filename: str,
+        enroll_mgr: "enroll.EnrollmentManager",
     ):
         """Generate a port forwarding script.
 
@@ -266,11 +271,13 @@ class ProjectManager(BaseManagerInterface[Project]):
         :type dest_ip_addr: str
         :param filename: And output filename.
         :type filename: str
+        :param enroll_mgr: Enrollment manager for enrollment queries.
+        :type enroll_mgr: EnrollmentManager
         :raises ProjectNotExistException: Project data were not found in the database.
         """
         prj = self.get_project(project_or_name)
 
-        lof_user_enrolls = self._enroll_mgr.get_docs_raw(
+        lof_user_enrolls = enroll_mgr.get_docs_raw(
             filter={"project_id.$id": prj.id, "active": True},
             projection={"_id": 0, "container_port": 1, "forwarded_port": 1},
         )
@@ -291,13 +298,17 @@ class ProjectManager(BaseManagerInterface[Project]):
             f.write("firewall-cmd --zone=public --add-masquerade\n")
         os.chmod(filename, 0o755)
 
-    async def disable_project(self, project_or_name: str | Project):
+    async def disable_project(
+        self, project_or_name: str | Project, enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Set a project object to inactive.
 
         Stops all the clusters and set the object to `active=False`.
 
         :param project_or_name: Project name or the instance.
         :type project_or_name: str | Project
+        :param enroll_mgr: Enrollment manager for enrollment operations.
+        :type enroll_mgr: EnrollmentManager
         """
         prj = self.get_project(project_or_name)
 
@@ -306,24 +317,28 @@ class ProjectManager(BaseManagerInterface[Project]):
             cluster = self._project_cluster_mgr.get_cluster(prj)
             await self._project_cluster_mgr.stop_cluster(cluster)
             # Stop all user clusters
-            await self._user_cluster_mgr.stop_all_user_clusters(prj)
+            await self._user_cluster_mgr.stop_all_user_clusters(prj, enroll_mgr)
 
         except CTFBaseException:  # pragma: no cover
             pass  # No cluster exists
-        await self._enroll_mgr.disable_multiple_enrollments(
-            [(user, prj) for user in self._enroll_mgr.get_enrollments_for_project(prj)]
+        await enroll_mgr.disable_multiple_enrollments(
+            [(user, prj) for user in enroll_mgr.get_enrollments_for_project(prj)]
         )
 
         prj.active = False
         self.update_doc(prj)
 
-    async def flush_project(self, project_or_name: str | Project):
+    async def flush_project(
+        self, project_or_name: str | Project, enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Removes the object document and all the associated files from the host machine.
 
         The project object must be inactive.
 
         :param project_or_name: Project name or the instance.
         :type project_or_name: str | Project
+        :param enroll_mgr: Enrollment manager for enrollment operations.
+        :type enroll_mgr: EnrollmentManager
         :raises ProjectExistsException: When the project is still active.
         """
         prj = self.get_project(project_or_name, None)
@@ -334,11 +349,8 @@ class ProjectManager(BaseManagerInterface[Project]):
         if path.exists():
             shutil.rmtree(path)
 
-        await self._enroll_mgr.flush_multiple_enrollments(
-            [
-                (user, prj)
-                for user in self._enroll_mgr.get_enrollments_for_project(prj, True)
-            ]
+        await enroll_mgr.flush_multiple_enrollments(
+            [(user, prj) for user in enroll_mgr.get_enrollments_for_project(prj, True)]
         )
         await self._project_cluster_mgr.delete_cluster(
             self._project_cluster_mgr.get_cluster(prj)
@@ -348,11 +360,15 @@ class ProjectManager(BaseManagerInterface[Project]):
         for n_name in n_map.values():
             self.c_client.rm_network(prj.name, str(n_name))
 
-    async def delete_project(self, project_or_name: str | Project):
+    async def delete_project(
+        self, project_or_name: str | Project, enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Delete a project.
 
         :param project_or_name: Project name or the instance.
         :type project_or_name: str | Project
+        :param enroll_mgr: Enrollment manager.
+        :type enroll_mgr: EnrollmentManager
         """
         # also deletes everything
         try:
@@ -361,8 +377,8 @@ class ProjectManager(BaseManagerInterface[Project]):
             # TODO: log that project does not exist
             return
 
-        await self.disable_project(prj)
-        await self.flush_project(prj)
+        await self.disable_project(prj, enroll_mgr)
+        await self.flush_project(prj, enroll_mgr)
 
     def get_projects_raw(self, include_inactive: bool = False) -> list[RawProjectDict]:
         """Get list of all projects.
@@ -384,8 +400,12 @@ class ProjectManager(BaseManagerInterface[Project]):
         pipeline = MongoQueries.project_get_projects_raw(include_inactive)
         return [i for i in self.collection.aggregate(pipeline)]
 
-    async def delete_all(self):
-        """Remove all projects from the host system and clear database."""
+    async def delete_all(self, enroll_mgr: "enroll.EnrollmentManager"):
+        """Remove all projects from the host system and clear database.
+
+        :param enroll_mgr: Enrollment manager.
+        :type enroll_mgr: EnrollmentManager
+        """
         projects = self.get_docs()
         for prj in projects:
-            await self.delete_project(prj)
+            await self.delete_project(prj, enroll_mgr)

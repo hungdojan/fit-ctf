@@ -91,7 +91,7 @@ def referenced(
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     module_count = ctf_app.module_mgr.reference_count(
-        project_name, all_images=all_images
+        project_name, ctf_app.prj_mgr, ctf_app.enroll_mgr, all_images=all_images
     )
 
     header = ["Module name", "Count"]
@@ -131,7 +131,11 @@ def remove(ctx: click.Context, module_name: str):
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        asyncio.run(ctf_app.module_mgr.remove_module(module_name))
+        asyncio.run(
+            ctf_app.module_mgr.remove_module(
+                module_name, ctf_app.prj_mgr, ctf_app.enroll_mgr
+            )
+        )
     except (ModuleNotExistsException, ModuleInUseException) as e:
         click.echo(e)
         ctx.exit(1)

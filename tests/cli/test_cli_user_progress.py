@@ -23,7 +23,9 @@ def test_list_secrets(cli_data: CLIData):
     enrollment = ctf_app.enroll_mgr.get_enrollment(
         ctf_app.user_mgr.get_user("user1"), ctf_app.prj_mgr.get_project("prj2")
     )
-    assert len(rows[1:]) == len(ctf_app.enroll_mgr.list_secrets_for_display(enrollment))
+    assert len(rows[1:]) == len(
+        ctf_app.enroll_mgr.list_secrets_for_display(enrollment, ctf_app.prj_mgr)
+    )
 
 
 def test_submit_secret(cli_data: CLIData):
@@ -81,5 +83,7 @@ def test_progress_info(cli_data: CLIData):
     info = data[0]
     assert info["User"] == user.username
     assert int(info["Found"]) == enrollment.progress.found_secrets
-    assert int(info["Total"]) == ctf_app.enroll_mgr.count_submittable_slots(enrollment)
+    assert int(info["Total"]) == ctf_app.enroll_mgr.count_submittable_slots(
+        enrollment, ctf_app.prj_mgr
+    )
     assert "Last Found" in info

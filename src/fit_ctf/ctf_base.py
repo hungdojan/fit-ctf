@@ -43,11 +43,12 @@ class CTFBase:
         }
 
     def _init_managers(self):
-        """Initialize all managers in correct order to handle circular dependencies."""
+        """Initialize all managers in linear order (no circular dependencies)."""
         from fit_ctf.models.core.project import Project, ProjectManager
         from fit_ctf.models.core.user import User, UserManager
         from fit_ctf.models.core.enrollment import Enrollment, EnrollmentManager
         from fit_ctf.models.core.module_manager import ModuleManager
+        from fit_ctf.models.core.repository import EntityRepository
         from fit_ctf.models.infra import (
             UserCluster,
             UserClusterManager,
@@ -56,52 +57,48 @@ class CTFBase:
             ScenarioManager,
         )
 
-        # Create project_cluster_mgr first (depends only on prj_mgr, will be set later)
+        # Create shared repository first
+        self._repo = EntityRepository(db=self.ctf_db)
+
+        # Leaf managers (no manager dependencies)
+        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(
+            paths=self._path_mgmt
+        )
+
+        self._module_mgr: "module_manager.ModuleManager" = ModuleManager(
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+        )
+
         self._project_cluster_mgr: "clusters.ProjectClusterManager" = (
             ProjectClusterManager(
                 db=self.ctf_db,
                 coll=self.ctf_db["project_cluster"],
                 model_cls=ProjectCluster,
-                prj_mgr=None,  # Will be set after prj_mgr is created
+                repo=self._repo,
                 c_client=self._c_client,
                 paths=self._path_mgmt,
                 logger=self._logger,
             )
         )
 
-        # Create user_cluster_mgr (depends on prj_mgr, enroll_mgr, project_cluster_mgr)
+        # Mid-level managers
         self._user_cluster_mgr: "clusters.UserClusterManager" = UserClusterManager(
             db=self.ctf_db,
             coll=self.ctf_db["user_cluster"],
             model_cls=UserCluster,
-            prj_mgr=None,  # Will be set later
-            enroll_mgr=None,  # Will be set later
+            repo=self._repo,
             project_cluster_mgr=self._project_cluster_mgr,
             c_client=self._c_client,
             paths=self._path_mgmt,
             logger=self._logger,
         )
 
-        # Create enroll_mgr (depends on prj_mgr, user_mgr, cluster managers)
-        self._enroll_mgr: "enroll.EnrollmentManager" = EnrollmentManager(
-            db=self.ctf_db,
-            coll=self.ctf_db["enrollment"],
-            model_cls=Enrollment,
-            prj_mgr=None,  # Will be set later
-            user_mgr=None,  # Will be set later
-            user_cluster_mgr=self._user_cluster_mgr,
-            project_cluster_mgr=self._project_cluster_mgr,
-            c_client=self._c_client,
-            paths=self._path_mgmt,
-            logger=self._logger,
-        )
-
-        # Create prj_mgr (depends on enroll_mgr, cluster managers)
         self._prj_mgr: "prj.ProjectManager" = ProjectManager(
             db=self.ctf_db,
             coll=self.ctf_db["project"],
             model_cls=Project,
-            enroll_mgr=self._enroll_mgr,
+            repo=self._repo,
             project_cluster_mgr=self._project_cluster_mgr,
             user_cluster_mgr=self._user_cluster_mgr,
             c_client=self._c_client,
@@ -109,39 +106,31 @@ class CTFBase:
             logger=self._logger,
         )
 
-        # Create user_mgr (depends on enroll_mgr, user_cluster_mgr)
         self._user_mgr: "user.UserManager" = UserManager(
             db=self.ctf_db,
             coll=self.ctf_db["user"],
             model_cls=User,
-            enroll_mgr=self._enroll_mgr,
+            repo=self._repo,
             user_cluster_mgr=self._user_cluster_mgr,
             c_client=self._c_client,
             paths=self._path_mgmt,
             logger=self._logger,
         )
 
-        # Now fix circular dependencies by setting the managers that were None
-        self._project_cluster_mgr._prj_mgr = self._prj_mgr
-        self._user_cluster_mgr._prj_mgr = self._prj_mgr
-        self._user_cluster_mgr._enroll_mgr = self._enroll_mgr
-        self._enroll_mgr._prj_mgr = self._prj_mgr
-        self._enroll_mgr._user_mgr = self._user_mgr
-
-        # Create module_mgr (depends on prj_mgr, enroll_mgr)
-        self._module_mgr: "module_manager.ModuleManager" = ModuleManager(
-            prj_mgr=self._prj_mgr,
-            enroll_mgr=self._enroll_mgr,
+        # Top-level manager
+        self._enroll_mgr: "enroll.EnrollmentManager" = EnrollmentManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["enrollment"],
+            model_cls=Enrollment,
+            repo=self._repo,
+            user_cluster_mgr=self._user_cluster_mgr,
+            project_cluster_mgr=self._project_cluster_mgr,
             c_client=self._c_client,
             paths=self._path_mgmt,
+            logger=self._logger,
         )
 
-        # Create scenario_mgr (depends on user_cluster_mgr, enroll_mgr)
-        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(
-            paths=self._path_mgmt,
-            user_cluster_mgr=self._user_cluster_mgr,
-            enroll_mgr=self._enroll_mgr,
-        )
+        # NO two-phase wiring - clean linear initialization!
 
     @property
     def mongo_client(self) -> pymongo.MongoClient:

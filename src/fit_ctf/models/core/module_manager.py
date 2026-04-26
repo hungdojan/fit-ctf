@@ -29,13 +29,9 @@ class ModuleManager:
 
     def __init__(
         self,
-        prj_mgr: "prj.ProjectManager",
-        enroll_mgr: "enroll.EnrollmentManager",
         c_client: ContainerClientInterface,
         paths: PathManagement,
     ):
-        self._prj_mgr = prj_mgr
-        self._enroll_mgr = enroll_mgr
         self._c_client = c_client
         self._paths = paths
 
@@ -92,7 +88,11 @@ class ModuleManager:
         )
 
     def reference_count(
-        self, project_name: str | None, all_images: bool = False
+        self,
+        project_name: str | None,
+        prj_mgr: "prj.ProjectManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+        all_images: bool = False,
     ) -> dict[str, int]:
         """Count module directory usage from compiled ``scenario_compose.yaml`` files.
 
@@ -159,24 +159,29 @@ class ModuleManager:
             return out
 
         if project_name:
-            prjs = [self._prj_mgr.get_project(project_name)]
+            prjs = [prj_mgr.get_project(project_name)]
         else:
-            prjs = self._prj_mgr.get_docs()
+            prjs = prj_mgr.get_docs()
         modules = defaultdict(int)
         for p in prjs:
             if self._paths.project_scenarios(p).exists():
                 for k, v in _project_usage(p).items():
                     modules[k] += v
-            for u in self._enroll_mgr.get_enrollments_for_project(p):
+            for u in enroll_mgr.get_enrollments_for_project(p):
                 for k, v in _user_usage(u, p).items():
                     modules[k] += v
 
         return dict(modules)
 
-    async def remove_module(self, module_name: str):
+    async def remove_module(
+        self,
+        module_name: str,
+        prj_mgr: "prj.ProjectManager",
+        enroll_mgr: "enroll.EnrollmentManager",
+    ):
         """Remove module from the host."""
         module_path = self.get_path(module_name)
-        module_count = self.reference_count(None)
+        module_count = self.reference_count(None, prj_mgr, enroll_mgr)
         if module_count.get(module_name, 0) > 0:
             raise ModuleInUseException(
                 f"Module `{module_name}` is still used by some services."

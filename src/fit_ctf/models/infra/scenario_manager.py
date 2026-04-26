@@ -20,7 +20,6 @@ from fit_ctf.models.utils.mongo_queries import MongoQueries
 from fit_ctf.templates import TEMPLATE_PATH_MAP, get_jinja_variables, get_template
 
 if TYPE_CHECKING:
-    import fit_ctf.models.core.enrollment as enrollment
     import fit_ctf.models.core.project as project
     import fit_ctf.models.infra.user_cluster as user_cluster
 
@@ -34,24 +33,13 @@ _SECRET_MAP_RE = re.compile(r"^secret_map__(.+)$")
 class ScenarioManager:
     """Manager for CTF scenario templates and configurations."""
 
-    def __init__(
-        self,
-        paths: PathManagement,
-        user_cluster_mgr: "user_cluster.UserClusterManager",
-        enroll_mgr: "enrollment.EnrollmentManager",
-    ):
+    def __init__(self, paths: PathManagement):
         """Initialize ScenarioManager.
 
         :param paths: Path management instance
         :type paths: PathManagement
-        :param user_cluster_mgr: User cluster manager instance
-        :type user_cluster_mgr: UserClusterManager
-        :param enroll_mgr: Enrollment manager instance
-        :type enroll_mgr: EnrollmentManager
         """
         self._paths = paths
-        self._user_cluster_mgr = user_cluster_mgr
-        self._enroll_mgr = enroll_mgr
 
     @property
     def scenario_root(self) -> pathlib.Path:
@@ -61,14 +49,6 @@ class ScenarioManager:
         :rtype: pathlib.Path
         """
         return self._paths.scenario_global
-
-    @property
-    def user_cluster_mgr(self):
-        """Get user cluster manager instance.
-
-        :return: UserClusterManager instance
-        """
-        return self._user_cluster_mgr
 
     def create_scenario(self, scenario_name: str):
         """Create a new scenario template.
@@ -214,8 +194,16 @@ class ScenarioManager:
         return [item.name for item in self.scenario_root.iterdir() if item.is_dir()]
 
     def scenario_usage_for_project(
-        self, project: "project.Project", include_users: bool = False
+        self, project: "project.Project", enroll_mgr, include_users: bool = False
     ) -> list[str]:
+        """Get scenarios used in a project.
+
+        :param project: Project to check
+        :param enroll_mgr: EnrollmentManager for enrollment queries
+        :param include_users: Include user-specific scenarios
+        :return: List of scenario names used in the project
+        """
+
         def _fetch_scenarios(path: pathlib.Path) -> set[str]:
             if not path.exists():
                 return set()
@@ -223,22 +211,25 @@ class ScenarioManager:
 
         usage = _fetch_scenarios(self._paths.project_scenarios(project))
         if include_users:
-            enrolled_users = self._enroll_mgr.get_enrollments_for_project(project)
+            enrolled_users = enroll_mgr.get_enrollments_for_project(project)
             for user in enrolled_users:
                 usage.update(
                     _fetch_scenarios(self._paths.enrolled_user_path(user, project))
                 )
         return list(usage)
 
-    def scenario_overview(self) -> dict[str, list[int]]:
+    def scenario_overview(
+        self, user_cluster_mgr: "user_cluster.UserClusterManager"
+    ) -> dict[str, list[int]]:
         """Get overview of scenario usage across clusters.
 
+        :param user_cluster_mgr: UserClusterManager for cluster queries
         :return: Dictionary mapping scenario names to cluster IDs
         :rtype: dict[str, list[int]]
         """
         scenarios_map = {scenario_name: [] for scenario_name in self.list_scenarios()}
         data = list(
-            self.user_cluster_mgr.collection.aggregate(
+            user_cluster_mgr.collection.aggregate(
                 MongoQueries.scenario_usage_overview()
             )
         )
@@ -246,16 +237,19 @@ class ScenarioManager:
             scenarios_map[item["_id"]] = item["clusters"]
         return scenarios_map
 
-    def scenario_usage(self, scenario_name: str) -> list:
+    def scenario_usage(
+        self, scenario_name: str, user_cluster_mgr: "user_cluster.UserClusterManager"
+    ) -> list:
         """Get all clusters using a specific scenario.
 
         :param scenario_name: Name of the scenario
+        :param user_cluster_mgr: UserClusterManager for cluster queries
         :type scenario_name: str
         :return: List of UserCluster objects using the scenario
         :rtype: list
         """
         return list(
-            self.user_cluster_mgr.collection.find(
+            user_cluster_mgr.collection.find(
                 {f"scenario_configs.{scenario_name}": {"$exists": True}}
             )
         )

@@ -13,6 +13,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.path_mgmt import PathManagement
+from fit_ctf.models.core.repository import EntityRepository
 import fit_ctf.models.core.project as project_module
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, ProjectNetworkMap
 from fit_ctf.models.infra.cluster_document import ClusterDocument
@@ -87,7 +88,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         db: Database,
         coll: Collection,
         model_cls: type[ProjectCluster],
-        prj_mgr: "project.ProjectManager",
+        repo: EntityRepository,
         c_client: ContainerClientInterface,
         paths: PathManagement,
         logger: LoggerInterface,
@@ -100,8 +101,8 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :type coll: Collection
         :param model_cls: Model class for ProjectCluster
         :type model_cls: type[ProjectCluster]
-        :param prj_mgr: Project manager instance
-        :type prj_mgr: ProjectManager
+        :param repo: Entity repository
+        :type repo: EntityRepository
         :param c_client: Container client interface
         :type c_client: ContainerClientInterface
         :param paths: Path management instance
@@ -110,7 +111,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :type logger: LoggerInterface
         """
         super().__init__(db, coll, model_cls, c_client, paths, logger)
-        self._prj_mgr = prj_mgr
+        self._repo = repo
 
     def get_project(self, cluster: ProjectCluster) -> "project.Project":
         """Get project from cluster.
@@ -121,7 +122,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :rtype: project.Project
         :raises ProjectNotExistException: If project not found
         """
-        project = self._prj_mgr.get_doc_by_id(cluster.project_id.id)
+        project = self._repo.get_project_by_id(cluster.project_id.id)
         if not project:
             raise ProjectNotExistException(
                 f"Project {str(cluster.project_id.id)} not found"
@@ -267,7 +268,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :raises ProjectNotExistException: If project doesn't exist
         """
         # Validate project exists
-        project = self._prj_mgr.get_doc_by_id(cluster.project_id.id)
+        project = self._repo.get_project_by_id(cluster.project_id.id)
         if not project:
             raise ProjectNotExistException(
                 f"Project {cluster.project_id.id} not found."

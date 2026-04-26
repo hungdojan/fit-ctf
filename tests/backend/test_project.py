@@ -100,12 +100,12 @@ async def test_disable_and_flush_project(connected_data: FixtureData):
     enrolled_users = ctf_app.enroll_mgr.get_enrollments_for_project(deleted_prj)
 
     with pytest.raises(ProjectExistsException):
-        await prj_mgr.flush_project(deleted_prj)
+        await prj_mgr.flush_project(deleted_prj, ctf_app.enroll_mgr)
 
     assert len(enrolled_users) == 2
     enrolled_count = len(ctf_app.enroll_mgr.get_enrolled_projects(enrolled_users[0]))
 
-    await prj_mgr.disable_project(deleted_prj)
+    await prj_mgr.disable_project(deleted_prj, ctf_app.enroll_mgr)
 
     assert not prj_mgr.get_project(deleted_prj.name, active=None).active
     new_enrollment_count = len(
@@ -115,7 +115,7 @@ async def test_disable_and_flush_project(connected_data: FixtureData):
     assert new_enrollment_count < enrolled_count
     assert (ctf_app.paths.project_global / deleted_prj.name).is_dir()
 
-    await prj_mgr.flush_project(deleted_prj)
+    await prj_mgr.flush_project(deleted_prj, ctf_app.enroll_mgr)
     with pytest.raises(ProjectNotExistException):
         prj_mgr.get_project(deleted_prj.name)
 
@@ -133,9 +133,9 @@ async def test_delete_project(
     assert (ctf_app.paths.project_global / deleted_prj.name).is_dir()
 
     # does nothing
-    await prj_mgr.delete_project("non_existing_project")
+    await prj_mgr.delete_project("non_existing_project", ctf_app.enroll_mgr)
 
-    await prj_mgr.delete_project(deleted_prj.name)
+    await prj_mgr.delete_project(deleted_prj.name, ctf_app.enroll_mgr)
 
     assert not (ctf_app.paths.project_global / deleted_prj.name).is_dir()
     assert len(prj_mgr.get_docs()) == 1
@@ -153,7 +153,9 @@ def test_generate_port_forwarding_script(
     script_path = (tmp_path / "script.sh").resolve()
     ip_addr = "127.0.0.1"
 
-    prj_mgr.generate_port_forwarding_script(prjs[0].name, ip_addr, str(script_path))
+    prj_mgr.generate_port_forwarding_script(
+        prjs[0].name, ip_addr, str(script_path), ctf_app.enroll_mgr
+    )
 
     assert script_path.is_file()
     with open(script_path, "r") as f:

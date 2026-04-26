@@ -71,7 +71,9 @@ def edit_scenario_template(
 
         # Auto-recompile clusters using this scenario (unless skipped)
         if not skip_recompile:
-            clusters = ctf_app.scenario_mgr.scenario_usage(name)
+            clusters = ctf_app.scenario_mgr.scenario_usage(
+                name, ctf_app.user_cluster_mgr
+            )
 
             if clusters:
                 if not quiet:
@@ -125,7 +127,7 @@ def scenario_usage(ctx: click.Context, name: str, format: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
     try:
-        clusters = ctf_app.scenario_mgr.scenario_usage(name)
+        clusters = ctf_app.scenario_mgr.scenario_usage(name, ctf_app.user_cluster_mgr)
 
         if not clusters:
             click.echo(f"Scenario '{name}' is not used by any clusters.")
@@ -178,7 +180,7 @@ def scenario_info(ctx: click.Context, name: str):
             click.echo("  - volumes/ (not present)")
 
         # Show usage
-        clusters = ctf_app.scenario_mgr.scenario_usage(name)
+        clusters = ctf_app.scenario_mgr.scenario_usage(name, ctf_app.user_cluster_mgr)
         click.echo(f"\nUsed by {len(clusters)} cluster(s)")
 
     except CTFModelException as e:
@@ -218,7 +220,7 @@ def list_scenarios(ctx: click.Context, format: str):
     """List all scenarios."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
-    scenarios = ctf_app.scenario_mgr.scenario_overview()
+    scenarios = ctf_app.scenario_mgr.scenario_overview(ctf_app.user_cluster_mgr)
 
     headers = ["Name", "Used in (clusters)"]
     values = [[s_name, len(clusters)] for s_name, clusters in scenarios.items()]

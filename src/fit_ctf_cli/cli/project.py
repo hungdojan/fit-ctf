@@ -181,8 +181,10 @@ def firewall_rules(ctx: click.Context, project_name: str, ip_addr: str, output: 
 
     The command used in the script are written for `firewalld` application.
     """
-    prj_mgr: ProjectManager = ctx.parent.obj["ctf_app"].prj_mgr  # pyright: ignore
-    prj_mgr.generate_port_forwarding_script(project_name, ip_addr, output)
+    ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
+    ctf_app.prj_mgr.generate_port_forwarding_script(
+        project_name, ip_addr, output, ctf_app.enroll_mgr
+    )
 
 
 @project.command(name="reserved-ports")
@@ -225,7 +227,7 @@ def resources_usage(ctx: click.Context, project_name: str):
 def delete_project(ctx: click.Context, project_name: str):
     """Delete an existing project."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
-    asyncio.run(ctf_app.prj_mgr.delete_project(project_name))
+    asyncio.run(ctf_app.prj_mgr.delete_project(project_name, ctf_app.enroll_mgr))
     click.echo(f"Project `{project_name}` deleted successfully.")
 
 

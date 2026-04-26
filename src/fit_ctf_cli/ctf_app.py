@@ -192,7 +192,9 @@ class CTFApp(CTFBase):
             data["project_cluster"] = None
 
         # Module names referenced by this project (for ZIP module tree)
-        module_count = self.module_mgr.reference_count(project.name)
+        module_count = self.module_mgr.reference_count(
+            project.name, self.prj_mgr, self.enroll_mgr
+        )
         data["modules"] = [k for k, v in module_count.items() if v > 0]
         return data
 

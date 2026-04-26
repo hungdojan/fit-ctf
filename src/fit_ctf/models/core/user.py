@@ -18,6 +18,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.path_mgmt import PathManagement
+from fit_ctf.models.core.repository import EntityRepository
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.types import NewUserDict, UserInfoDict, UserRole
 from fit_ctf.models.core.base import Base, BaseManagerInterface
@@ -82,7 +83,7 @@ class UserManager(BaseManagerInterface[User]):
         db: Database,
         coll: Collection,
         model_cls: type[User],
-        enroll_mgr: "enroll.EnrollmentManager",
+        repo: EntityRepository,
         user_cluster_mgr: "user_cluster.UserClusterManager",
         c_client: ContainerClientInterface,
         paths: PathManagement,
@@ -108,7 +109,7 @@ class UserManager(BaseManagerInterface[User]):
         :type logger: LoggerInterface
         """
         super().__init__(db, coll, model_cls, c_client, paths, logger)
-        self._enroll_mgr = enroll_mgr
+        self._repo = repo
         self._user_cluster_mgr = user_cluster_mgr
 
     def get_user(
@@ -362,25 +363,27 @@ class UserManager(BaseManagerInterface[User]):
         pipeline = MongoQueries.user_get_users(active)
         return [i for i in self.collection.aggregate(pipeline)]
 
-    async def disable_user(self, username: str):
+    async def disable_user(self, username: str, enroll_mgr: "enroll.EnrollmentManager"):
         """Set user as inactive in the database.
 
         The user data and files will be preserve for future references.
         :param username: User's username.
         :type username: str
+        :param enroll_mgr: Enrollment manager for enrollment operations.
+        :type enroll_mgr: EnrollmentManager
         """
         user = self.get_user(username)
 
-        lof_projects = self._enroll_mgr.get_enrolled_projects(user.username)
+        lof_projects = enroll_mgr.get_enrolled_projects(user.username)
         for project in lof_projects:
             try:
-                enrollment = self._enroll_mgr.get_enrollment(user, project)
+                enrollment = enroll_mgr.get_enrollment(user, project)
                 cluster = self._user_cluster_mgr.get_cluster(enrollment)
-                await self._user_cluster_mgr.stop_cluster(cluster)
+                await self._user_cluster_mgr.stop_cluster(cluster, enroll_mgr)
             except CTFBaseException:  # pragma: no cover
                 pass  # Cluster doesn't exist or already stopped
 
-        await self._enroll_mgr.cancel_user_from_all_projects(user)
+        await enroll_mgr.cancel_user_from_all_projects(user)
         user.active = False
         self.update_doc(user)
 
@@ -405,34 +408,42 @@ class UserManager(BaseManagerInterface[User]):
             shutil.rmtree(path)
         self.remove_doc_by_id(user.id)
 
-    async def disable_multiple_users(self, lof_usernames: list[str]):
+    async def disable_multiple_users(
+        self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Disables multiple user documents.
 
         :param lof_usernames: A list of usernames which documents will be disabled.
         :type lof_usernames: list[str]
+        :param enroll_mgr: Enrollment manager for enrollment operations.
+        :type enroll_mgr: EnrollmentManager
         """
         users = self.get_docs(username={"$in": lof_usernames}, active=True)
         user_ids = [u.id for u in users]
 
         pairs = []
         for user in users:
-            await self._user_cluster_mgr.stop_all_clusters_of_a_user(user)
+            await self._user_cluster_mgr.stop_all_clusters_of_a_user(user, enroll_mgr)
             pairs.extend(
-                [(user, prj) for prj in self._enroll_mgr.get_enrolled_projects(user)]
+                [(user, prj) for prj in enroll_mgr.get_enrolled_projects(user)]
             )
 
-        await self._enroll_mgr.disable_multiple_enrollments(pairs)
+        await enroll_mgr.disable_multiple_enrollments(pairs)
         self.collection.update_many(
             {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
         )
 
-    async def flush_multiple_users(self, lof_usernames: list[str]):
+    async def flush_multiple_users(
+        self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Remove multiple user data from the host machine.
 
         Only works if the user is not active.
 
         :param lof_username: A list of usernames.
         :type lof_usernames: list[str]
+        :param enroll_mgr: Enrollment manager for enrollment operations.
+        :type enroll_mgr: EnrollmentManager
         :raises UserExistsException: When the user document is still active.
         """
         users = self.get_docs(username={"$in": lof_usernames}, active=False)
@@ -440,40 +451,49 @@ class UserManager(BaseManagerInterface[User]):
         pairs = []
         for user in users:
             pairs.extend(
-                [
-                    (user, prj)
-                    for prj in self._enroll_mgr.get_enrolled_projects(user, True)
-                ]
+                [(user, prj) for prj in enroll_mgr.get_enrolled_projects(user, True)]
             )
             path = self.paths.user_path(user)
             if path.exists():
                 shutil.rmtree(path)
 
-        await self._enroll_mgr.flush_multiple_enrollments(pairs)
+        await enroll_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
-    async def delete_a_user(self, username: str):
+    async def delete_a_user(
+        self, username: str, enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Completely remove user from the host machine.
 
         :param username: Account's username.
         :type username: str
+        :param enroll_mgr: Enrollment manager.
+        :type enroll_mgr: EnrollmentManager
         :raises UserNotExistsException: Given user could not be found in the database.
         """
-        await self.disable_user(username)
+        await self.disable_user(username, enroll_mgr)
         self.flush_user(username)
 
-    async def delete_users(self, lof_usernames: list[str]):
+    async def delete_users(
+        self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"
+    ):
         """Deletes users from the list.
 
         :param lof_usernames: List of usernames to delete.
         :type lof_usernames: list[str]
+        :param enroll_mgr: Enrollment manager.
+        :type enroll_mgr: EnrollmentManager
         """
 
-        await self.disable_multiple_users(lof_usernames)
-        await self.flush_multiple_users(lof_usernames)
+        await self.disable_multiple_users(lof_usernames, enroll_mgr)
+        await self.flush_multiple_users(lof_usernames, enroll_mgr)
 
-    async def delete_all(self):
-        """Remove all users from the host system and clear the database."""
+    async def delete_all(self, enroll_mgr: "enroll.EnrollmentManager"):
+        """Remove all users from the host system and clear the database.
+
+        :param enroll_mgr: Enrollment manager.
+        :type enroll_mgr: EnrollmentManager
+        """
 
         users = [u.username for u in self.get_docs()]
-        await self.delete_users(users)
+        await self.delete_users(users, enroll_mgr)

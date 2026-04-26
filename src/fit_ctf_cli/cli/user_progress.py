@@ -51,7 +51,7 @@ def list_secrets(ctx: click.Context, format: str, show_secret: bool):
     header_order = ["name", "submitted"] + (["flag"] if show_secret else [])
     headers = ["Name", "Submitted"] + (["Secret"] if show_secret else [])
     rows = ctf_app.enroll_mgr.list_secrets_for_display(
-        enrollment, show_flag=show_secret
+        enrollment, ctf_app.prj_mgr, show_flag=show_secret
     )
     values = [[item[key] for key in header_order] for item in rows]
     get_view(format).print_data(headers, values)
@@ -65,7 +65,9 @@ def submit_secret(ctx: click.Context, value: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.enroll_mgr.submit_secret(enrollment, value)
+        ctf_app.enroll_mgr.submit_secret(
+            enrollment, value, ctf_app.prj_mgr, ctf_app.enroll_mgr
+        )
         click.echo("Secret was successfully submitted.")
     except SecretNotFoundException:
         click.echo("Secret is incorrect.")
@@ -86,7 +88,7 @@ def progress_info(ctx: click.Context, format: str):
     if not user:
         click.echo("User not found")
         ctx.exit(1)
-    total = ctf_app.enroll_mgr.count_submittable_slots(enrollment)
+    total = ctf_app.enroll_mgr.count_submittable_slots(enrollment, ctf_app.prj_mgr)
     data = {
         "user": user.username,
         "found": enrollment.progress.found_secrets,
