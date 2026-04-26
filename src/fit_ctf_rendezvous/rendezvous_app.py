@@ -10,7 +10,6 @@ from fit_ctf_rendezvous.tui_log_sink import TuiLogSink
 
 
 class RendezvousApp(App):
-
     TITLE = "FIT Rendezvous"
 
     def __init__(self, ctf_base: CTFBase, **kwargs):

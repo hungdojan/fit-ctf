@@ -5,7 +5,6 @@ from fit_ctf.models.utils.exceptions import UserNotExistsException
 
 
 class LocalAuth(AuthInterface):
-
     def __init__(self, user_mgr: "user.UserManager"):
         super().__init__(True)
         self._user_mgr = user_mgr

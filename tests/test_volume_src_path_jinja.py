@@ -76,9 +76,7 @@ def test_build_volume_file_template_context_rejects_preexpanded_key():
 
 def test_render_volume_file_template():
     body = "FLAG{{ template_service__volume_map__readonly_file__secret }}"
-    ctx = build_volume_file_template_context(
-        "template_service", "readonly_file", {"secret": "abc"}
-    )
+    ctx = build_volume_file_template_context("template_service", "readonly_file", {"secret": "abc"})
     assert render_volume_file_template(body, ctx) == "FLAGabc"
 
 

@@ -5,7 +5,6 @@ import re
 import shutil
 from typing import TYPE_CHECKING
 
-from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.models.infra.config_models import ScenarioConfig
 from fit_ctf.models.infra.scenario_config_validation import (
     validate_secrets_vs_templates,
@@ -17,6 +16,7 @@ from fit_ctf.models.utils.exceptions import (
     ScenarioNotExistException,
 )
 from fit_ctf.models.utils.mongo_queries import MongoQueries
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.templates import TEMPLATE_PATH_MAP, get_jinja_variables, get_template
 
 if TYPE_CHECKING:
@@ -119,9 +119,9 @@ class ScenarioManager:
                 if m_type != "volume_map":
                     var_dict.setdefault(svc, {}).setdefault(m_type, {})[m_key] = ""
                 else:
-                    var_dict.setdefault(svc, {}).setdefault(m_type, {}).setdefault(
-                        m_key, {}
-                    )["src_path"] = ""
+                    var_dict.setdefault(svc, {}).setdefault(m_type, {}).setdefault(m_key, {})[
+                        "src_path"
+                    ] = ""
 
         if (scenario_dir / "volumes").exists():
             for file in (scenario_dir / "volumes").iterdir():
@@ -162,9 +162,7 @@ class ScenarioManager:
             for item in vol_root.iterdir():
                 if not item.name.endswith(".template"):
                     continue
-                keys |= self._secret_names_from_jinja_vars(
-                    get_jinja_variables(item.name, vol_root)
-                )
+                keys |= self._secret_names_from_jinja_vars(get_jinja_variables(item.name, vol_root))
         return sorted(keys)
 
     def validate_scenario_config_against_templates(
@@ -213,9 +211,7 @@ class ScenarioManager:
         if include_users:
             enrolled_users = enroll_mgr.get_enrollments_for_project(project)
             for user in enrolled_users:
-                usage.update(
-                    _fetch_scenarios(self._paths.enrolled_user_path(user, project))
-                )
+                usage.update(_fetch_scenarios(self._paths.enrolled_user_path(user, project)))
         return list(usage)
 
     def scenario_overview(
@@ -228,11 +224,7 @@ class ScenarioManager:
         :rtype: dict[str, list[int]]
         """
         scenarios_map = {scenario_name: [] for scenario_name in self.list_scenarios()}
-        data = list(
-            user_cluster_mgr.collection.aggregate(
-                MongoQueries.scenario_usage_overview()
-            )
-        )
+        data = list(user_cluster_mgr.collection.aggregate(MongoQueries.scenario_usage_overview()))
         for item in data:
             scenarios_map[item["_id"]] = item["clusters"]
         return scenarios_map

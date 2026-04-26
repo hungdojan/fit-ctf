@@ -60,9 +60,7 @@ class TuiLogSink:
         h = _TuiBufferHandler(self)
         h.setLevel(logging.INFO)
         h.addFilter(_FitCtfLogFilter())
-        h.setFormatter(
-            logging.Formatter("[%(asctime)s] - %(levelname)s - %(name)s: %(message)s")
-        )
+        h.setFormatter(logging.Formatter("[%(asctime)s] - %(levelname)s - %(name)s: %(message)s"))
         root.addHandler(h)
         self._handler = h
 

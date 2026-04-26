@@ -44,9 +44,7 @@ def test_workflow1(empty_complex: ComplexData):
         == (fixture_path() / "workflow1" / "expected_file").read_text().rstrip()
     )
 
-    module_build_context = str(
-        (ctf_base.paths.module_global / ctx.module["mn"]).resolve()
-    )
+    module_build_context = str((ctf_base.paths.module_global / ctx.module["mn"]).resolve())
     flag_volume_host = str(ctx.compiled_file.resolve())
     private_net = f"{ctx.prj['pn']}_{ctx.user['u']}_private_net"
     expected_tpl = Environment().from_string(

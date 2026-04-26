@@ -12,7 +12,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class ChangePasswordPage(Container, CoreWidget):
-
     DISABLE_BUTTON_DELAY = 5
 
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
@@ -70,9 +69,7 @@ class ChangePasswordPage(Container, CoreWidget):
                         ],
                         valid_empty=False,
                     )
-                    yield Checkbox(
-                        tr("change_password.show"), id="show-new-password-again"
-                    )
+                    yield Checkbox(tr("change_password.show"), id="show-new-password-again")
         with Center():
             yield Rule(line_style="ascii")
         with Center():
@@ -113,10 +110,7 @@ class ChangePasswordPage(Container, CoreWidget):
     @on(Checkbox.Changed)
     def show_pswd_checkbox_handler(self, event: Checkbox.Changed):
         checkbox = event.checkbox
-        if (
-            not checkbox.id
-            or checkbox.id.removeprefix("show-") not in self.allowed_object_ids
-        ):
+        if not checkbox.id or checkbox.id.removeprefix("show-") not in self.allowed_object_ids:
             return
 
         core_id = checkbox.id.removeprefix("show-")

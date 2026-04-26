@@ -41,7 +41,7 @@ def test_create_multiple_users(user_data: FixtureData):
     user_mgr = ctf_app.user_mgr
     assert len(user_mgr.get_docs()) == 3
 
-    users = user_mgr.create_multiple_users([f"user{i+1}" for i in range(5)])
+    users = user_mgr.create_multiple_users([f"user{i + 1}" for i in range(5)])
     assert len(user_mgr.get_docs()) == 5
     assert {"user4", "user5"} == set([u["username"] for u in users])
     assert (ctf_app.paths.user_global / "user4").is_dir() and (
@@ -160,8 +160,7 @@ def test_upload_public_key(user_data: FixtureData):
     assert ssh_dir.exists()
     authorized_keys_file = ssh_dir / "authorized_keys"
     assert (
-        authorized_keys_file.exists()
-        and len(authorized_keys_file.read_bytes().splitlines()) == 1
+        authorized_keys_file.exists() and len(authorized_keys_file.read_bytes().splitlines()) == 1
     )
 
     ctf_app.user_mgr.upload_public_key(user, public_key_bytes)

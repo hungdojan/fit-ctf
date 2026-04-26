@@ -48,7 +48,6 @@ def _compose_ps_row_name(row: dict[str, Any]) -> str:
 
 
 class DockerClient(c_client.ContainerClientInterface):
-
     def generate_container_prefix(self, *names: str) -> str:
         return f"{'_'.join(names)}-"
 
@@ -66,9 +65,7 @@ class DockerClient(c_client.ContainerClientInterface):
         cmd = ["docker", "network", "ls", "--format", '"{{ .Name }}"']
         return await self._process_get_commands(cmd, contains)
 
-    def rm_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
-    ) -> ErrorCode:
+    def rm_network(self, logger_name: str, name: str, to_stdout: bool = False) -> ErrorCode:
         cmd = ["docker", "network", "rm", name]
         return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
@@ -155,11 +152,7 @@ class DockerClient(c_client.ContainerClientInterface):
             stderr=asyncio.subprocess.STDOUT,
         )
         stdout, _ = await proc.communicate()
-        return [
-            line.strip().strip('"')
-            for line in stdout.decode().splitlines()
-            if line.strip()
-        ]
+        return [line.strip().strip('"') for line in stdout.decode().splitlines() if line.strip()]
 
     async def compose_ps_json(self, files: list[Path]) -> list[dict[str, Any]]:
         if not files:
@@ -283,9 +276,7 @@ class DockerClient(c_client.ContainerClientInterface):
         # TODO: print to file
         print([data.strip('"') for data in stdout.decode().rsplit("\n") if data])
 
-    async def compose_states(
-        self, files: list[Path]
-    ) -> list[HealthCheckDict]:  # pragma: no cover
+    async def compose_states(self, files: list[Path]) -> list[HealthCheckDict]:  # pragma: no cover
         cmd = _docker_compose_prefix(files) + ["ps", "--format", "json"]
         proc = await asyncio.create_subprocess_exec(
             *cmd,

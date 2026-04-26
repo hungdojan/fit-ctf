@@ -23,9 +23,7 @@ def test_scenario_compile_copies_volumes_and_modules_trees(tmp_path: Path):
     paths = _minimal_paths(tmp_path)
     scenario_dir = paths["scenarios"] / "s1"
     scenario_dir.mkdir(parents=True)
-    (scenario_dir / "scenario_compose.yaml.j2").write_text(
-        "---\nname: s1\nservices: {}\n"
-    )
+    (scenario_dir / "scenario_compose.yaml.j2").write_text("---\nname: s1\nservices: {}\n")
     (scenario_dir / "volumes" / "data").mkdir(parents=True)
     (scenario_dir / "volumes" / "data" / "v.txt").write_text("v")
     (scenario_dir / "modules" / "my_build").mkdir(parents=True)

@@ -1,6 +1,6 @@
 import csv
-from io import StringIO
 import re
+from io import StringIO
 
 from fit_ctf_cli.cli import cli
 from tests import CLIData, fixture_path

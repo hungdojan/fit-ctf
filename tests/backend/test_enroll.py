@@ -55,13 +55,9 @@ def test_get_enrollment(
 
     # fill mgr with data
     with pytest.raises(UserNotEnrolledToProjectException):
-        enroll_mgr.get_enrollment(
-            user_mgr.get_user("user1"), prj_mgr.get_project("prj1")
-        )
+        enroll_mgr.get_enrollment(user_mgr.get_user("user1"), prj_mgr.get_project("prj1"))
 
-    enrollment = enroll_mgr.get_enrollment(
-        user_mgr.get_user("user1"), prj_mgr.get_project("prj2")
-    )
+    enrollment = enroll_mgr.get_enrollment(user_mgr.get_user("user1"), prj_mgr.get_project("prj2"))
 
     assert (
         enrollment.active
@@ -136,7 +132,7 @@ def test_enroll_multiple_users_to_project(
 
     with pytest.raises(MaxUserCountReachedException):
         enroll_mgr.enroll_multiple_users_to_project(
-            [f"user{i+1}" for i in range(5)], "prj1", user_mgr
+            [f"user{i + 1}" for i in range(5)], "prj1", user_mgr
         )
 
     assert len(enroll_mgr.get_enrollments_for_project("prj1")) == 0
@@ -146,7 +142,7 @@ def test_enroll_multiple_users_to_project(
 
     assert set([uc.user_id.id for uc in ucs]) == set([u.id for u in new_users])
     ucs = enroll_mgr.enroll_multiple_users_to_project(
-        [f"user{i+3}" for i in range(3)], "prj1", user_mgr
+        [f"user{i + 3}" for i in range(3)], "prj1", user_mgr
     )
 
     assert len(ucs) == 1
@@ -224,9 +220,7 @@ async def test_disable_multiple_enrollments(connected_data: FixtureData):
         await enroll_mgr.disable_enrollment(user1, prj1)
 
     assert len(enroll_mgr.get_docs(active=True)) == 4
-    await enroll_mgr.disable_multiple_enrollments(
-        [(user2, prj1), (user2, prj2), (user3, prj1)]
-    )
+    await enroll_mgr.disable_multiple_enrollments([(user2, prj1), (user2, prj2), (user3, prj1)])
 
     assert len(enroll_mgr.get_docs()) == 4
     assert len(enroll_mgr.get_docs(active=True)) == 1
@@ -249,9 +243,7 @@ async def test_flush_enrollment(connected_data: FixtureData):
     await enroll_mgr.disable_enrollment(user2, prj1)
     assert path.exists()
     await enroll_mgr.flush_enrollment(user2, prj1)
-    assert not enroll_mgr.get_doc_by_filter(
-        **{"user_id.$id": user2.id, "project_id.$id": prj1.id}
-    )
+    assert not enroll_mgr.get_doc_by_filter(**{"user_id.$id": user2.id, "project_id.$id": prj1.id})
     assert not path.exists()
 
 
@@ -274,16 +266,11 @@ async def test_flush_multiple_enrollments(connected_data: FixtureData):
     #     enroll_mgr.compile_compose_file(u, p)
 
     pairs.append((user1, prj1))
-    assert (
-        len([f for f in (ctf_app.paths.project_global / prj1.name / "users").iterdir()])
-        == 2
-    )
+    assert len([f for f in (ctf_app.paths.project_global / prj1.name / "users").iterdir()]) == 2
     await enroll_mgr.disable_multiple_enrollments(pairs)
     await enroll_mgr.flush_multiple_enrollments(pairs)
     assert len(enroll_mgr.get_docs()) == 1
-    assert not len(
-        [f for f in (ctf_app.paths.project_global / prj1.name / "users").iterdir()]
-    )
+    assert not len([f for f in (ctf_app.paths.project_global / prj1.name / "users").iterdir()])
 
 
 async def test_cancel_enrollment(connected_data: FixtureData):
@@ -300,9 +287,7 @@ async def test_cancel_enrollment(connected_data: FixtureData):
     assert len(enroll_mgr.get_enrollments_for_project(prj2)) == 2
 
     await enroll_mgr.cancel_enrollment(user1, prj2)
-    assert not enroll_mgr.get_doc_by_filter(
-        **{"user_id.$id": user1.id, "project_id.$id": prj2.id}
-    )
+    assert not enroll_mgr.get_doc_by_filter(**{"user_id.$id": user1.id, "project_id.$id": prj2.id})
     assert not filepath.exists()
     assert len(enroll_mgr.get_enrollments_for_project(prj2)) == 1
 
@@ -315,7 +300,7 @@ async def test_cancel_multiple_enrollments(connected_data: FixtureData):
     prj1 = prj_mgr.get_project("prj1")
     assert len(enroll_mgr.get_enrollments_for_project(prj1)) == 2
     await enroll_mgr.cancel_multiple_enrollments(
-        [f"user{i+1}" for i in range(3)], prj1, ctf_app.user_mgr
+        [f"user{i + 1}" for i in range(3)], prj1, ctf_app.user_mgr
     )
     assert len(enroll_mgr.get_enrollments_for_project(prj1)) == 0
 

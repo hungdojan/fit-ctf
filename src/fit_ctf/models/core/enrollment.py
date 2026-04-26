@@ -2,27 +2,25 @@ import shutil
 from typing import Any
 
 from bson import DBRef
-from pymongo.database import Database
 from pymongo.collection import Collection
+from pymongo.database import Database
 
 import fit_ctf.models.core.project as _project
 import fit_ctf.models.core.user as _user
-import fit_ctf.models.infra.user_cluster as user_cluster
 import fit_ctf.models.infra.project_cluster as project_cluster
+import fit_ctf.models.infra.user_cluster as user_cluster
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
-from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.models.utils.repository import EntityRepository
 from fit_ctf.components.types import (
     LeaderBoardItem,
     RawEnrolledProjectsDict,
 )
 from fit_ctf.components.utils import get_missing_in_sequence
 from fit_ctf.models.base import Base, BaseManagerInterface
-from fit_ctf.models.infra.secret_slots import count_submittable_secret_slots
 from fit_ctf.models.core.user_progress import UserProgress, UserProgressManager
+from fit_ctf.models.infra.secret_slots import count_submittable_secret_slots
 from fit_ctf.models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,
@@ -35,6 +33,8 @@ from fit_ctf.models.utils.exceptions import (
     UserNotExistsException,
 )
 from fit_ctf.models.utils.mongo_queries import MongoQueries
+from fit_ctf.models.utils.repository import EntityRepository
+from fit_ctf.path_mgmt import PathManagement
 
 
 class Enrollment(Base):
@@ -102,9 +102,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :param logger: Logger interface.
         :type logger: LoggerInterface
         """
-        BaseManagerInterface.__init__(
-            self, db, coll, model_cls, c_client, paths, logger
-        )
+        BaseManagerInterface.__init__(self, db, coll, model_cls, c_client, paths, logger)
         UserProgressManager.__init__(self, user_cluster_mgr, project_cluster_mgr)
         self._repo = repo
         self._user_cluster_mgr = user_cluster_mgr
@@ -140,9 +138,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         return self._repo.get_user(user_or_username)
 
-    def _get_project(
-        self, project_or_name: "str | _project.Project"
-    ) -> "_project.Project":
+    def _get_project(self, project_or_name: "str | _project.Project") -> "_project.Project":
         """Get a project from the project name or project object.
 
         :param project_or_name: Project name or a project object.
@@ -153,9 +149,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         return self._repo.get_project(project_or_name)
 
-    def user_is_enrolled_to_project(
-        self, user: "_user.User", project: "_project.Project"
-    ) -> bool:
+    def user_is_enrolled_to_project(self, user: "_user.User", project: "_project.Project") -> bool:
         """Check if user is enrolled to the given project.
 
         :param user: User object.
@@ -242,9 +236,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         prj = self._get_project(project_or_name)
         users = self.get_enrollments_for_project(prj)
-        return list(
-            set(lof_usernames).difference(set([user.username for user in users]))
-        )
+        return list(set(lof_usernames).difference(set([user.username for user in users])))
 
     # ASSIGN USER TO PROJECTS
 
@@ -306,13 +298,8 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                 used_container_ports, project.starting_port_bind
             )
         elif container_port in used_container_ports:
-            raise ContainerPortUsageCollisionException(
-                "Selected port is already in used."
-            )
-        elif (
-            container_port < project.starting_port_bind
-            or container_port > project.max_port
-        ):
+            raise ContainerPortUsageCollisionException("Selected port is already in used.")
+        elif container_port < project.starting_port_bind or container_port > project.max_port:
             raise SSHPortOutOfRangeException(
                 "The container port must be in range "
                 f"{project.starting_port_bind} and {project.max_port}."
@@ -322,13 +309,9 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         if forwarded_port < 0:
             forwarded_port = container_port
         elif forwarded_port in self.get_all_forwarded_ports(None):
-            raise ForwardedPortUsageCollisionException(
-                "The forwarded port is already in used."
-            )
+            raise ForwardedPortUsageCollisionException("The forwarded port is already in used.")
         elif forwarded_port < 1 or forwarded_port > 65_535:
-            raise SSHPortOutOfRangeException(
-                "Forwarded port must be in range 1 to 65 535."
-            )
+            raise SSHPortOutOfRangeException("Forwarded port must be in range 1 to 65 535.")
 
         self.paths.enrolled_user_path(user, project).mkdir(parents=True)
         enrollment = self.create_and_insert_doc(
@@ -388,9 +371,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
 
         # get all the ports that can be used
         ports = self.get_used_ports(project)
-        all_ports = [
-            project.starting_port_bind + i for i in range(project.max_nof_users)
-        ]
+        all_ports = [project.starting_port_bind + i for i in range(project.max_nof_users)]
         available_ports = sorted(list(set(all_ports).difference(set(ports))))
 
         users = user_mgr.get_docs(username={"$in": new_users}, active=True)
@@ -478,13 +459,8 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                 used_container_ports, project.starting_port_bind
             )
         elif container_port in used_container_ports:
-            raise ContainerPortUsageCollisionException(
-                "Selected port is already in used."
-            )
-        elif (
-            container_port < project.starting_port_bind
-            or container_port > project.max_port
-        ):
+            raise ContainerPortUsageCollisionException("Selected port is already in used.")
+        elif container_port < project.starting_port_bind or container_port > project.max_port:
             raise SSHPortOutOfRangeException(
                 "The container port must be in range "
                 f"{project.starting_port_bind} and {project.max_port}."
@@ -494,13 +470,9 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         if forwarded_port < 0:
             forwarded_port = container_port
         elif forwarded_port in self.get_all_forwarded_ports(None):
-            raise ForwardedPortUsageCollisionException(
-                "The forwarded port is already in used."
-            )
+            raise ForwardedPortUsageCollisionException("The forwarded port is already in used.")
         elif forwarded_port < 1 or forwarded_port > 65_535:
-            raise SSHPortOutOfRangeException(
-                "Forwarded port must be in range 1 to 65 535."
-            )
+            raise SSHPortOutOfRangeException("Forwarded port must be in range 1 to 65 535.")
 
         self.paths.enrolled_user_path(user, project).mkdir(parents=True)
 
@@ -557,15 +529,11 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :rtype: list[dict]
         """
         project = self._get_project(project_or_name)
-        pipeline = MongoQueries.enrollment_get_enrolled_users_raw(
-            project, include_inactive
-        )
+        pipeline = MongoQueries.enrollment_get_enrolled_users_raw(project, include_inactive)
         return [
             {
                 **item["users"],
-                "mount": str(
-                    (self.paths.user_path(item["users"]["username"]) / "home").resolve()
-                ),
+                "mount": str((self.paths.user_path(item["users"]["username"]) / "home").resolve()),
                 "forwarded_port": item["forwarded_port"],
             }
             for item in self.collection.aggregate(pipeline)
@@ -605,14 +573,10 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :rtype: list[RawEnrolledProjectsDict]
         """
         user = self._get_user(user_or_username)
-        pipeline = MongoQueries.enrollment_get_enrolled_projects_raw(
-            user, include_inactive
-        )
+        pipeline = MongoQueries.enrollment_get_enrolled_projects_raw(user, include_inactive)
         return [i for i in self.collection.aggregate(pipeline)]
 
-    def get_all_enrolled_projects_raw(
-        self, user_or_username: "str | _user.User"
-    ) -> list[dict]:
+    def get_all_enrolled_projects_raw(self, user_or_username: "str | _user.User") -> list[dict]:
         """Return list of projects that a user has enrolled to in raw format.
 
         The output of the function is in raw format
@@ -738,9 +702,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                 enroll_ids.append(enrollment.id)
 
         # Mark enrollments as inactive
-        self.collection.update_many(
-            {"_id": {"$in": enroll_ids}}, {"$set": {"active": False}}
-        )
+        self.collection.update_many({"_id": {"$in": enroll_ids}}, {"$set": {"active": False}})
 
     async def flush_enrollment(
         self,
@@ -773,9 +735,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         if not enrollment:
             return
         if enrollment.active:
-            raise UserEnrolledToProjectException(
-                "Cannot flush data when the enrollment is active."
-            )
+            raise UserEnrolledToProjectException("Cannot flush data when the enrollment is active.")
 
         # Get and delete cluster (this will clean up scenarios)
         cluster = self._user_cluster_mgr.get_cluster(enrollment)
@@ -803,9 +763,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         if not user_project_pairs:
             return
-        pipeline = MongoQueries.enrollment_aggregate_pairs_user_project(
-            user_project_pairs
-        )
+        pipeline = MongoQueries.enrollment_aggregate_pairs_user_project(user_project_pairs)
         query_res = [i for i in self.collection.aggregate(pipeline)]
         for data in query_res:
             user = _user.User(**data["user"])
@@ -851,15 +809,12 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         project = self._repo.get_project(project_or_name, None)
         pairs_user_project = [
-            (user, project)
-            for user in user_mgr.get_docs(username={"$in": lof_usernames})
+            (user, project) for user in user_mgr.get_docs(username={"$in": lof_usernames})
         ]
         await self.disable_multiple_enrollments(pairs_user_project)
         await self.flush_multiple_enrollments(pairs_user_project)
 
-    async def cancel_all_project_enrollments(
-        self, project_or_name: "str | _project.Project"
-    ):
+    async def cancel_all_project_enrollments(self, project_or_name: "str | _project.Project"):
         """Remove all enrollments for the given project.
 
         :param project_or_name: Project name or `Project` object.
@@ -867,9 +822,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :raises ProjectNotExistException: Project data was not found in the database.
         """
         project = self._repo.get_project(project_or_name, None)
-        pairs_user_project = [
-            (user, project) for user in self.get_enrollments_for_project(project)
-        ]
+        pairs_user_project = [(user, project) for user in self.get_enrollments_for_project(project)]
         await self.disable_multiple_enrollments(pairs_user_project)
         await self.flush_multiple_enrollments(pairs_user_project)
 
@@ -882,9 +835,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
 
         user = self._get_user(user_or_username)
-        pairs_user_project = [
-            (user, project) for project in self.get_enrolled_projects(user)
-        ]
+        pairs_user_project = [(user, project) for project in self.get_enrolled_projects(user)]
         await self.disable_multiple_enrollments(pairs_user_project)
         await self.flush_multiple_enrollments(pairs_user_project)
 

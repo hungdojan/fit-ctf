@@ -79,9 +79,7 @@ class RendezvousI18n:
             path = base / lang / filename
             if path.is_file():
                 return path.read_text(encoding="utf-8")
-        raise FileNotFoundError(
-            f"Missing markdown resource {filename!r} under {base / 'en'}"
-        )
+        raise FileNotFoundError(f"Missing markdown resource {filename!r} under {base / 'en'}")
 
     def jinja_resources_loader(self) -> ChoiceLoader:
         """Prefer current locale under ``resources/``, then English."""

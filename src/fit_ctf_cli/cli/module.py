@@ -1,14 +1,15 @@
 import asyncio
+
 import click
 
-from fit_ctf_cli.cli.utils import format_option, module_name_option, requires_database
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_view import get_view
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.models.utils.exceptions import (
     ModuleExistsException,
     ModuleInUseException,
     ModuleNotExistsException,
 )
+from fit_ctf_cli.cli.utils import format_option, module_name_option, requires_database
 
 
 @click.group(name="module")
@@ -81,9 +82,7 @@ def get(ctx: click.Context, module_name: str):
 )
 @format_option
 @click.pass_context
-def referenced(
-    ctx: click.Context, format: str, all_images: bool, project_name: str | None
-):
+def referenced(ctx: click.Context, format: str, all_images: bool, project_name: str | None):
     """Get the module usage count.
 
     For each module used in the given project (or overall) get its usage count
@@ -108,9 +107,7 @@ def build(ctx: click.Context, module_name: str, verbose: bool):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         click.echo(f"Building module '{module_name}'...")
-        error_code = asyncio.run(
-            ctf_app.module_mgr.build_module(module_name, to_stdout=verbose)
-        )
+        error_code = asyncio.run(ctf_app.module_mgr.build_module(module_name, to_stdout=verbose))
         if error_code == 0:
             click.echo(f"Module '{module_name}' built successfully.")
         else:
@@ -132,9 +129,7 @@ def remove(ctx: click.Context, module_name: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
         asyncio.run(
-            ctf_app.module_mgr.remove_module(
-                module_name, ctf_app.prj_mgr, ctf_app.enroll_mgr
-            )
+            ctf_app.module_mgr.remove_module(module_name, ctf_app.prj_mgr, ctf_app.enroll_mgr)
         )
     except (ModuleNotExistsException, ModuleInUseException) as e:
         click.echo(e)

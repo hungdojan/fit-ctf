@@ -21,7 +21,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class ProjectInfoPage(Container, CoreWidget):
-
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)
@@ -159,9 +158,7 @@ class ProjectInfoPage(Container, CoreWidget):
     async def toggle_instance(self):
         # TODO: make it more efficient
         if not await self.core_mgr.instance_is_running():
-            self.notify(
-                tr("project_info.notify_booting"), severity="warning", timeout=3
-            )
+            self.notify(tr("project_info.notify_booting"), severity="warning", timeout=3)
             self.run_worker(
                 self.core_mgr.start_user_instance(),
                 name="toggle-instance-on",
@@ -170,9 +167,7 @@ class ProjectInfoPage(Container, CoreWidget):
             btn = self.query_one("#projectinfo-toggle-instance-btn", Button)
             btn.disabled = True
         else:
-            self.notify(
-                tr("project_info.notify_shutting_down"), severity="warning", timeout=3
-            )
+            self.notify(tr("project_info.notify_shutting_down"), severity="warning", timeout=3)
             self.run_worker(
                 self.core_mgr.stop_user_instance(),
                 name="toggle-instance-off",

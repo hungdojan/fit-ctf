@@ -4,7 +4,6 @@ import fit_ctf.components.data_view.data_view as data_view
 
 
 class TabulateView(data_view.DataView):
-
     @staticmethod
     def print_data(headers: list, values: list[list], **kw):  # pragma: no cover
         print(
@@ -13,6 +12,6 @@ class TabulateView(data_view.DataView):
                 headers,
                 tablefmt="pipe",
                 stralign="center",
-                **kw
+                **kw,
             )
         )

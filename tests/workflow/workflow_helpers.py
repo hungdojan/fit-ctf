@@ -11,12 +11,12 @@ from typing import Any
 
 from click.testing import CliRunner, Result
 
-from fit_ctf_cli.cli import cli
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.models.infra.config_models import (
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )
+from fit_ctf_cli.cli import cli
 from tests import fixture_path
 
 
@@ -123,7 +123,7 @@ def workflow1_setup_through_compile(cli_run: CliRunner, ctf_base) -> SimpleNames
 
     run_cli(
         cli_run,
-        "user-cluster compile " f"-u {user['u']} " f"-pn {prj['pn']} ",
+        f"user-cluster compile -u {user['u']} -pn {prj['pn']} ",
     )
 
     u_obj = ctf_base.user_mgr.get_user(user["u"])
@@ -182,14 +182,10 @@ def workflow2_setup_through_compile(cli_run: CliRunner, ctf_base) -> SimpleNames
 
     pc = ctf_base.project_cluster_mgr.get_cluster(ctx.p_obj)
     project_template_compose = (
-        ctf_base.paths.project_scenarios(ctx.p_obj)
-        / "template"
-        / "scenario_compose.yaml"
+        ctf_base.paths.project_scenarios(ctx.p_obj) / "template" / "scenario_compose.yaml"
     )
     project_webserver_compose = (
-        ctf_base.paths.project_scenarios(ctx.p_obj)
-        / proj_web_name
-        / "scenario_compose.yaml"
+        ctf_base.paths.project_scenarios(ctx.p_obj) / proj_web_name / "scenario_compose.yaml"
     )
 
     return SimpleNamespace(

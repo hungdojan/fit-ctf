@@ -105,9 +105,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         self._project_cluster_mgr = project_cluster_mgr
         self._user_cluster_mgr = user_cluster_mgr
 
-    def get_project(
-        self, project_or_name: str | Project, active: bool | None = True
-    ) -> Project:
+    def get_project(self, project_or_name: str | Project, active: bool | None = True) -> Project:
         """Retrieve project data from the database.
 
         If the given argument is a Project instance, it will simple return
@@ -232,9 +230,7 @@ class ProjectManager(BaseManagerInterface[Project]):
             starting_port_bind = self._get_available_starting_port()
 
         if starting_port_bind == 0 or starting_port_bind + max_nof_users > 65_535:
-            raise SSHPortOutOfRangeException(
-                "Not enough available ports."
-            )  # pragma: no cover
+            raise SSHPortOutOfRangeException("Not enough available ports.")  # pragma: no cover
 
         self.paths.project_path(name).mkdir(parents=True)
         self.paths.project_users(name).mkdir(parents=True)
@@ -352,9 +348,7 @@ class ProjectManager(BaseManagerInterface[Project]):
         await enroll_mgr.flush_multiple_enrollments(
             [(user, prj) for user in enroll_mgr.get_enrollments_for_project(prj, True)]
         )
-        await self._project_cluster_mgr.delete_cluster(
-            self._project_cluster_mgr.get_cluster(prj)
-        )
+        await self._project_cluster_mgr.delete_cluster(self._project_cluster_mgr.get_cluster(prj))
         self.remove_doc_by_id(prj.id)
         n_map = self._project_cluster_mgr.get_network_map(prj)
         for n_name in n_map.values():

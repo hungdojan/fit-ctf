@@ -18,9 +18,7 @@ ClusterKind = Literal["user", "project"]
 COMPOSITE_SEP = "\x1f"
 
 
-def composite_secret_id(
-    cluster_kind: ClusterKind, scenario_name: str, local_name: str
-) -> str:
+def composite_secret_id(cluster_kind: ClusterKind, scenario_name: str, local_name: str) -> str:
     return COMPOSITE_SEP.join((cluster_kind, scenario_name, local_name))
 
 

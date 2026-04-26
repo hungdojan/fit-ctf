@@ -115,8 +115,7 @@ async def wait_instance_running(tui_app, pilot, *, timeout_sec: float) -> None:
             return
         await pilot.pause(0.25)
     raise AssertionError(
-        f"instance still not running after {timeout_sec}s "
-        "(check compose / container logs)"
+        f"instance still not running after {timeout_sec}s (check compose / container logs)"
     )
 
 

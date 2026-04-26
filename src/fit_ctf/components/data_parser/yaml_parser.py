@@ -13,7 +13,6 @@ from fit_ctf.components.exceptions import (
 
 
 class YamlParser(DataParserInterface):
-
     registry: Registry
 
     class IndentDumper(yaml.Dumper):
@@ -43,15 +42,11 @@ class YamlParser(DataParserInterface):
             cls._validators[name] = validator_for(s)(s, registry=cls.registry)
 
     @classmethod
-    def register_validator(
-        cls, validator_name: str, schema_filepath: str | pathlib.Path
-    ):
+    def register_validator(cls, validator_name: str, schema_filepath: str | pathlib.Path):
         if isinstance(schema_filepath, str):
             schema_filepath = pathlib.Path(schema_filepath)
         if not schema_filepath.exists():
-            raise SchemaFileNotExistException(
-                f"Schema `{str(schema_filepath)}` not found."
-            )
+            raise SchemaFileNotExistException(f"Schema `{str(schema_filepath)}` not found.")
         schema = yaml.safe_load(schema_filepath.resolve().read_text())
         cls._validators[validator_name] = validator_for(schema)(
             schema, registry=cls.registry, format_checker=jsonschema.FormatChecker()
@@ -78,9 +73,7 @@ class YamlParser(DataParserInterface):
         **kw,
     ) -> dict:
         if not file.exists():
-            raise DataFileNotExistException(
-                f"Config file `{file.resolve()}` not found."
-            )
+            raise DataFileNotExistException(f"Config file `{file.resolve()}` not found.")
         obj = yaml.safe_load(file.read_text())
 
         if validator_name is not None:

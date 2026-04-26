@@ -29,9 +29,9 @@ import os
 
 import pytest
 from dotenv import load_dotenv
-from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from textual.widgets import Input
 
+from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from tests import ComplexData, fixture_path
 from tests.workflow.container_helpers import (
     container_client_kind,
@@ -84,9 +84,7 @@ def test_workflow1_login_node_fetches_flag_over_http(empty_complex: ComplexData)
         )
         assert build_code == 0, f"compose build failed with {build_code}"
 
-        start_code = asyncio.run(
-            ctf_base.user_cluster_mgr.start_cluster(cluster, verbose=False)
-        )
+        start_code = asyncio.run(ctf_base.user_cluster_mgr.start_cluster(cluster, verbose=False))
         assert start_code == 0, f"compose up failed with {start_code}"
 
         body = wait_for_flag_from_login_node(client_kind, compose_files, expected_body)
@@ -115,21 +113,15 @@ async def test_workflow1_rendezvous_ui_start_instance_fetches_flag(
 
     expected_body = _expected_flag_body("workflow1/expected_file")
 
-    build_code = await ctf_base.user_cluster_mgr.build_cluster_images(
-        cluster, verbose=False
-    )
+    build_code = await ctf_base.user_cluster_mgr.build_cluster_images(cluster, verbose=False)
     assert build_code == 0, f"compose build failed with {build_code}"
 
     prj_btn_id = f"#select-btn-{ctx.prj['pn']}"
 
     try:
         async with tui_app.run_test() as pilot:
-            tui_app.screen.query_one("#login-username-input", Input).value = ctx.user[
-                "u"
-            ]
-            tui_app.screen.query_one("#login-password-input", Input).value = ctx.user[
-                "p"
-            ]
+            tui_app.screen.query_one("#login-username-input", Input).value = ctx.user["u"]
+            tui_app.screen.query_one("#login-password-input", Input).value = ctx.user["p"]
             await pilot.click("#login-submit-btn")
             await pilot.pause(0.2)
             assert isinstance(tui_app.screen, AppScreen)
@@ -191,9 +183,7 @@ def test_workflow2_project_template_and_user_flag(empty_complex: ComplexData):
         body = wait_for_flag_from_login_node(client_kind, compose_files, expected_body)
         assert body == expected_body
 
-        tcp = tcp_probe_from_login_node(
-            client_kind, compose_files, "template_service", 27017
-        )
+        tcp = tcp_probe_from_login_node(client_kind, compose_files, "template_service", 27017)
         assert tcp.returncode == 0, (
             "login_node should reach project template_service Mongo on 27017 "
             f"(stderr={tcp.stderr!r})"
@@ -209,6 +199,4 @@ def test_workflow2_project_template_and_user_flag(empty_complex: ComplexData):
         assert proj_body == expected_body
     finally:
         asyncio.run(ctf_base.user_cluster_mgr.stop_cluster(user_cluster, verbose=False))
-        asyncio.run(
-            ctf_base.project_cluster_mgr.stop_cluster(project_cluster, verbose=False)
-        )
+        asyncio.run(ctf_base.project_cluster_mgr.stop_cluster(project_cluster, verbose=False))

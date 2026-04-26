@@ -3,9 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.components.types import PathDict, UserRole
 from fit_ctf.models.core.user import User
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf_rendezvous.user_rendezvous_settings import (
     SETTINGS_FILENAME,
     RendezvousUserSettings,

@@ -9,7 +9,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class WelcomePage(Container, CoreWidget):
-
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         CoreWidget.__init__(self, owner_screen)
         Container.__init__(self, *children, **kwargs)

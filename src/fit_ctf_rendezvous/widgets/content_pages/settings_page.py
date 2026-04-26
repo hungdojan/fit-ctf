@@ -10,7 +10,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class SettingsPage(Container, CoreWidget):
-
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)
@@ -38,9 +37,7 @@ class SettingsPage(Container, CoreWidget):
 
     @on(Switch.Changed, "#settings-dark-switch")
     def dark_changed(self, event: Switch.Changed) -> None:
-        self.owner_screen.app.theme = (
-            "textual-dark" if event.switch.value else "textual-light"
-        )
+        self.owner_screen.app.theme = "textual-dark" if event.switch.value else "textual-light"
         self.owner_screen.app.persist_rendezvous_user_settings()
 
     @on(Select.Changed, "#settings-language-select")

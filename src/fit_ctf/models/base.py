@@ -126,9 +126,7 @@ class BaseManagerInterface(ABC, Generic[T]):
         res = self._coll.find_one(filter=kw)
         return self.model_cls(**res) if res else None
 
-    def get_doc_by_filter_raw(
-        self, filter: dict | None = None, projection: dict | None = None
-    ):
+    def get_doc_by_filter_raw(self, filter: dict | None = None, projection: dict | None = None):
         """Search for a document with filter and project in raw format.
 
         :param filter: A filter query.

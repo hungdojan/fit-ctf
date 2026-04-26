@@ -11,8 +11,6 @@ from pathlib import Path
 
 import pytest
 
-from tests import fixture_path
-
 from fit_ctf.models.infra.config_models import (
     ScenarioConfig,
     ServiceConfig,
@@ -20,13 +18,13 @@ from fit_ctf.models.infra.config_models import (
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )
-from fit_ctf.models.utils.exceptions import CTFModelException
 from fit_ctf.models.infra.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
 )
 from fit_ctf.models.infra.scenario_manager import ScenarioManager
-from fit_ctf.models.utils.exceptions import ScenarioNotExistException
+from fit_ctf.models.utils.exceptions import CTFModelException, ScenarioNotExistException
+from tests import fixture_path
 
 INJECTED_SCENARIOS = fixture_path() / "injected_scenarios"
 
@@ -60,6 +58,7 @@ def scenario_manager_for_scenarios_root(scenarios_root: Path) -> ScenarioManager
     whose scenario root is `scenarios_root` (no DB / full CTFApp).
     """
     from unittest.mock import Mock
+
     from fit_ctf.path_mgmt import PathManagement
 
     # Create minimal path management with just scenario_global
@@ -216,9 +215,7 @@ def test_validate_canonical_scenario_yaml_dict_ok():
 
 def test_validate_canonical_scenario_yaml_dict_rejects_wrong_keys():
     with pytest.raises(CTFModelException, match="exactly top-level"):
-        validate_canonical_scenario_yaml_dict(
-            {"service_configs": {}, "secrets": {}, "extra": 1}
-        )
+        validate_canonical_scenario_yaml_dict({"service_configs": {}, "secrets": {}, "extra": 1})
 
 
 def test_validate_canonical_scenario_yaml_dict_rejects_flat_layout():

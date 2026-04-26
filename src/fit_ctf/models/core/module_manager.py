@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 
 import yaml
 
-from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
@@ -17,6 +16,7 @@ from fit_ctf.models.utils.exceptions import (
     ModuleInUseException,
     ModuleNotExistsException,
 )
+from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.templates import TEMPLATE_PATH_MAP
 
 if TYPE_CHECKING:
@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 
 
 class ModuleManager:
-
     def __init__(
         self,
         c_client: ContainerClientInterface,
@@ -60,14 +59,10 @@ class ModuleManager:
         """Get path to the module."""
         dir_path = self._paths.module_global / module_name
         if not dir_path.is_dir():
-            raise ModuleNotExistsException(
-                f"Cannot locate a path to module `{module_name}`."
-            )
+            raise ModuleNotExistsException(f"Cannot locate a path to module `{module_name}`.")
         return dir_path
 
-    async def build_module(
-        self, module_name: str, to_stdout: bool = False
-    ) -> ErrorCode:
+    async def build_module(self, module_name: str, to_stdout: bool = False) -> ErrorCode:
         """Build a module's container image.
 
         :param module_name: Name of the module to build
@@ -112,9 +107,7 @@ class ModuleManager:
             for s in self._paths.project_scenarios(prj).iterdir():
                 if not s.is_dir() or not (s / "scenario_compose.yaml").exists():
                     continue
-                for module_name, count in _fetch_modules(
-                    s / "scenario_compose.yaml"
-                ).items():
+                for module_name, count in _fetch_modules(s / "scenario_compose.yaml").items():
                     module_acc[module_name] += count
             return module_acc
 
@@ -126,9 +119,7 @@ class ModuleManager:
             for s in user_root.iterdir():
                 if not s.is_dir() or not (s / "scenario_compose.yaml").exists():
                     continue
-                for module_name, count in _fetch_modules(
-                    s / "scenario_compose.yaml"
-                ).items():
+                for module_name, count in _fetch_modules(s / "scenario_compose.yaml").items():
                     module_acc[module_name] += count
             return module_acc
 
@@ -183,8 +174,6 @@ class ModuleManager:
         module_path = self.get_path(module_name)
         module_count = self.reference_count(None, prj_mgr, enroll_mgr)
         if module_count.get(module_name, 0) > 0:
-            raise ModuleInUseException(
-                f"Module `{module_name}` is still used by some services."
-            )
+            raise ModuleInUseException(f"Module `{module_name}` is still used by some services.")
         _ = await self._c_client.rm_images(__name__, module_name, True)
         rmtree(module_path)

@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class AuthInterface(ABC):
-
     def __init__(self, local_login: bool) -> None:
         self._local_login = local_login
 

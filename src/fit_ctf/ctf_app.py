@@ -13,11 +13,6 @@ from dateutil import parser
 from jsonschema.exceptions import ValidationError
 
 import fit_ctf.models.core.project as project
-from fit_ctf.ctf_base import CTFBase
-from fit_ctf.exceptions import (
-    CTFBaseException,
-    ImportFileCorruptedException,
-)
 from fit_ctf.components.auth.auth_interface import AuthInterface
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.container_client import get_c_client_by_name
@@ -29,12 +24,17 @@ from fit_ctf.components.types import (
     PathDict,
     SetupDict,
 )
-from fit_ctf.models.infra.config_models import scenario_config_from_dict
-from fit_ctf.models.infra.user_cluster import UserCluster
+from fit_ctf.ctf_base import CTFBase
+from fit_ctf.exceptions import (
+    CTFBaseException,
+    ImportFileCorruptedException,
+)
 
 # Service management deprecated - moved to cluster configurations
 from fit_ctf.models.core.secret import SecretSubmissionLogEntry, SolvedSecretRecord
 from fit_ctf.models.core.user_progress import UserProgress
+from fit_ctf.models.infra.config_models import scenario_config_from_dict
+from fit_ctf.models.infra.user_cluster import UserCluster
 from fit_ctf.models.utils.exceptions import (
     ProjectExistsException,
     UserExistsException,
@@ -128,9 +128,7 @@ class CTFApp(CTFBase):
 
         # User rows are whoever is enrolled in this project
         users = self.enroll_mgr.get_enrollments_for_project(project, True)
-        data["users"] = [
-            {k: v for k, v in u.model_dump().items() if k != "_id"} for u in users
-        ]
+        data["users"] = [{k: v for k, v in u.model_dump().items() if k != "_id"} for u in users]
         pipeline = MongoQueries.export_enrollments(project)
         enrollments = list(self.enroll_mgr.collection.aggregate(pipeline))
 
@@ -177,24 +175,18 @@ class CTFApp(CTFBase):
         data["clusters"] = clusters
 
         # Project-level cluster (admin / shared scenarios)
-        pc = self.project_cluster_mgr.get_doc_by_filter(
-            **{"project_id.$id": project.id}
-        )
+        pc = self.project_cluster_mgr.get_doc_by_filter(**{"project_id.$id": project.id})
         if pc:
             data["project_cluster"] = {
                 "name": pc.name,
                 "scenario_names": pc.scenario_names,
-                "scenario_configs": {
-                    n: c.model_dump() for n, c in pc.scenario_configs.items()
-                },
+                "scenario_configs": {n: c.model_dump() for n, c in pc.scenario_configs.items()},
             }
         else:
             data["project_cluster"] = None
 
         # Module names referenced by this project (for ZIP module tree)
-        module_count = self.module_mgr.reference_count(
-            project.name, self.prj_mgr, self.enroll_mgr
-        )
+        module_count = self.module_mgr.reference_count(project.name, self.prj_mgr, self.enroll_mgr)
         data["modules"] = [k for k, v in module_count.items() if v > 0]
         return data
 
@@ -214,14 +206,11 @@ class CTFApp(CTFBase):
         for module_name in data["modules"]:
             for dirpath, _, filenames in os.walk(module_root_dir / module_name):
                 for filename in filenames:
-
                     # Write the file named filename to the archive,
                     # giving it the archive name 'arcname'.
                     # filepath = os.path.join(dirpath, filename)
                     filepath = Path(dirpath) / filename
-                    parentpath = os.path.relpath(
-                        filepath, module_root_dir / module_name
-                    )
+                    parentpath = os.path.relpath(filepath, module_root_dir / module_name)
                     arcname = os.path.join(
                         self.paths.module_global.name,
                         os.path.basename(module_root_dir / module_name),
@@ -341,9 +330,7 @@ class CTFApp(CTFBase):
         usernames = [
             user["username"]
             for user in self.user_mgr.get_docs_raw(
-                filter={
-                    "username": {"$in": [user["username"] for user in data["users"]]}
-                },
+                filter={"username": {"$in": [user["username"] for user in data["users"]]}},
                 projection={"_id": 0, "username": 1},
             )
         ]
@@ -406,9 +393,7 @@ class CTFApp(CTFBase):
     def _revert_setup_enrollment_slice(self, username: str, project_name: str) -> None:
         """Undo enroll_user_to_project via cancel_enrollment; fall back to DB/path-only cleanup."""
         try:
-            self._run_coroutine_safely(
-                self.enroll_mgr.cancel_enrollment(username, project_name)
-            )
+            self._run_coroutine_safely(self.enroll_mgr.cancel_enrollment(username, project_name))
         except Exception:
             self._revert_imported_user_slice(username, project_name)
             return
@@ -449,8 +434,7 @@ class CTFApp(CTFBase):
                 self.user_mgr.create_and_insert_doc(**user)
             except Exception as e:
                 self.logger.warning(
-                    f"Import project: skipped user {username!r} after user insert "
-                    f"failure: {e}"
+                    f"Import project: skipped user {username!r} after user insert failure: {e}"
                 )
                 failed_usernames.add(username)
 
@@ -463,14 +447,11 @@ class CTFApp(CTFBase):
                 continue
             try:
                 progress_dict = enrollment["progress"]
-                progress = self._user_progress_from_import_dict(
-                    progress_dict, failed_usernames
-                )
+                progress = self._user_progress_from_import_dict(progress_dict, failed_usernames)
                 self.enroll_mgr.import_enrollment(username, project_name, progress)
             except Exception as e:
                 self.logger.warning(
-                    f"Import project: skipped user {username!r} after enrollment "
-                    f"failure: {e}"
+                    f"Import project: skipped user {username!r} after enrollment failure: {e}"
                 )
                 self._revert_imported_user_slice(username, project_name)
                 failed_usernames.add(username)
@@ -486,9 +467,7 @@ class CTFApp(CTFBase):
                 project_obj = self.prj_mgr.get_project(proj_name)
                 enrollment_obj = self.enroll_mgr.get_enrollment(user_obj, project_obj)
                 builder = UserCluster.Builder(cluster_data["name"], enrollment_obj)
-                for scenario_name, raw in cluster_data.get(
-                    "scenario_configs", {}
-                ).items():
+                for scenario_name, raw in cluster_data.get("scenario_configs", {}).items():
                     if not isinstance(raw, dict):
                         continue
                     builder.add_scenario_config(
@@ -530,8 +509,7 @@ class CTFApp(CTFBase):
                         )
                     except ValidationError as e:
                         raise ImportFileCorruptedException(
-                            "File `database_dump.yaml` does not match the schema.\n"
-                            f"{str(e)}"
+                            f"File `database_dump.yaml` does not match the schema.\n{str(e)}"
                         )
 
                 # DB first: collisions abort; partial per-user failures recorded in set
@@ -620,12 +598,8 @@ class CTFApp(CTFBase):
                 username = user["username"]
                 try:
                     if user.get("generate_password"):
-                        password = AuthInterface.generate_password(
-                            DEFAULT_PASSWORD_LENGTH
-                        )
-                        _, user_data = self.user_mgr.create_new_user(
-                            **user, password=password
-                        )
+                        password = AuthInterface.generate_password(DEFAULT_PASSWORD_LENGTH)
+                        _, user_data = self.user_mgr.create_new_user(**user, password=password)
                     else:
                         _, user_data = self.user_mgr.create_new_user(**user)
                 except UserExistsException as e:
@@ -661,9 +635,7 @@ class CTFApp(CTFBase):
                         login_node_params = uc_scenarios.get("login_node", {}).get(
                             "config_params", {}
                         )
-                        login_node_type = login_node_params.get(
-                            "login_node_module", "ssh_ubi"
-                        )
+                        login_node_type = login_node_params.get("login_node_module", "ssh_ubi")
 
                     enrollment = self.enroll_mgr.enroll_user_to_project(
                         enroll_copy["user"],
@@ -682,14 +654,10 @@ class CTFApp(CTFBase):
                             if not isinstance(raw, dict):
                                 continue
                             sc = scenario_config_from_dict(scenario_name, raw)
-                            self.user_cluster_mgr.create_or_update_scenario_config(
-                                uc, sc
-                            )
+                            self.user_cluster_mgr.create_or_update_scenario_config(uc, sc)
                 except Exception as e:
                     # Compare before/after to avoid reverting pre-existing enrollments
-                    has_enrollment = self._enrollment_active_exists(
-                        username, project_name
-                    )
+                    has_enrollment = self._enrollment_active_exists(username, project_name)
                     if has_enrollment and not had_enrollment:
                         self._revert_setup_enrollment_slice(username, project_name)
                     elif not has_enrollment and not had_enrollment:
@@ -701,8 +669,7 @@ class CTFApp(CTFBase):
                             continue
                         raise CTFBaseException(e)
                     self.logger.warning(
-                        f"Setup: skipped enrollment for {username!r} / "
-                        f"{project_name!r}: {e}"
+                        f"Setup: skipped enrollment for {username!r} / {project_name!r}: {e}"
                     )
                     continue
         return new_users

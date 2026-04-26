@@ -3,16 +3,16 @@ import pathlib
 
 import click
 
-from fit_ctf_cli.cli.utils import format_option, requires_database, user_option
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.auth.auth_interface import AuthInterface
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.types import UserInfoDict
+from fit_ctf.ctf_app import CTFApp
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.models.core.user import UserManager
 from fit_ctf.models.utils.exceptions import PublicKeyUploadFail, UserExistsException
+from fit_ctf_cli.cli.utils import format_option, requires_database, user_option
 
 #######################
 ## User CLI commands ##
@@ -108,9 +108,7 @@ def multiple_create(
 
 @user.command(name="ls")
 @format_option
-@click.option(
-    "-a", "--all", "_all", is_flag=True, help="Display all users (even inactive)."
-)
+@click.option("-a", "--all", "_all", is_flag=True, help="Display all users (even inactive).")
 @click.pass_context
 def list_users(ctx: click.Context, format: str, _all: bool):
     """Get a list of registered users in the database."""
@@ -126,10 +124,7 @@ def list_users(ctx: click.Context, format: str, _all: bool):
     users = user_mgr.get_users_info(None if _all else True)
 
     values = [
-        [
-            transform_value(key, user)
-            for key in ["username", "active", "role", "email", "projects"]
-        ]
+        [transform_value(key, user) for key in ["username", "active", "role", "email", "projects"]]
         for user in users
     ]
     header = ["Username", "Active", "Role", "Email", "Projects"]

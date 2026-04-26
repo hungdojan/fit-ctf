@@ -28,9 +28,7 @@ def test_workflow2_project_and_user_compiled(empty_complex: ComplexData):
 
     assert "template" in w2.project_cluster.scenario_names
     assert w2.proj_webserver_name in w2.project_cluster.scenario_names
-    assert w2.project_cluster.scenario_names == list(
-        w2.project_cluster.scenario_configs.keys()
-    )
+    assert w2.project_cluster.scenario_names == list(w2.project_cluster.scenario_configs.keys())
     assert w2.project_template_compose.exists()
     assert w2.project_webserver_compose.exists()
 
@@ -40,9 +38,9 @@ def test_workflow2_project_and_user_compiled(empty_complex: ComplexData):
 
     pmap = ctf_base.project_cluster_mgr.get_network_map(w2.p_obj)
     umap = ctf_base.user_cluster_mgr.get_network_map((w2.u_obj, w2.p_obj))
-    assert (
-        pmap["shared"] == umap["shared"]
-    ), "user and project must share the same shared network name"
+    assert pmap["shared"] == umap["shared"], (
+        "user and project must share the same shared network name"
+    )
 
     proj_compose = YamlParser.load_data_file(w2.project_template_compose)
     tpl_svc = proj_compose["services"]["template_service"]

@@ -37,7 +37,7 @@ def test_cli_enroll_multiple_users(empty_cli_data: CLIData):
     assert not ctf_app.enroll_mgr.get_enrollments_for_project("prj1")
     with tempfile.NamedTemporaryFile("w+") as tf:
         path = Path(tf.name)
-        tf.write("\n".join([f"user{i+2}" for i in range(3)]))
+        tf.write("\n".join([f"user{i + 2}" for i in range(3)]))
         tf.flush()
         tf.seek(0)
 
@@ -68,7 +68,7 @@ def test_cli_cancel_multiple_enrollments(cli_data: CLIData):
 
     with tempfile.NamedTemporaryFile("w+") as tf:
         path = Path(tf.name)
-        tf.write("\n".join([f"user{i+2}" for i in range(3)]))
+        tf.write("\n".join([f"user{i + 2}" for i in range(3)]))
         tf.flush()
         tf.seek(0)
 

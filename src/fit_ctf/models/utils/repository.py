@@ -6,15 +6,15 @@ from bson import ObjectId
 from pymongo.database import Database
 
 from fit_ctf.models.utils.exceptions import (
-    UserNotExistsException,
     ProjectNotExistException,
     UserNotEnrolledToProjectException,
+    UserNotExistsException,
 )
 
 if TYPE_CHECKING:
-    from fit_ctf.models.core.user import User
-    from fit_ctf.models.core.project import Project
     from fit_ctf.models.core.enrollment import Enrollment
+    from fit_ctf.models.core.project import Project
+    from fit_ctf.models.core.user import User
 
 
 class EntityRepository:
@@ -32,9 +32,7 @@ class EntityRepository:
         """
         self._db = db
 
-    def get_user(
-        self, user_or_username: "str | User", active: bool | None = True
-    ) -> "User":
+    def get_user(self, user_or_username: "str | User", active: bool | None = True) -> "User":
         """Retrieve a user from the database.
 
         :param user_or_username: User username or user object.

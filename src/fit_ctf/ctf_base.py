@@ -4,17 +4,17 @@ import pymongo
 from pymongo.database import Database
 
 import fit_ctf.components.container_client.container_client_interface as c_client_interface
-from fit_ctf.path_mgmt import PathManagement
 from fit_ctf.components.logger.default_logger import DefaultLogger
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.components.types import EnvInfo, PathDict
+from fit_ctf.path_mgmt import PathManagement
 
 if TYPE_CHECKING:
-    import fit_ctf.models.infra as clusters
     import fit_ctf.models.core.enrollment as enroll
     import fit_ctf.models.core.module_manager as module_manager
     import fit_ctf.models.core.project as prj
     import fit_ctf.models.core.user as user
+    import fit_ctf.models.infra as clusters
 
 
 class CTFBase:
@@ -38,42 +38,38 @@ class CTFBase:
 
     def _init_managers(self):
         """Initialize all managers in linear order (no circular dependencies)."""
-        from fit_ctf.models.core.project import Project, ProjectManager
-        from fit_ctf.models.core.user import User, UserManager
         from fit_ctf.models.core.enrollment import Enrollment, EnrollmentManager
         from fit_ctf.models.core.module_manager import ModuleManager
-        from fit_ctf.models.utils.repository import EntityRepository
+        from fit_ctf.models.core.project import Project, ProjectManager
+        from fit_ctf.models.core.user import User, UserManager
         from fit_ctf.models.infra import (
-            UserCluster,
-            UserClusterManager,
             ProjectCluster,
             ProjectClusterManager,
             ScenarioManager,
+            UserCluster,
+            UserClusterManager,
         )
+        from fit_ctf.models.utils.repository import EntityRepository
 
         # Create shared repository first
         self._repo = EntityRepository(db=self.ctf_db)
 
         # Leaf managers (no manager dependencies)
-        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(
-            paths=self._path_mgmt
-        )
+        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(paths=self._path_mgmt)
 
         self._module_mgr: "module_manager.ModuleManager" = ModuleManager(
             c_client=self._c_client,
             paths=self._path_mgmt,
         )
 
-        self._project_cluster_mgr: "clusters.ProjectClusterManager" = (
-            ProjectClusterManager(
-                db=self.ctf_db,
-                coll=self.ctf_db["project_cluster"],
-                model_cls=ProjectCluster,
-                repo=self._repo,
-                c_client=self._c_client,
-                paths=self._path_mgmt,
-                logger=self._logger,
-            )
+        self._project_cluster_mgr: "clusters.ProjectClusterManager" = ProjectClusterManager(
+            db=self.ctf_db,
+            coll=self.ctf_db["project_cluster"],
+            model_cls=ProjectCluster,
+            repo=self._repo,
+            c_client=self._c_client,
+            paths=self._path_mgmt,
+            logger=self._logger,
         )
 
         # Mid-level managers

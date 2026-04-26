@@ -10,7 +10,6 @@ from fit_ctf.components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class PodmanClient(c_client.ContainerClientInterface):
-
     def generate_container_prefix(self, *names: str) -> str:
         return f"{'_'.join(names)}_"
 
@@ -30,9 +29,7 @@ class PodmanClient(c_client.ContainerClientInterface):
         cmd = ["podman", "network", "ls", "--format", '"{{ .Name }}"']
         return await self._process_get_commands(cmd, contains)
 
-    def rm_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
-    ) -> ErrorCode:
+    def rm_network(self, logger_name: str, name: str, to_stdout: bool = False) -> ErrorCode:
         cmd = ["podman", "network", "rm", name]
         return self._run_logged_sync(cmd, logger_name, to_stdout=to_stdout)
 
@@ -108,7 +105,7 @@ class PodmanClient(c_client.ContainerClientInterface):
 
     async def compose_ps(self, files: list[Path]) -> list[str]:
         file_flags = [f"-f {str(path.resolve())}" for path in files]
-        cmd = f"podman-compose {' '.join(file_flags)} ps --format \"{{ .Names }}\""
+        cmd = f'podman-compose {" ".join(file_flags)} ps --format "{{ .Names }}"'
         proc = await asyncio.create_subprocess_shell(
             cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )

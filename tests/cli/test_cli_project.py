@@ -3,8 +3,8 @@ import csv
 import re
 from io import StringIO
 
-from fit_ctf_cli.cli import cli
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf_cli.cli import cli
 from tests import CLIData
 
 
@@ -79,9 +79,7 @@ def test_enrolled_users(cli_data: CLIData):
     result = cli_runner.invoke(cli, cmd)
     assert re.search("not exist.$", result.output)
 
-    asyncio.run(
-        ctf_app.user_mgr.disable_multiple_users(["user2", "user3"], ctf_app.enroll_mgr)
-    )
+    asyncio.run(ctf_app.user_mgr.disable_multiple_users(["user2", "user3"], ctf_app.enroll_mgr))
 
     cmd = "project enrolled-users -pn prj1 -f csv".split()
     result = cli_runner.invoke(cli, cmd)
@@ -117,9 +115,7 @@ def test_used_ports(cli_data: CLIData):
     for row in values:
         prj = ctf_app.prj_mgr.get_project(row[header.index("Name")])
         assert row[header.index("Min Port")] == str(prj.starting_port_bind)
-        assert row[header.index("Max Port")] == str(
-            prj.starting_port_bind + prj.max_nof_users - 1
-        )
+        assert row[header.index("Max Port")] == str(prj.starting_port_bind + prj.max_nof_users - 1)
 
     asyncio.run(ctf_app.prj_mgr.delete_all(ctf_app.enroll_mgr))
 

@@ -2,8 +2,8 @@ import os
 
 from dotenv import load_dotenv
 
-from fit_ctf_cli.cli import cli
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf_cli.cli import cli
 
 
 def main():

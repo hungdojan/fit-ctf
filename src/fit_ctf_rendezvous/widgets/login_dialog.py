@@ -13,14 +13,13 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class LoginDialog(Container, CoreWidget):
-
     def __init__(
         self,
         owner_screen: BaseScreen,
         on_submit: Callable[[str, str], None],
         on_cancel: Callable[[], None],
         *children: Widget,
-        **kwargs
+        **kwargs,
     ) -> None:
         CoreWidget.__init__(self, owner_screen)
         Container.__init__(self, *children, **kwargs)

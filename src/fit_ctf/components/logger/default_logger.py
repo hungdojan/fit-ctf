@@ -83,9 +83,7 @@ class DefaultLogger(LoggerInterface):
         if logger_name not in logging.Logger.manager.loggerDict.keys():
             # create handler based on the `is_file` condition
             handler = (
-                logging.FileHandler(
-                    Path(os.getenv("LOG_DEST", "./")) / f"{logger_name}.log"
-                )
+                logging.FileHandler(Path(os.getenv("LOG_DEST", "./")) / f"{logger_name}.log")
                 if is_file
                 else logging.StreamHandler(sys.stdout)
             )

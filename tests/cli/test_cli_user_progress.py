@@ -47,10 +47,7 @@ def test_submit_secret(cli_data: CLIData):
 
     cmd = "user-progress -pn prj2 -u user1 submit-secret -v value2".split()
     result = cli_runner.invoke(cli, cmd)
-    assert (
-        result.exit_code == 0
-        and result.output.strip() == "Secret was successfully submitted."
-    )
+    assert result.exit_code == 0 and result.output.strip() == "Secret was successfully submitted."
     progress = ctf_app.enroll_mgr.get_enrollment(user, project).progress
     assert progress.found_secrets == 2
 

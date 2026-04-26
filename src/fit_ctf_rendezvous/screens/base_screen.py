@@ -7,7 +7,6 @@ from fit_ctf_rendezvous.core_manager import CoreManager
 
 
 class BaseScreen(Screen):
-
     def __init__(self, base_app: "r_app.RendezvousApp", **kwargs) -> None:
         super().__init__(**kwargs)
         self._base_app = base_app

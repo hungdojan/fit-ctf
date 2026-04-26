@@ -59,9 +59,7 @@ class UserCluster(BaseCluster):
             self._enrollment = enrollment
             self._scenario_configs: dict[str, ScenarioConfig] = {}
 
-        def add_scenario_config(
-            self, scenario_name: str, scenario_config: ScenarioConfig
-        ) -> Self:
+        def add_scenario_config(self, scenario_name: str, scenario_config: ScenarioConfig) -> Self:
             """Add scenario configuration to cluster.
 
             :param scenario_name: Name of the scenario
@@ -162,9 +160,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             .build()
         )
 
-    def get_user_and_project(
-        self, enrollment_id: ObjectId
-    ) -> "tuple[user.User, project.Project]":
+    def get_user_and_project(self, enrollment_id: ObjectId) -> "tuple[user.User, project.Project]":
         """Get user and project from enrollment ID.
 
         :param enrollment_id: Enrollment object ID
@@ -181,16 +177,12 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return user, project
 
     @overload
-    def get_cluster(
-        self, cluster_name_or_enrollment: "enroll.Enrollment"
-    ) -> UserCluster: ...
+    def get_cluster(self, cluster_name_or_enrollment: "enroll.Enrollment") -> UserCluster: ...
 
     @overload
     def get_cluster(self, cluster_name_or_enrollment: str) -> UserCluster: ...
 
-    def get_cluster(
-        self, cluster_name_or_enrollment: "str | enroll.Enrollment"
-    ) -> UserCluster:
+    def get_cluster(self, cluster_name_or_enrollment: "str | enroll.Enrollment") -> UserCluster:
         """Get cluster by name or enrollment.
 
         :param cluster_name_or_enrollment: UserCluster name or Enrollment object
@@ -200,9 +192,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :raises UserClusterNotExistException: If cluster not found
         """
         if isinstance(cluster_name_or_enrollment, enroll.Enrollment):
-            cluster = self.get_doc_by_filter(
-                **{"enrollment_id.$id": cluster_name_or_enrollment.id}
-            )
+            cluster = self.get_doc_by_filter(**{"enrollment_id.$id": cluster_name_or_enrollment.id})
             if not cluster:
                 raise UserClusterNotExistException(
                     f"UserCluster from enrollment '{cluster_name_or_enrollment.id}' not found."
@@ -216,9 +206,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         return cluster
 
     @overload
-    def get_network_map(
-        self, cluster_or_project_user: UserCluster
-    ) -> UserNetworkMap: ...
+    def get_network_map(self, cluster_or_project_user: UserCluster) -> UserNetworkMap: ...
 
     @overload
     def get_network_map(
@@ -237,9 +225,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         :rtype: NetworkMap
         """
         if isinstance(cluster_or_project_user, UserCluster):
-            user, project = self.get_user_and_project(
-                cluster_or_project_user.enrollment_id.id
-            )
+            user, project = self.get_user_and_project(cluster_or_project_user.enrollment_id.id)
         else:
             user, project = cluster_or_project_user
         return {
@@ -292,9 +278,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             )
         return extras
 
-    def get_scenario_compose_file(
-        self, cluster: UserCluster, scenario_name: str
-    ) -> pathlib.Path:
+    def get_scenario_compose_file(self, cluster: UserCluster, scenario_name: str) -> pathlib.Path:
         """Get path to scenario compose template file.
 
         :param cluster: UserCluster instance
@@ -345,9 +329,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         enrollment = self._repo.get_enrollment_by_id(cluster.enrollment_id.id)
 
         # Check if cluster already exists for this enrollment
-        existing_cluster = self.get_doc_by_filter(
-            **{"enrollment_id.$id": enrollment.id}
-        )
+        existing_cluster = self.get_doc_by_filter(**{"enrollment_id.$id": enrollment.id})
         if existing_cluster:
             raise UserClusterExistException(
                 f"UserCluster already exists for enrollment {enrollment.id}"
@@ -429,9 +411,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         try:
             project_cluster = self._project_cluster_mgr.get_cluster(project)
             if not await self._project_cluster_mgr.cluster_is_running(project_cluster):
-                await self._project_cluster_mgr.start_cluster(
-                    project_cluster, verbose=verbose
-                )
+                await self._project_cluster_mgr.start_cluster(project_cluster, verbose=verbose)
         except ProjectClusterNotExistException:
             self.logger.debug(
                 f"No project cluster for project={project.name}; skipping dependency start",
@@ -482,8 +462,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
         """
         user, project = self.get_user_and_project(cluster.enrollment_id.id)
         self.logger.info(
-            f"user_cluster stop cluster={cluster.name} user={user.username} "
-            f"project={project.name}",
+            f"user_cluster stop cluster={cluster.name} user={user.username} project={project.name}",
             logger_name=CLUSTER_LOGGER_NAME,
         )
         enrollment = self._repo.get_enrollment(user, project, active=None)
@@ -493,9 +472,7 @@ class UserClusterManager(ClusterScenarioMixin[UserCluster]):
             to_stdout=verbose,
         )
         if success:
-            enroll_mgr.record_session(
-                enrollment, ProgressSession.State.STOP, enroll_mgr
-            )
+            enroll_mgr.record_session(enrollment, ProgressSession.State.STOP, enroll_mgr)
         self.logger.info(
             f"user_cluster stop done cluster={cluster.name} user={user.username} "
             f"project={project.name} exit_code={error_code} teardown={success}",

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
 
 
 class ContainerClientInterface(ABC):
-
     def __init__(self, ctf_base: "_ctf_base.CTFBase") -> None:
         self._ctf_base = ctf_base
 
@@ -38,13 +37,9 @@ class ContainerClientInterface(ABC):
                         continue
                     out.append(data)
             return out
-        return [
-            data.strip('"') for data in stdout.decode().rsplit() if contains in data
-        ]
+        return [data.strip('"') for data in stdout.decode().rsplit() if contains in data]
 
-    async def _process_logging(
-        self, proc: Process, logger_name: str, to_stdout: bool = False
-    ):
+    async def _process_logging(self, proc: Process, logger_name: str, to_stdout: bool = False):
         if proc.stdout:
             async for line in proc.stdout:
                 message = line.decode().strip()
@@ -52,9 +47,7 @@ class ContainerClientInterface(ABC):
                 if to_stdout:
                     self.ctf_base.logger.print(message)
 
-    def _run_logged_sync(
-        self, cmd: list[str], logger_name: str, *, to_stdout: bool = False
-    ) -> int:
+    def _run_logged_sync(self, cmd: list[str], logger_name: str, *, to_stdout: bool = False) -> int:
         proc = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -106,9 +99,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def rm_network(
-        self, logger_name: str, name: str, to_stdout: bool = False
-    ) -> ErrorCode:
+    def rm_network(self, logger_name: str, name: str, to_stdout: bool = False) -> ErrorCode:
         raise NotImplementedError()
 
     @abstractmethod
@@ -191,9 +182,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compose_ps_json(
-        self, files: list[Path]
-    ) -> list[dict[str, Any]]:  # pragma: no cover
+    async def compose_ps_json(self, files: list[Path]) -> list[dict[str, Any]]:  # pragma: no cover
         """Get container states in JSON format using compose command.
 
         :param files: List of compose file paths
@@ -258,9 +247,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def stats(
-        self, project_name: str
-    ) -> list[dict[str, str]]:  # pragma: no cover
+    async def stats(self, project_name: str) -> list[dict[str, str]]:  # pragma: no cover
         """Get containers' resource usage using `podman stats` command.
 
         :param project_name: Project name.
@@ -282,9 +269,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def ps_json(
-        self, project_name: str
-    ) -> list[dict[str, Any]]:  # pragma: no cover
+    async def ps_json(self, project_name: str) -> list[dict[str, Any]]:  # pragma: no cover
         """Get containers' states in JSON format using `podman ps` command.
 
         :param project_name: Project name.
@@ -295,9 +280,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def ps_csv(
-        self, project_name: str, output_file: pathlib.Path
-    ):  # pragma: no cover
+    async def ps_csv(self, project_name: str, output_file: pathlib.Path):  # pragma: no cover
         """Generate CSV file for container states.
 
         :param project_name: Project name.
@@ -308,9 +291,7 @@ class ContainerClientInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def compose_states(
-        self, files: list[Path]
-    ) -> list[HealthCheckDict]:  # pragma: no cover
+    async def compose_states(self, files: list[Path]) -> list[HealthCheckDict]:  # pragma: no cover
         """Returns a simple table that shows the state of each service in the cluster.
 
         :param files: List of compose file paths

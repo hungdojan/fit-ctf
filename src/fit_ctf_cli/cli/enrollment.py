@@ -3,10 +3,10 @@ import pathlib
 
 import click
 
-from fit_ctf_cli.cli.utils import project_option, user_option, requires_database
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.exceptions import CTFBaseException
+from fit_ctf_cli.cli.utils import project_option, requires_database, user_option
 
 
 @click.group(name="enrollment")
@@ -27,9 +27,7 @@ def enrollment(ctx: click.Context):
     help="Create a login node for the user (optional)",
 )
 @click.pass_context
-def enroll(
-    ctx: click.Context, username: str, project_name: str, login_node_type: str | None
-):
+def enroll(ctx: click.Context, username: str, project_name: str, login_node_type: str | None):
     """Enroll a user to a project."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
@@ -121,9 +119,7 @@ def cancel_from_project(ctx: click.Context, username: str, project_name: str):
     type=click.Path(path_type=pathlib.Path),
 )
 @click.pass_context
-def cancel_multiple_enrollment(
-    ctx: click.Context, project_name: str, input_file: pathlib.Path
-):
+def cancel_multiple_enrollment(ctx: click.Context, project_name: str, input_file: pathlib.Path):
     """Remove multiple users from the project."""
 
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore

@@ -1,7 +1,6 @@
 import click
 from click.shell_completion import shell_complete
 
-
 # some magic variables required by `click`
 __SHELL_COMPLETION_VARS = {
     "program_name": "fit-ctf",

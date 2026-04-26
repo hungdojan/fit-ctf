@@ -93,14 +93,28 @@ omit = [
 ]
 command_line = "-m pytest -vv"
 
-[tool.flake8]
-max-line-length = 100
-extend-exclude = [".venv", "docs"]
-per-file-ignores = ["**/__init__.py:F4"]
-extend-ignore = ["E226", "E266", "W503"]
+[tool.ruff]
+line-length = 100
+exclude = [".venv", "docs"]
 
-[tool.isort]
-profile = "black"
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+extend-ignore = ["E226", "E266"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F4"]
+#
+# [tool.flake8]
+# max-line-length = 100
+# extend-exclude = [".venv", "docs"]
+# per-file-ignores = ["**/__init__.py:F4"]
+# extend-ignore = ["E226", "E266", "W503"]
+#
+# [tool.isort]
+# profile = "black"
 
 [build-system]
 requires = ["poetry-core"]

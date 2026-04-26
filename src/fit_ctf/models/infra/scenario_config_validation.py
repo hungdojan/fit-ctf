@@ -20,9 +20,7 @@ def validate_secrets_vs_templates(
     for name in sorted(required_secret_names - configured):
         errors.append(f"missing secrets['{name}'] (templates use secret_map__{name})")
     for name in sorted(configured - required_secret_names):
-        warnings.append(
-            f"unused secrets['{name}'] (no secret_map__{name} in scenario templates)"
-        )
+        warnings.append(f"unused secrets['{name}'] (no secret_map__{name} in scenario templates)")
     return errors, warnings
 
 
@@ -48,13 +46,9 @@ def _validate_env_map(
 ) -> None:
     for ek in scm_env:
         if ek not in cfg.env_map:
-            errors.append(
-                f"service '{svc}' missing env_map key '{ek}' required by templates"
-            )
+            errors.append(f"service '{svc}' missing env_map key '{ek}' required by templates")
         elif not str(cfg.env_map.get(ek, "")).strip():
-            errors.append(
-                f"service '{svc}' env_map['{ek}'] is empty but required by templates"
-            )
+            errors.append(f"service '{svc}' env_map['{ek}'] is empty but required by templates")
     _warn_unused_map_keys(
         warnings, svc=svc, label="env_map", user_keys=cfg.env_map, scaffold_keys=scm_env
     )
@@ -69,9 +63,7 @@ def _validate_port_map(
 ) -> None:
     for pk in scm_ports:
         if pk not in cfg.port_map:
-            errors.append(
-                f"service '{svc}' missing port_map key '{pk}' required by templates"
-            )
+            errors.append(f"service '{svc}' missing port_map key '{pk}' required by templates")
             continue
         try:
             pv = int(cfg.port_map[pk])
@@ -79,9 +71,7 @@ def _validate_port_map(
             errors.append(f"service '{svc}' port_map['{pk}'] must be an integer port")
         else:
             if not (1 <= pv <= 65_535):
-                errors.append(
-                    f"service '{svc}' port_map['{pk}'] must be in range 1-65535"
-                )
+                errors.append(f"service '{svc}' port_map['{pk}'] must be in range 1-65535")
     _warn_unused_map_keys(
         warnings,
         svc=svc,
@@ -103,9 +93,7 @@ def _validate_volume_map(
         if not isinstance(vv, dict):
             continue
         if vk not in vol_map:
-            errors.append(
-                f"service '{svc}' missing volume_map volume '{vk}' required by templates"
-            )
+            errors.append(f"service '{svc}' missing volume_map volume '{vk}' required by templates")
             continue
         uv = vol_map[vk]
         if "src_path" in vv and not str(uv.src_path).strip():
@@ -149,14 +137,10 @@ def validate_service_configs_vs_scaffold(
         cfg = service_configs[svc]
         _validate_env_map(errors, warnings, svc, sc_data.get("env_map", {}), cfg)
         _validate_port_map(errors, warnings, svc, sc_data.get("port_map", {}), cfg)
-        _validate_volume_map(
-            errors, warnings, svc, sc_data.get("volume_map", {}), cfg.volume_map
-        )
+        _validate_volume_map(errors, warnings, svc, sc_data.get("volume_map", {}), cfg.volume_map)
 
     for svc in service_configs:
         if svc not in scaffold:
-            warnings.append(
-                f"unused service '{svc}' not referenced by scenario templates"
-            )
+            warnings.append(f"unused service '{svc}' not referenced by scenario templates")
 
     return errors, warnings

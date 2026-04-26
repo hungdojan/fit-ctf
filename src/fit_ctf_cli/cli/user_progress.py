@@ -1,18 +1,18 @@
 import click
 
-from fit_ctf_cli.cli.utils import (
-    format_option,
-    project_option,
-    user_option,
-    requires_database,
-)
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_view import get_view
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.models.core.enrollment import Enrollment
 from fit_ctf.models.utils.exceptions import (
     CTFModelException,
     SecretAlreadySubmittedException,
     SecretNotFoundException,
+)
+from fit_ctf_cli.cli.utils import (
+    format_option,
+    project_option,
+    requires_database,
+    user_option,
 )
 
 
@@ -65,9 +65,7 @@ def submit_secret(ctx: click.Context, value: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.enroll_mgr.submit_secret(
-            enrollment, value, ctf_app.prj_mgr, ctf_app.enroll_mgr
-        )
+        ctf_app.enroll_mgr.submit_secret(enrollment, value, ctf_app.prj_mgr, ctf_app.enroll_mgr)
         click.echo("Secret was successfully submitted.")
     except SecretNotFoundException:
         click.echo("Secret is incorrect.")

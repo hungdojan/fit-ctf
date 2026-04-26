@@ -2,13 +2,13 @@ import asyncio
 
 import click
 
-from fit_ctf_cli.cli.utils import format_option, project_option, requires_database
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.utils import color_state
+from fit_ctf.ctf_app import CTFApp
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf.models.core.project import ProjectManager
+from fit_ctf_cli.cli.utils import format_option, project_option, requires_database
 
 ##########################
 ## Project CLI commands ##
@@ -52,9 +52,7 @@ def project(
     show_default=True,
     type=int,
 )
-@click.option(
-    "-de", "--description", help="A project description.", default="", show_default=True
-)
+@click.option("-de", "--description", help="A project description.", default="", show_default=True)
 @click.pass_context
 def create_project(
     ctx: click.Context,
@@ -150,9 +148,7 @@ def enrolled_users(ctx: click.Context, project_name: str, format: str, all: bool
     """
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     try:
-        lof_active_users = ctf_app.enroll_mgr.get_enrollments_for_project_raw(
-            project_name, all
-        )
+        lof_active_users = ctf_app.enroll_mgr.get_enrollments_for_project_raw(project_name, all)
     except CTFBaseException as e:
         click.echo(e)
         ctx.exit(1)
@@ -200,9 +196,7 @@ def used_ports(ctx: click.Context, format: str):
         click.echo("No project found!")
         return
     header = ["ID", "Name", "Min Port", "Max Port"]
-    values = [
-        [i[key] for key in ["_id", "name", "min_port", "max_port"]] for i in lof_prj
-    ]
+    values = [[i[key] for key in ["_id", "name", "min_port", "max_port"]] for i in lof_prj]
     get_view(format).print_data(header, values)
 
 
@@ -242,9 +236,7 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     project = ctf_app.prj_mgr.get_project(project_name)
     cluster = ctf_app.project_cluster_mgr.get_cluster(project)
-    services_info = asyncio.run(
-        ctf_app.project_cluster_mgr.get_all_services_info(cluster)
-    )
+    services_info = asyncio.run(ctf_app.project_cluster_mgr.get_all_services_info(cluster))
     data_buffer = []
     for info in services_info:
         data_buffer.append(
@@ -253,19 +245,11 @@ def running_clusters_info(ctx: click.Context, project_name: str, format: str):
                 "name": info["Names"][0],
                 "networks": "\n".join(info["Networks"]) if info["Networks"] else "",
                 "cluster_type": (
-                    info["Labels"]["cluster_type"]
-                    if info["Labels"].get("cluster_type")
-                    else ""
+                    info["Labels"]["cluster_type"] if info["Labels"].get("cluster_type") else ""
                 ),
-                "state": (
-                    color_state(info["State"])
-                    if format == "tabulate"
-                    else info["State"]
-                ),
+                "state": (color_state(info["State"]) if format == "tabulate" else info["State"]),
                 "ports": (
-                    "\n".join([str(p["host_port"]) for p in info["Ports"]])
-                    if info["Ports"]
-                    else ""
+                    "\n".join([str(p["host_port"]) for p in info["Ports"]]) if info["Ports"] else ""
                 ),
             }
         )
@@ -285,9 +269,7 @@ def leaderboard(ctx: click.Context, project_name: str, format: str):
     data = ctf_app.enroll_mgr.get_leaderboard(ctf_app.prj_mgr.get_project(project_name))
     header_order = ["user", "found_secrets", "total_secrets", "last_submit_time"]
     headers = ["Pos", "User", "Submitted", "Total", "Last submit"]
-    values = [
-        [i + 1] + [item[key] for key in header_order] for i, item in enumerate(data)
-    ]
+    values = [[i + 1] + [item[key] for key in header_order] for i, item in enumerate(data)]
     get_view(format).print_data(headers, values)
 
 

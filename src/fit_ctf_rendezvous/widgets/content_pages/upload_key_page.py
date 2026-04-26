@@ -11,7 +11,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class UploadKeyPage(Container, CoreWidget):
-
     def __init__(self, owner_screen: BaseScreen, *children: Widget, **kwargs):
         Container.__init__(self, *children, **kwargs)
         CoreWidget.__init__(self, owner_screen)

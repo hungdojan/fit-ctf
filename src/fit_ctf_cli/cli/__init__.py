@@ -43,8 +43,7 @@ class LazyGroup(click.Group):
         cmd_object = getattr(mod, cmd_obj_name)
         if not isinstance(cmd_object, click.Command):
             raise ValueError(
-                f"Lazy loading of {modname}.{cmd_obj_name} failed by returning "
-                "a non-command object"
+                f"Lazy loading of {modname}.{cmd_obj_name} failed by returning a non-command object"
             )
         return cmd_object
 
@@ -87,9 +86,7 @@ def cli(
     paths = PathDict(
         **{
             key: value
-            for key, value in zip(
-                ["projects", "users", "modules", "scenarios"], get_paths()
-            )
+            for key, value in zip(["projects", "users", "modules", "scenarios"], get_paths())
         }
     )
     if project_dir:  # pragma: no cover

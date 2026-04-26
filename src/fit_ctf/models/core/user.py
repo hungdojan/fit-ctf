@@ -112,9 +112,7 @@ class UserManager(BaseManagerInterface[User]):
         self._repo = repo
         self._user_cluster_mgr = user_cluster_mgr
 
-    def get_user(
-        self, user_or_username: str | User, active: bool | None = True
-    ) -> User:
+    def get_user(self, user_or_username: str | User, active: bool | None = True) -> User:
         """Retrieve a user from the database.
 
         :param user_or_username: User username or user object.
@@ -168,9 +166,7 @@ class UserManager(BaseManagerInterface[User]):
         :rtype: str
         """
         crypt_hash = sha512_crypt.using(rounds=20000).hash(password)
-        template = get_template(
-            "shadow.j2", str(TEMPLATE_PATH_MAP["jinja_template"].resolve())
-        )
+        template = get_template("shadow.j2", str(TEMPLATE_PATH_MAP["jinja_template"].resolve()))
         with open(f"{shadow_path}", "w") as f:
             f.write(template.render(hash=crypt_hash))
         return crypt_hash
@@ -424,14 +420,10 @@ class UserManager(BaseManagerInterface[User]):
         pairs = []
         for user in users:
             await self._user_cluster_mgr.stop_all_clusters_of_a_user(user, enroll_mgr)
-            pairs.extend(
-                [(user, prj) for prj in enroll_mgr.get_enrolled_projects(user)]
-            )
+            pairs.extend([(user, prj) for prj in enroll_mgr.get_enrolled_projects(user)])
 
         await enroll_mgr.disable_multiple_enrollments(pairs)
-        self.collection.update_many(
-            {"_id": {"$in": user_ids}}, {"$set": {"active": False}}
-        )
+        self.collection.update_many({"_id": {"$in": user_ids}}, {"$set": {"active": False}})
 
     async def flush_multiple_users(
         self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"
@@ -450,9 +442,7 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            pairs.extend(
-                [(user, prj) for prj in enroll_mgr.get_enrolled_projects(user, True)]
-            )
+            pairs.extend([(user, prj) for prj in enroll_mgr.get_enrolled_projects(user, True)])
             path = self.paths.user_path(user)
             if path.exists():
                 shutil.rmtree(path)
@@ -460,9 +450,7 @@ class UserManager(BaseManagerInterface[User]):
         await enroll_mgr.flush_multiple_enrollments(pairs)
         self.remove_docs_by_id([u.id for u in users])
 
-    async def delete_a_user(
-        self, username: str, enroll_mgr: "enroll.EnrollmentManager"
-    ):
+    async def delete_a_user(self, username: str, enroll_mgr: "enroll.EnrollmentManager"):
         """Completely remove user from the host machine.
 
         :param username: Account's username.
@@ -474,9 +462,7 @@ class UserManager(BaseManagerInterface[User]):
         await self.disable_user(username, enroll_mgr)
         self.flush_user(username)
 
-    async def delete_users(
-        self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"
-    ):
+    async def delete_users(self, lof_usernames: list[str], enroll_mgr: "enroll.EnrollmentManager"):
         """Deletes users from the list.
 
         :param lof_usernames: List of usernames to delete.

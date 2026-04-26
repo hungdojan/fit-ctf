@@ -82,24 +82,18 @@ class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
         template_warning_sink: Callable[[str], None] | None = None,
     ) -> None:
         if scenario_name not in cluster.scenario_configs:
-            raise ScenarioNotExistException(
-                f"Scenario {scenario_name} not found in {cluster.name}"
-            )
+            raise ScenarioNotExistException(f"Scenario {scenario_name} not found in {cluster.name}")
         scenario_cfg = cluster.scenario_configs[scenario_name]
         # Create temporary ScenarioManager for validation
         sm = ScenarioManager(paths=self.paths)
-        warnings = sm.validate_scenario_config_against_templates(
-            scenario_name, scenario_cfg
-        )
+        warnings = sm.validate_scenario_config_against_templates(scenario_name, scenario_cfg)
         log = logging.getLogger(CLUSTER_LOGGER_NAME)
         for w in warnings:
             if template_warning_sink is not None:
                 template_warning_sink(w)
             else:
                 log.warning(w)
-        src_path, dst_path = self._scenario_global_and_destination(
-            cluster, scenario_name
-        )
+        src_path, dst_path = self._scenario_global_and_destination(cluster, scenario_name)
         compile_ctx = ScenarioCompileContext(
             paths_dict=cast(Mapping[str, Path], self.paths.paths_dict),
             scenario_global_root=src_path,

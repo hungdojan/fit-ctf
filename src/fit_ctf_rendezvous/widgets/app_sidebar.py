@@ -14,7 +14,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class AppSideBar(Container, CoreWidget):
-
     selected_project: Reactive[Project | None] = reactive(None)
 
     def __init__(

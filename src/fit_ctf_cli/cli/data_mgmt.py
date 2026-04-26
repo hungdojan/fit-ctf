@@ -2,15 +2,15 @@ import pathlib
 
 import click
 
+from fit_ctf.components.data_view import get_view
+from fit_ctf.ctf_app import CTFApp
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_cli.cli.utils import (
     format_option,
     project_option,
-    yaml_suffix_validation,
     requires_database,
+    yaml_suffix_validation,
 )
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf.exceptions import CTFBaseException
-from fit_ctf.components.data_view import get_view
 
 
 @click.group(name="data-mgmt")
@@ -75,9 +75,7 @@ def import_data(ctx: click.Context, input_file: pathlib.Path):
     callback=yaml_suffix_validation,
     help="A path to the YAML configuration file.",
 )
-@click.option(
-    "-E", "--exist-ok", is_flag=True, help="Ignore objects that already exist."
-)
+@click.option("-E", "--exist-ok", is_flag=True, help="Ignore objects that already exist.")
 @click.option(
     "-D",
     "--dry-run",
@@ -103,10 +101,7 @@ def setup_data(
         new_users = ctf_app.setup_env_from_file(input_file, exist_ok, dry_run)
         if new_users:
             headers = ["Username", "Password"]
-            values = [
-                [user[label] for label in ["username", "password"]]
-                for user in new_users
-            ]
+            values = [[user[label] for label in ["username", "password"]] for user in new_users]
             get_view(format).print_data(headers, values)
     except CTFBaseException as e:
         click.echo(e)

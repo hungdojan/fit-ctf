@@ -40,7 +40,7 @@ def db_shell(_: Context):
         "-it ctf-database-mongo mongosh "
         f"-u {os.getenv('DB_USERNAME')} "
         f"-p {os.getenv('DB_PASSWORD')} "
-        f"{os.getenv("DB_NAME")} "
+        f"{os.getenv('DB_NAME')} "
         "--authenticationDatabase admin"
     )
     subprocess.run(cmd.split(), stdout=sys.stdout, stderr=sys.stderr)
@@ -109,6 +109,4 @@ def setup_sshd(_: Context, user: str, rdz_port: int, fitctf_dirpath: str):
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(config_dir))
     template = env.get_template("99-ctf-rule.conf")
     with open(root_dirpath() / "99-ctf-rule.conf", "w") as f:
-        f.write(
-            template.render(user=user, rdz_port=rdz_port, fitctf_dirpath=fitctf_dirpath)
-        )
+        f.write(template.render(user=user, rdz_port=rdz_port, fitctf_dirpath=fitctf_dirpath))

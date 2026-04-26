@@ -6,7 +6,6 @@ if TYPE_CHECKING:
 
 
 class MongoQueries:
-
     @staticmethod
     def enrollment_port_collision(forwarded_port: int, container_port: int) -> list:
         return [
@@ -120,9 +119,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def enrollment_get_enrolled_projects(
-        user: "user.User", include_inactive: bool = False
-    ) -> list:
+    def enrollment_get_enrolled_projects(user: "user.User", include_inactive: bool = False) -> list:
         _filter: dict = {
             "user_id.$id": user.id,
         }
@@ -266,9 +263,7 @@ class MongoQueries:
         ]
 
     @staticmethod
-    def enrollment_multiple_user_pipeline(
-        project: "prj.Project", lof_usernames: list[str]
-    ) -> list:
+    def enrollment_multiple_user_pipeline(project: "prj.Project", lof_usernames: list[str]) -> list:
         """A multiple user pipeline query template.
 
         :param project: Project object.
@@ -491,9 +486,7 @@ class MongoQueries:
             {"$project": {"_id": 0, "forwarded_ports": 1}},
             {
                 "$project": {
-                    "forwarded_ports": {
-                        "$sortArray": {"input": "$forwarded_ports", "sortBy": 1}
-                    }
+                    "forwarded_ports": {"$sortArray": {"input": "$forwarded_ports", "sortBy": 1}}
                 }
             },
         ]
@@ -524,9 +517,7 @@ class MongoQueries:
                         "$arrayToObject": {
                             "$map": {
                                 "input": {
-                                    "$objectToArray": {
-                                        "$ifNull": ["$progress.solved_secrets", {}]
-                                    }
+                                    "$objectToArray": {"$ifNull": ["$progress.solved_secrets", {}]}
                                 },
                                 "as": "item",
                                 "in": {

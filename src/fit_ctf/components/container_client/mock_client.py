@@ -7,7 +7,6 @@ from fit_ctf.components.types import ErrorCode, HealthCheckDict, TaskSuccess
 
 
 class MockClient(c_client.ContainerClientInterface):
-
     def generate_container_prefix(self, *names: str) -> str:
         return ""
 
@@ -54,9 +53,7 @@ class MockClient(c_client.ContainerClientInterface):
     async def compose_ps(self, files: list[Path]) -> list[str]:  # pragma: no cover
         return []
 
-    async def compose_ps_json(
-        self, files: list[Path]
-    ) -> list[dict[str, Any]]:  # pragma: no cover
+    async def compose_ps_json(self, files: list[Path]) -> list[dict[str, Any]]:  # pragma: no cover
         return []
 
     async def compose_build(
@@ -78,21 +75,15 @@ class MockClient(c_client.ContainerClientInterface):
     def compose_shell(
         self, files: list[Path], service: str, command: str
     ) -> subprocess.CompletedProcess:  # pragma: no cover
-        return subprocess.CompletedProcess(
-            args=["compose", "exec", "bash"], returncode=0
-        )
+        return subprocess.CompletedProcess(args=["compose", "exec", "bash"], returncode=0)
 
-    async def stats(
-        self, project_name: str
-    ) -> list[dict[str, str]]:  # pragma: no cover
+    async def stats(self, project_name: str) -> list[dict[str, str]]:  # pragma: no cover
         return []
 
     async def ps(self, project_name: str) -> list[str]:  # pragma: no cover
         return []
 
-    async def ps_json(
-        self, project_name: str
-    ) -> list[dict[str, Any]]:  # pragma: no cover
+    async def ps_json(self, project_name: str) -> list[dict[str, Any]]:  # pragma: no cover
         return []
 
     async def ps_csv(self, project_name: str, output_file: Path):

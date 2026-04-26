@@ -5,29 +5,29 @@ import shutil
 from typing import TYPE_CHECKING, Self, cast, overload
 
 from bson import DBRef
-from pymongo.database import Database
 from pymongo.collection import Collection
+from pymongo.database import Database
 
+import fit_ctf.models.core.project as project_module
 from fit_ctf.components.container_client.container_client_interface import (
     ContainerClientInterface,
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
-from fit_ctf.path_mgmt import PathManagement
-from fit_ctf.models.utils.repository import EntityRepository
-import fit_ctf.models.core.project as project_module
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, ProjectNetworkMap
 from fit_ctf.models.infra.cluster_scenario_mixin import (
     BaseCluster,
     ClusterScenarioMixin,
 )
-from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.config_models import ScenarioConfig
+from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.utils.exceptions import (
     ProjectClusterExistException,
     ProjectClusterNotExistException,
     ProjectNotExistException,
     ScenarioConfigNotExistException,
 )
+from fit_ctf.models.utils.repository import EntityRepository
+from fit_ctf.path_mgmt import PathManagement
 
 if TYPE_CHECKING:
     import fit_ctf.models.core.project as project
@@ -53,9 +53,7 @@ class ProjectCluster(BaseCluster):
             self._project = project
             self._scenario_configs: dict[str, ScenarioConfig] = {}
 
-        def add_scenario_config(
-            self, scenario_name: str, scenario_config: ScenarioConfig
-        ) -> Self:
+        def add_scenario_config(self, scenario_name: str, scenario_config: ScenarioConfig) -> Self:
             """Add scenario configuration to cluster.
 
             :param scenario_name: Name of the scenario
@@ -126,22 +124,16 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         """
         project = self._repo.get_project_by_id(cluster.project_id.id)
         if not project:
-            raise ProjectNotExistException(
-                f"Project {str(cluster.project_id.id)} not found"
-            )
+            raise ProjectNotExistException(f"Project {str(cluster.project_id.id)} not found")
         return project
 
     @overload
-    def get_cluster(
-        self, cluster_name_or_project: "project.Project"
-    ) -> ProjectCluster: ...
+    def get_cluster(self, cluster_name_or_project: "project.Project") -> ProjectCluster: ...
 
     @overload
     def get_cluster(self, cluster_name_or_project: str) -> ProjectCluster: ...
 
-    def get_cluster(
-        self, cluster_name_or_project: "str | project.Project"
-    ) -> ProjectCluster:
+    def get_cluster(self, cluster_name_or_project: "str | project.Project") -> ProjectCluster:
         """Get cluster by name or project.
 
         :param cluster_name_or_project: ProjectCluster name or Project object
@@ -151,9 +143,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         :raises ProjectClusterNotExistException: If cluster not found
         """
         if isinstance(cluster_name_or_project, project_module.Project):
-            cluster = self.get_doc_by_filter(
-                **{"project_id.$id": cluster_name_or_project.id}
-            )
+            cluster = self.get_doc_by_filter(**{"project_id.$id": cluster_name_or_project.id})
             if not cluster:
                 raise ProjectClusterNotExistException(
                     f"ProjectCluster for project '{cluster_name_or_project.id}' not found."
@@ -167,14 +157,10 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         return cluster
 
     @overload
-    def get_network_map(
-        self, cluster_or_project: ProjectCluster
-    ) -> ProjectNetworkMap: ...
+    def get_network_map(self, cluster_or_project: ProjectCluster) -> ProjectNetworkMap: ...
 
     @overload
-    def get_network_map(
-        self, cluster_or_project: "project.Project"
-    ) -> ProjectNetworkMap: ...
+    def get_network_map(self, cluster_or_project: "project.Project") -> ProjectNetworkMap: ...
 
     def get_network_map(
         self, cluster_or_project: "ProjectCluster | project.Project"
@@ -203,12 +189,8 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         dst = self.paths.project_scenarios(project) / scenario_name
         return src, dst
 
-    def _network_map_for_scenario_compile(
-        self, cluster: ProjectCluster
-    ) -> dict[str, str]:
-        return cast(
-            dict[str, str], dict(self.get_network_map(self.get_project(cluster)))
-        )
+    def _network_map_for_scenario_compile(self, cluster: ProjectCluster) -> dict[str, str]:
+        return cast(dict[str, str], dict(self.get_network_map(self.get_project(cluster))))
 
     def _volume_context_extras(
         self, cluster: ProjectCluster, compile_destination: pathlib.Path
@@ -272,9 +254,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         # Validate project exists
         project = self._repo.get_project_by_id(cluster.project_id.id)
         if not project:
-            raise ProjectNotExistException(
-                f"Project {cluster.project_id.id} not found."
-            )
+            raise ProjectNotExistException(f"Project {cluster.project_id.id} not found.")
 
         # Check if cluster already exists for this project
         existing_cluster = self.get_doc_by_filter(**{"project_id.$id": project.id})
@@ -286,9 +266,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         # Check if cluster name is unique
         c = self.get_doc_by_filter(name=cluster.name)
         if c:
-            raise ProjectClusterExistException(
-                f"ProjectCluster {c.name} already exists"
-            )
+            raise ProjectClusterExistException(f"ProjectCluster {c.name} already exists")
 
         # Insert cluster document
         self.insert_doc(cluster)
@@ -315,9 +293,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             cluster = self.get_cluster(cluster_or_name)
         else:
             if not self.get_doc_by_id(cluster_or_name.id):
-                raise ProjectClusterNotExistException(
-                    f"ProjectCluster {cluster_or_name}"
-                )
+                raise ProjectClusterNotExistException(f"ProjectCluster {cluster_or_name}")
             cluster = cluster_or_name
 
         await self.stop_cluster(cluster)
@@ -332,9 +308,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             if scenario_dir.exists() and scenario_dir.is_dir():
                 shutil.rmtree(scenario_dir)
 
-    async def start_cluster(
-        self, cluster: ProjectCluster, *, verbose: bool = False
-    ) -> ErrorCode:
+    async def start_cluster(self, cluster: ProjectCluster, *, verbose: bool = False) -> ErrorCode:
         """Start a project cluster.
 
         :param cluster: ProjectCluster object
@@ -371,9 +345,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         )
         return error_code
 
-    async def stop_cluster(
-        self, cluster: ProjectCluster, *, verbose: bool = False
-    ) -> ErrorCode:
+    async def stop_cluster(self, cluster: ProjectCluster, *, verbose: bool = False) -> ErrorCode:
         """Stop a project cluster.
 
         :param cluster: ProjectCluster object
@@ -410,9 +382,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         """
         return len(await self.c_client.compose_ps(self.get_compose_files(cluster))) > 0
 
-    async def restart_cluster(
-        self, cluster: ProjectCluster, *, verbose: bool = False
-    ) -> ErrorCode:
+    async def restart_cluster(self, cluster: ProjectCluster, *, verbose: bool = False) -> ErrorCode:
         """Restart a project cluster.
 
         :param cluster: ProjectCluster object
@@ -436,9 +406,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
         )
         return start_code
 
-    async def cluster_health_check(
-        self, cluster: ProjectCluster
-    ) -> list[HealthCheckDict]:
+    async def cluster_health_check(self, cluster: ProjectCluster) -> list[HealthCheckDict]:
         """Get health check status for a project cluster.
 
         :param cluster: ProjectCluster object
@@ -485,9 +453,7 @@ class ProjectClusterManager(ClusterScenarioMixin[ProjectCluster]):
             to_stdout=to_stdout,
         )
 
-    def shell_into_service(
-        self, cluster: ProjectCluster, service: str, command: str = "bash"
-    ):
+    def shell_into_service(self, cluster: ProjectCluster, service: str, command: str = "bash"):
         """Shell into a cluster service.
 
         :param cluster: ProjectCluster object

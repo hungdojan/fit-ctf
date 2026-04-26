@@ -39,20 +39,23 @@ async def test_reference_count(connected_data: FixtureData):
     ctf_app, _ = connected_data
 
     prj = ctf_app.prj_mgr.get_docs()[0]
-    assert ctf_app.module_mgr.reference_count(
-        prj.name, ctf_app.prj_mgr, ctf_app.enroll_mgr
-    ) == {"ssh_ubi": 2, "template": 1}
-    assert ctf_app.module_mgr.reference_count(
-        None, ctf_app.prj_mgr, ctf_app.enroll_mgr
-    ) == {"ssh_ubi": 4, "template": 1}
+    assert ctf_app.module_mgr.reference_count(prj.name, ctf_app.prj_mgr, ctf_app.enroll_mgr) == {
+        "ssh_ubi": 2,
+        "template": 1,
+    }
+    assert ctf_app.module_mgr.reference_count(None, ctf_app.prj_mgr, ctf_app.enroll_mgr) == {
+        "ssh_ubi": 4,
+        "template": 1,
+    }
 
     await ctf_app.enroll_mgr.cancel_enrollment(
         ctf_app.enroll_mgr.get_enrollments_for_project(prj)[0], prj
     )
 
-    assert ctf_app.module_mgr.reference_count(
-        prj.name, ctf_app.prj_mgr, ctf_app.enroll_mgr
-    ) == {"template": 1, "ssh_ubi": 1}
+    assert ctf_app.module_mgr.reference_count(prj.name, ctf_app.prj_mgr, ctf_app.enroll_mgr) == {
+        "template": 1,
+        "ssh_ubi": 1,
+    }
 
 
 async def test_remove_module(connected_data: FixtureData):
@@ -61,9 +64,7 @@ async def test_remove_module(connected_data: FixtureData):
         await ctf_app.enroll_mgr.cancel_all_project_enrollments(prj)
     module_path = ctf_app.module_mgr.list_modules()["ssh_debian"]
     assert module_path.is_dir()
-    await ctf_app.module_mgr.remove_module(
-        "ssh_debian", ctf_app.prj_mgr, ctf_app.enroll_mgr
-    )
+    await ctf_app.module_mgr.remove_module("ssh_debian", ctf_app.prj_mgr, ctf_app.enroll_mgr)
     assert not module_path.is_dir()
 
 

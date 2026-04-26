@@ -33,9 +33,7 @@ def test_empty_progress(connected_data: FixtureData):
 def test_submit_secret(connected_data: FixtureData):
     ctf_app, _ = connected_data
     user1 = ctf_app.user_mgr.get_user("user1")
-    enrollment = ctf_app.enroll_mgr.get_enrollment(
-        user1, ctf_app.prj_mgr.get_project("prj2")
-    )
+    enrollment = ctf_app.enroll_mgr.get_enrollment(user1, ctf_app.prj_mgr.get_project("prj2"))
 
     timestamp = parser.parse("2025-10-01T00:00:00.000Z")
     assert (
@@ -54,15 +52,11 @@ def test_submit_secret(connected_data: FixtureData):
 
     assert len(enrollment.progress.submission_log) == log_len_before + 1
 
-    ctf_app.enroll_mgr.submit_secret(
-        enrollment, "value2", ctf_app.prj_mgr, ctf_app.enroll_mgr
-    )
+    ctf_app.enroll_mgr.submit_secret(enrollment, "value2", ctf_app.prj_mgr, ctf_app.enroll_mgr)
     rec = enrollment.progress.solved_secrets[cid_key2]
     assert rec.submitted_at and rec.user_id == user1.id
     with pytest.raises(SecretAlreadySubmittedException):
-        ctf_app.enroll_mgr.submit_secret(
-            enrollment, "value2", ctf_app.prj_mgr, ctf_app.enroll_mgr
-        )
+        ctf_app.enroll_mgr.submit_secret(enrollment, "value2", ctf_app.prj_mgr, ctf_app.enroll_mgr)
 
     assert enrollment.progress.found_secrets == 2
     assert enrollment.progress.last_submit_time > timestamp
@@ -84,9 +78,7 @@ def test_leaderboard(connected_data: FixtureData):
     ctf_app, _ = connected_data
     prj = ctf_app.prj_mgr.get_project("prj2")
     leaderboard_data = ctf_app.enroll_mgr.get_leaderboard(prj)
-    assert len(leaderboard_data) == len(
-        ctf_app.enroll_mgr.get_enrollments_for_project("prj2")
-    )
+    assert len(leaderboard_data) == len(ctf_app.enroll_mgr.get_enrollments_for_project("prj2"))
     assert leaderboard_data[0]["user"] == "user1"
 
     user = ctf_app.user_mgr.get_user("user2")

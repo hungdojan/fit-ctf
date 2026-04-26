@@ -4,14 +4,14 @@ import tempfile
 from io import StringIO
 from pathlib import Path
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
-import pytest
 
-from fit_ctf_cli.cli import cli
 from fit_ctf.components.auth.local_auth import LocalAuth
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.exceptions import LoginException
+from fit_ctf_cli.cli import cli
 from tests import CLIData
 
 

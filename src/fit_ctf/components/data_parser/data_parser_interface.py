@@ -14,9 +14,7 @@ class DataParserInterface(ABC):
 
     @staticmethod
     def get_schema_dirpath() -> pathlib.Path:
-        return (
-            pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent / "schemas"
-        )
+        return pathlib.Path(os.path.dirname(os.path.realpath(__file__))).parent / "schemas"
 
     @classmethod
     @abstractmethod
@@ -29,9 +27,7 @@ class DataParserInterface(ABC):
 
     @classmethod
     @abstractmethod
-    def register_validator(
-        cls, validator_name: str, schema_filepath: str | pathlib.Path
-    ):
+    def register_validator(cls, validator_name: str, schema_filepath: str | pathlib.Path):
         """Initialize and register the schema validator.
 
         :param validator_name: An identification name for the validator.
@@ -57,9 +53,7 @@ class DataParserInterface(ABC):
         """
         validator = cls._validators.get(validator_name)
         if not validator:
-            raise ValidatorNotExistException(
-                f"Validator `{validator_name}` does not exist."
-            )
+            raise ValidatorNotExistException(f"Validator `{validator_name}` does not exist.")
         return validator
 
     @classmethod

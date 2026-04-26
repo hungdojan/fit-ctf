@@ -28,8 +28,7 @@ def validate_canonical_scenario_yaml_dict(raw: dict) -> dict:
     for name in sec:
         if "__" in str(name):
             raise InvalidDynamicSecretKeyException(
-                f"secrets key {name!r} must not contain '__' "
-                "(Jinja uses secret_map__<name>)."
+                f"secrets key {name!r} must not contain '__' (Jinja uses secret_map__<name>)."
             )
     return raw
 
@@ -48,9 +47,7 @@ class VolumeConfig(BaseModel):
             return self
 
         def build(self) -> "VolumeConfig":
-            return VolumeConfig(
-                src_path=self._src_path, template_params=self._template_params
-            )
+            return VolumeConfig(src_path=self._src_path, template_params=self._template_params)
 
 
 class ServiceConfig(BaseModel):
@@ -141,8 +138,7 @@ def scenario_config_from_dict(scenario_name: str, raw: dict) -> ScenarioConfig:
     for name, value in raw.get("secrets", {}).items():
         if "__" in str(name):
             raise InvalidDynamicSecretKeyException(
-                f"secrets key {name!r} must not contain '__' "
-                "(Jinja uses secret_map__<name>)."
+                f"secrets key {name!r} must not contain '__' (Jinja uses secret_map__<name>)."
             )
         builder.add_secret(name, value if isinstance(value, str) else str(value))
     for service_name, svc_raw in raw.get("service_configs", {}).items():

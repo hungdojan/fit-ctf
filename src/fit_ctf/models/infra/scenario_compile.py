@@ -76,23 +76,17 @@ class ScenarioCompiler:
         for s_name, s_content in scenario_config.service_configs.items():
             for vol_name, config in s_content.volume_map.items():
                 resolved = resolve_volume_src_path(config.src_path, base_vol)
-                param_map[f"{s_name}__volume_map__{vol_name}"] = (
-                    materialize_volume_src_for_compose(
-                        resolved,
-                        scenario_root=self._c.scenario_global_root,
-                        compile_dst_root=self._c.compile_destination_root,
-                        service_name=s_name,
-                        volume_name=vol_name,
-                        template_params=config.template_params,
-                        secrets=dyn,
-                    )
+                param_map[f"{s_name}__volume_map__{vol_name}"] = materialize_volume_src_for_compose(
+                    resolved,
+                    scenario_root=self._c.scenario_global_root,
+                    compile_dst_root=self._c.compile_destination_root,
+                    service_name=s_name,
+                    volume_name=vol_name,
+                    template_params=config.template_params,
+                    secrets=dyn,
                 )
-            param_map.update(
-                {f"{s_name}__env_map__{k}": v for k, v in s_content.env_map.items()}
-            )
-            param_map.update(
-                {f"{s_name}__port_map__{k}": v for k, v in s_content.port_map.items()}
-            )
+            param_map.update({f"{s_name}__env_map__{k}": v for k, v in s_content.env_map.items()})
+            param_map.update({f"{s_name}__port_map__{k}": v for k, v in s_content.port_map.items()})
         return param_map
 
     def write_compose(

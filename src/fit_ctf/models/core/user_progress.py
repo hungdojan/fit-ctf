@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field
 
 from fit_ctf.components.types import SecretInfo
+from fit_ctf.models.core.secret import SecretSubmissionLogEntry, SolvedSecretRecord
 from fit_ctf.models.infra.secret_slots import (
     format_composite_for_display,
     merged_submission_secret_map,
     parse_composite_secret_id,
 )
-from fit_ctf.models.core.secret import SecretSubmissionLogEntry, SolvedSecretRecord
 from fit_ctf.models.utils.exceptions import (
     SecretAlreadySubmittedException,
     SecretNotFoundException,
@@ -19,8 +19,8 @@ from fit_ctf.models.utils.sessions import ProgressSession
 if TYPE_CHECKING:
     import fit_ctf.models.core.enrollment as enroll
     import fit_ctf.models.core.project as project
-    import fit_ctf.models.infra.user_cluster as user_cluster
     import fit_ctf.models.infra.project_cluster as project_cluster
+    import fit_ctf.models.infra.user_cluster as user_cluster
 
 
 class UserProgress(BaseModel):
@@ -67,13 +67,9 @@ class UserProgressManager:
         """Validate submitted string against merged cluster secrets; log every attempt."""
         progress = enrollment.progress
         now = datetime.now().astimezone()
-        progress.submission_log.append(
-            SecretSubmissionLogEntry(value=value, timestamp=now)
-        )
+        progress.submission_log.append(SecretSubmissionLogEntry(value=value, timestamp=now))
 
-        user_cluster, project_cluster = self._clusters_for_submission(
-            enrollment, prj_mgr
-        )
+        user_cluster, project_cluster = self._clusters_for_submission(enrollment, prj_mgr)
         merged = merged_submission_secret_map(user_cluster, project_cluster)
         matching = [cid for cid, expected in merged.items() if expected == value]
         if not matching:
@@ -104,9 +100,7 @@ class UserProgressManager:
         prj_mgr: "project.ProjectManager",
         show_flag: bool = False,
     ) -> list[SecretInfo]:
-        user_cluster, project_cluster = self._clusters_for_submission(
-            enrollment, prj_mgr
-        )
+        user_cluster, project_cluster = self._clusters_for_submission(enrollment, prj_mgr)
         merged = merged_submission_secret_map(user_cluster, project_cluster)
         solved = enrollment.progress.solved_secrets
         items: list[SecretInfo] = []
@@ -124,9 +118,7 @@ class UserProgressManager:
     def count_submittable_slots(
         self, enrollment: "enroll.Enrollment", prj_mgr: "project.ProjectManager"
     ) -> int:
-        user_cluster, project_cluster = self._clusters_for_submission(
-            enrollment, prj_mgr
-        )
+        user_cluster, project_cluster = self._clusters_for_submission(enrollment, prj_mgr)
         return len(merged_submission_secret_map(user_cluster, project_cluster))
 
     def record_session(

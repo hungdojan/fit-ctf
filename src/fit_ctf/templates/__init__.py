@@ -42,9 +42,7 @@ def get_jinja_env(template_dir: str | Path = TEMPLATE_DIRNAME) -> Environment:
     return Environment(loader=loader)
 
 
-def validate_variable_parse(
-    template_name: str, template_dir: Path, variables: dict[str, Any]
-):
+def validate_variable_parse(template_name: str, template_dir: Path, variables: dict[str, Any]):
     vars_to_map = get_jinja_variables(template_name, template_dir)
     missing = vars_to_map - set(variables.keys())
     if missing:
@@ -68,9 +66,7 @@ def get_jinja_variables_from_string(source: str) -> set[str]:
     return meta.find_undeclared_variables(ast)
 
 
-def validate_volume_src_path_variables(
-    src_path: str, variables: dict[str, Any]
-) -> None:
+def validate_volume_src_path_variables(src_path: str, variables: dict[str, Any]) -> None:
     """Ensure all variables referenced in `src_path` are present in `variables`."""
     if "{{" not in src_path and "{%" not in src_path:
         return

@@ -1,11 +1,11 @@
 import re
 from typing import Any, Callable
 
-from fit_ctf.ctf_base import CTFBase
 from fit_ctf.components.auth.auth_interface import AuthInterface
 from fit_ctf.components.auth.local_auth import LocalAuth
 from fit_ctf.components.constants import DEFAULT_PASSWORD_LENGTH
 from fit_ctf.components.exceptions import CTFBaseException, LoginException
+from fit_ctf.ctf_base import CTFBase
 from fit_ctf.models.core.enrollment import Enrollment
 from fit_ctf.models.core.project import Project
 from fit_ctf.models.core.user import User
@@ -62,9 +62,7 @@ class _VariableRegistry:
             callback(value)
         self._selected_project = value
 
-    def register_hook(
-        self, variable_name: str, name: str, callback: Callable[[Any | None], None]
-    ):
+    def register_hook(self, variable_name: str, name: str, callback: Callable[[Any | None], None]):
         self._callbacks[variable_name][name] = callback
 
     def unregister_hook(self, variable_name: str, name: str):
@@ -76,7 +74,6 @@ class _VariableRegistry:
 
 
 class CoreManager(_VariableRegistry):
-
     def __init__(self, ctf_base: CTFBase, auth_client: AuthInterface | None = None):
         self._ctf_base = ctf_base
         # TODO: config
@@ -129,9 +126,7 @@ class CoreManager(_VariableRegistry):
         if not self._active_user:
             return
         if not self.auth_client.local_login:
-            raise CannotChangePassword(
-                "The Auth client does not support password update."
-            )
+            raise CannotChangePassword("The Auth client does not support password update.")
         self.ctf_base.user_mgr.change_password(self._active_user.username, password)
 
     def get_active_projects(self) -> list[Project]:
@@ -159,9 +154,7 @@ class CoreManager(_VariableRegistry):
             raise UserNotLoggedIn("Cannot submit a secret.")
         try:
             project = self.ctf_base.prj_mgr.get_project(project_name)
-            enrollment = self.ctf_base.enroll_mgr.get_enrollment(
-                self.active_user, project
-            )
+            enrollment = self.ctf_base.enroll_mgr.get_enrollment(self.active_user, project)
         except CTFBaseException as e:
             raise InvalidAction(e)
 
@@ -176,9 +169,7 @@ class CoreManager(_VariableRegistry):
         """Fetch leaderboard from the backend."""
         if not self.selected_project:
             raise InvalidAction("Cannot fetch leaderboard without selected project.")
-        leaderboard_items = self.ctf_base.enroll_mgr.get_leaderboard(
-            self.selected_project
-        )
+        leaderboard_items = self.ctf_base.enroll_mgr.get_leaderboard(self.selected_project)
         return [
             LeaderboardDataTableItem(
                 {
@@ -269,6 +260,4 @@ class CoreManager(_VariableRegistry):
     async def cleanup(self):
         if self.active_user is None:
             return
-        await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(
-            self.active_user
-        )
+        await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(self.active_user)

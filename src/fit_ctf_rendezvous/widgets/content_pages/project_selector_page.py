@@ -10,7 +10,6 @@ from fit_ctf_rendezvous.widgets.core_widget import CoreWidget
 
 
 class ProjectSelector(Container, CoreWidget):
-
     def __init__(
         self,
         owner_screen: BaseScreen,
@@ -25,15 +24,11 @@ class ProjectSelector(Container, CoreWidget):
         with VerticalScroll():
             with Grid():
                 for prj in self.core_mgr.get_active_projects():
-                    yield Button(
-                        prj.name, id=f"select-btn-{prj.name}", variant="primary"
-                    )
+                    yield Button(prj.name, id=f"select-btn-{prj.name}", variant="primary")
         with Center():
             yield Rule(line_style="ascii")
         with Center():
-            yield Button(
-                tr("selector.deselect"), variant="warning", id="select-btn-deselect"
-            )
+            yield Button(tr("selector.deselect"), variant="warning", id="select-btn-deselect")
 
     @on(Button.Pressed)
     def button_handler(self, event: Button.Pressed) -> None:

@@ -11,10 +11,10 @@ from click.testing import CliRunner
 from dotenv import load_dotenv
 from textual.app import App
 
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.constants import get_env_info
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.types import PathDict
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf_rendezvous import i18n as rendezvous_i18n
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
@@ -173,9 +173,7 @@ def unconnected_data(
     # init testing env
     ctf_app, tmp_path = empty_data
     ctf_app.setup_env_from_file(fixture_path() / "unconnected_data.yaml")
-    assert (
-        len(ctf_app.prj_mgr.get_docs()) == 2 and len(ctf_app.user_mgr.get_docs()) == 3
-    )
+    assert len(ctf_app.prj_mgr.get_docs()) == 2 and len(ctf_app.user_mgr.get_docs()) == 3
 
     # yield data
     return ctf_app, tmp_path

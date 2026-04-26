@@ -5,17 +5,11 @@ import pathlib
 
 import click
 
-from fit_ctf_cli.cli.utils import (
-    format_option,
-    project_option,
-    requires_database,
-    user_option,
-)
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.exceptions import ConfigurationFileNotEditedException
 from fit_ctf.components.utils import yaml_doc_editor
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.models.infra.config_models import (
     ScenarioConfig,
     ServiceConfig,
@@ -26,6 +20,12 @@ from fit_ctf.models.infra.scenario_manager import ScenarioManager
 from fit_ctf.models.utils.exceptions import (
     CTFModelException,
     InvalidDynamicSecretKeyException,
+)
+from fit_ctf_cli.cli.utils import (
+    format_option,
+    project_option,
+    requires_database,
+    user_option,
 )
 
 
@@ -97,9 +97,7 @@ def add_scenario_to_cluster(
         raw: dict
         if interactive:
             doc = {
-                "secrets": {
-                    k: "" for k in ctf_app.scenario_mgr.fetch_secret_keys(scenario)
-                },
+                "secrets": {k: "" for k in ctf_app.scenario_mgr.fetch_secret_keys(scenario)},
                 "service_configs": ctf_app.scenario_mgr.fetch_variables(scenario),
             }
             raw = yaml_doc_editor(doc)
@@ -118,9 +116,7 @@ def add_scenario_to_cluster(
             template_warning_sink=_echo_cli_warning,
         )
 
-        click.echo(
-            f"Scenario '{scenario}' added to cluster for {username}@{project_name}"
-        )
+        click.echo(f"Scenario '{scenario}' added to cluster for {username}@{project_name}")
         click.echo(
             "WARNING: Remember to update service configurations with"
             " 'cluster edit-service' if needed"
@@ -153,9 +149,7 @@ def remove_scenario_from_cluster(
 
         ctf_app.user_cluster_mgr.remove_scenario_config(cluster, scenario)
 
-        click.echo(
-            f"Scenario '{scenario}' removed from cluster for {username}@{project_name}"
-        )
+        click.echo(f"Scenario '{scenario}' removed from cluster for {username}@{project_name}")
     except CTFModelException as e:
         click.echo(f"Error: {e}")
         ctx.exit(1)
@@ -211,10 +205,8 @@ def edit_service_config(
             # Update service config
             scenario_config.service_configs[service] = ServiceConfig(**updated_data)
             try:
-                tmpl_warnings = (
-                    ctf_app.scenario_mgr.validate_scenario_config_against_templates(
-                        scenario, scenario_config
-                    )
+                tmpl_warnings = ctf_app.scenario_mgr.validate_scenario_config_against_templates(
+                    scenario, scenario_config
                 )
             except CTFModelException as e:
                 click.echo(f"Error: {e}")
@@ -223,9 +215,7 @@ def edit_service_config(
                 _echo_cli_warning(w)
             ctf_app.user_cluster_mgr.update_doc(cluster)
 
-            click.echo(
-                f"Service '{service}' saved to cluster for {username}@{project_name}"
-            )
+            click.echo(f"Service '{service}' saved to cluster for {username}@{project_name}")
 
             # Ask if user wants to compile now
             if yes or click.confirm("\nCompile scenario now?", default=True):
@@ -274,14 +264,10 @@ def add_secret(
         scenario_config = cluster.scenario_configs[scenario]
 
         if "__" in key:
-            raise InvalidDynamicSecretKeyException(
-                f"secrets key {key!r} must not contain '__'"
-            )
+            raise InvalidDynamicSecretKeyException(f"secrets key {key!r} must not contain '__'")
 
         if key in scenario_config.secrets:
-            click.echo(
-                f"Error: Secret '{key}' already exists. Use update-secret to modify."
-            )
+            click.echo(f"Error: Secret '{key}' already exists. Use update-secret to modify.")
             ctx.exit(1)
 
         for w in _warnings_after_secrets_trial(
@@ -454,9 +440,7 @@ def list_secrets(
 @project_option
 @format_option
 @click.pass_context
-def list_cluster_scenarios(
-    ctx: click.Context, username: str, project_name: str, format: str
-):
+def list_cluster_scenarios(ctx: click.Context, username: str, project_name: str, format: str):
     """List all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -534,9 +518,7 @@ def cluster_info(ctx: click.Context, username: str, project_name: str):
 @project_option
 @click.option("-s", "--scenario", help="Scenario name (compile all if not specified)")
 @click.pass_context
-def compile_cluster(
-    ctx: click.Context, username: str, project_name: str, scenario: str | None
-):
+def compile_cluster(ctx: click.Context, username: str, project_name: str, scenario: str | None):
     """Compile scenario templates for a cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -620,9 +602,7 @@ def start_cluster(ctx: click.Context, username: str, project_name: str, verbose:
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.start_cluster(
-                cluster, ctf_app.enroll_mgr, verbose=verbose
-            )
+            ctf_app.user_cluster_mgr.start_cluster(cluster, ctf_app.enroll_mgr, verbose=verbose)
         )
 
         if error_code == 0:
@@ -653,9 +633,7 @@ def stop_cluster(ctx: click.Context, username: str, project_name: str, verbose: 
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.stop_cluster(
-                cluster, ctf_app.enroll_mgr, verbose=verbose
-            )
+            ctf_app.user_cluster_mgr.stop_cluster(cluster, ctf_app.enroll_mgr, verbose=verbose)
         )
 
         if error_code == 0:
@@ -674,9 +652,7 @@ def stop_cluster(ctx: click.Context, username: str, project_name: str, verbose: 
 @project_option
 @click.option("-v", "--verbose", is_flag=True, help="Show compose engine output")
 @click.pass_context
-def restart_cluster(
-    ctx: click.Context, username: str, project_name: str, verbose: bool
-):
+def restart_cluster(ctx: click.Context, username: str, project_name: str, verbose: bool):
     """Restart all scenarios in a user's cluster."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
 
@@ -688,9 +664,7 @@ def restart_cluster(
         cluster = ctf_app.user_cluster_mgr.get_cluster(enrollment)
 
         error_code = asyncio.run(
-            ctf_app.user_cluster_mgr.restart_cluster(
-                cluster, ctf_app.enroll_mgr, verbose=verbose
-            )
+            ctf_app.user_cluster_mgr.restart_cluster(cluster, ctf_app.enroll_mgr, verbose=verbose)
         )
 
         if error_code == 0:

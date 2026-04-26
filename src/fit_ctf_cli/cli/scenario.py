@@ -2,12 +2,12 @@
 
 import click
 
-from fit_ctf_cli.cli.utils import format_option, requires_database
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.data_view import get_view
 from fit_ctf.components.utils import file_editor
+from fit_ctf.ctf_app import CTFApp
 from fit_ctf.models.utils.exceptions import CTFModelException, ScenarioNotExistException
+from fit_ctf_cli.cli.utils import format_option, requires_database
 
 
 @click.group(name="scenario")
@@ -51,9 +51,7 @@ def create_scenario(ctx: click.Context, name: str):
     help="Suppress per-cluster recompilation messages",
 )
 @click.pass_context
-def edit_scenario_template(
-    ctx: click.Context, name: str, skip_recompile: bool, quiet: bool
-):
+def edit_scenario_template(ctx: click.Context, name: str, skip_recompile: bool, quiet: bool):
     """Edit scenario template file."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     scenario_path = ctf_app.paths.scenario_global / name
@@ -71,9 +69,7 @@ def edit_scenario_template(
 
         # Auto-recompile clusters using this scenario (unless skipped)
         if not skip_recompile:
-            clusters = ctf_app.scenario_mgr.scenario_usage(
-                name, ctf_app.user_cluster_mgr
-            )
+            clusters = ctf_app.scenario_mgr.scenario_usage(name, ctf_app.user_cluster_mgr)
 
             if clusters:
                 if not quiet:

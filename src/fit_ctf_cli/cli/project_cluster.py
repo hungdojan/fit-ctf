@@ -4,15 +4,15 @@ import asyncio
 
 import click
 
+from fit_ctf.components.data_view import get_view
+from fit_ctf.components.utils import color_state
+from fit_ctf.ctf_app import CTFApp
+from fit_ctf.exceptions import CTFBaseException
 from fit_ctf_cli.cli.utils import (
     format_option,
     project_option,
     requires_database,
 )
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf.exceptions import CTFBaseException
-from fit_ctf.components.data_view import get_view
-from fit_ctf.components.utils import color_state
 
 
 @click.group(name="project-cluster")
@@ -42,9 +42,7 @@ def start_cluster(ctx: click.Context, verbose: bool):
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Starting project cluster '{cluster.name}'...")
-    error_code = asyncio.run(
-        ctf_app.project_cluster_mgr.start_cluster(cluster, verbose=verbose)
-    )
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.start_cluster(cluster, verbose=verbose))
 
     if error_code == 0:
         click.echo("Project cluster started successfully.")
@@ -62,9 +60,7 @@ def stop_cluster(ctx: click.Context, verbose: bool):
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Stopping project cluster '{cluster.name}'...")
-    error_code = asyncio.run(
-        ctf_app.project_cluster_mgr.stop_cluster(cluster, verbose=verbose)
-    )
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.stop_cluster(cluster, verbose=verbose))
 
     if error_code == 0:
         click.echo("Project cluster stopped successfully.")
@@ -82,9 +78,7 @@ def restart_cluster(ctx: click.Context, verbose: bool):
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
     click.echo(f"Restarting project cluster '{cluster.name}'...")
-    error_code = asyncio.run(
-        ctf_app.project_cluster_mgr.restart_cluster(cluster, verbose=verbose)
-    )
+    error_code = asyncio.run(ctf_app.project_cluster_mgr.restart_cluster(cluster, verbose=verbose))
 
     if error_code == 0:
         click.echo("Project cluster restarted successfully.")
@@ -113,9 +107,7 @@ def health_check(ctx: click.Context, format: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore
 
-    cluster_data = asyncio.run(
-        ctf_app.project_cluster_mgr.cluster_health_check(cluster)
-    )
+    cluster_data = asyncio.run(ctf_app.project_cluster_mgr.cluster_health_check(cluster))
 
     if not cluster_data:
         click.echo("No services running in project cluster")
@@ -148,9 +140,7 @@ def health_check(ctx: click.Context, format: str):
     help="Write logs only to LOG_DEST files, not the terminal",
 )
 @click.pass_context
-def cluster_logs(
-    ctx: click.Context, tail: int, service: str | None, no_log_stdout: bool
-):
+def cluster_logs(ctx: click.Context, tail: int, service: str | None, no_log_stdout: bool):
     """Show recent container logs from the project cluster compose stack."""
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     cluster = ctx.parent.obj["cluster"]  # pyright: ignore

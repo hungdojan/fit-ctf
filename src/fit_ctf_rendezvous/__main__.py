@@ -2,11 +2,11 @@ import os
 
 from dotenv import load_dotenv
 
-from fit_ctf.ctf_app import CTFApp
-from fit_ctf.ctf_base import CTFBase
 from fit_ctf.components.constants import get_env_info, get_paths
 from fit_ctf.components.container_client import get_c_client_by_name
 from fit_ctf.components.types import PathDict
+from fit_ctf.ctf_app import CTFApp
+from fit_ctf.ctf_base import CTFBase
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
 
@@ -18,9 +18,7 @@ def main():
     paths = PathDict(
         **{
             key: value
-            for key, value in zip(
-                ["projects", "users", "modules", "scenarios"], get_paths()
-            )
+            for key, value in zip(["projects", "users", "modules", "scenarios"], get_paths())
         }
     )
 
