@@ -33,8 +33,8 @@ from fit_ctf.exceptions import (
 # Service management deprecated - moved to cluster configurations
 from fit_ctf.models.core.secret import SecretSubmissionLogEntry, SolvedSecretRecord
 from fit_ctf.models.core.user_progress import UserProgress
-from fit_ctf.models.infra.config_models import scenario_config_from_dict
 from fit_ctf.models.infra.user_cluster import UserCluster
+from fit_ctf.models.infra.utils import scenario_config_from_dict
 from fit_ctf.models.utils.exceptions import (
     ProjectExistsException,
     UserExistsException,

@@ -12,7 +12,7 @@ from typing import Any
 from click.testing import CliRunner, Result
 
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
-from fit_ctf.models.infra.config_models import (
+from fit_ctf.models.infra.utils import (
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )

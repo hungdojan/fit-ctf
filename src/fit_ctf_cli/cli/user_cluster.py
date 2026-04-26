@@ -10,13 +10,12 @@ from fit_ctf.components.data_view import get_view
 from fit_ctf.components.exceptions import ConfigurationFileNotEditedException
 from fit_ctf.components.utils import yaml_doc_editor
 from fit_ctf.ctf_app import CTFApp
-from fit_ctf.models.infra.config_models import (
-    ScenarioConfig,
-    ServiceConfig,
+from fit_ctf.models.infra.config_models import ScenarioConfig, ServiceConfig
+from fit_ctf.models.infra.scenario_manager import ScenarioManager
+from fit_ctf.models.infra.utils import (
     scenario_config_from_dict,
     validate_canonical_scenario_yaml_dict,
 )
-from fit_ctf.models.infra.scenario_manager import ScenarioManager
 from fit_ctf.models.utils.exceptions import (
     CTFModelException,
     InvalidDynamicSecretKeyException,

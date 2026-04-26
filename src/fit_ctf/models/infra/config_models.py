@@ -4,34 +4,6 @@ from typing import Any, Self
 
 from pydantic import BaseModel, Field
 
-from fit_ctf.models.utils.exceptions import (
-    CTFModelException,
-    InvalidDynamicSecretKeyException,
-)
-
-CANONICAL_SCENARIO_YAML_KEYS = frozenset({"secrets", "service_configs"})
-
-
-def validate_canonical_scenario_yaml_dict(raw: dict) -> dict:
-    """Require exactly ``secrets`` and ``service_configs`` (add-scenario / vars-template shape)."""
-    if set(raw.keys()) != CANONICAL_SCENARIO_YAML_KEYS:
-        raise CTFModelException(
-            "Scenario YAML must have exactly top-level keys "
-            f"{sorted(CANONICAL_SCENARIO_YAML_KEYS)!r}, got {sorted(raw.keys())!r}"
-        )
-    sec = raw["secrets"]
-    svc = raw["service_configs"]
-    if not isinstance(sec, dict):
-        raise CTFModelException("'secrets' must be a mapping")
-    if not isinstance(svc, dict):
-        raise CTFModelException("'service_configs' must be a mapping")
-    for name in sec:
-        if "__" in str(name):
-            raise InvalidDynamicSecretKeyException(
-                f"secrets key {name!r} must not contain '__' (Jinja uses secret_map__<name>)."
-            )
-    return raw
-
 
 class VolumeConfig(BaseModel):
     src_path: str
@@ -115,36 +87,3 @@ class ScenarioConfig(BaseModel):
                 service_configs=self._service_configs,
                 config_params=self._config_params,
             )
-
-
-def service_config_from_dict(raw: dict) -> ServiceConfig:
-    """Build ServiceConfig from a YAML/dump dict (setup.yaml / database_dump)."""
-    volume_map: dict[str, VolumeConfig] = {}
-    for k, v in raw.get("volume_map", {}).items():
-        if isinstance(v, VolumeConfig):
-            volume_map[k] = v
-        else:
-            volume_map[k] = VolumeConfig(**v)
-    return ServiceConfig(
-        env_map=dict(raw.get("env_map", {})),
-        port_map=dict(raw.get("port_map", {})),
-        volume_map=volume_map,
-    )
-
-
-def scenario_config_from_dict(scenario_name: str, raw: dict) -> ScenarioConfig:
-    """Build ScenarioConfig from a YAML/dump dict (per setup.yaml scenario_configs)."""
-    builder = ScenarioConfig.Builder(scenario_name)
-    for name, value in raw.get("secrets", {}).items():
-        if "__" in str(name):
-            raise InvalidDynamicSecretKeyException(
-                f"secrets key {name!r} must not contain '__' (Jinja uses secret_map__<name>)."
-            )
-        builder.add_secret(name, value if isinstance(value, str) else str(value))
-    for service_name, svc_raw in raw.get("service_configs", {}).items():
-        if not isinstance(svc_raw, dict):
-            continue
-        builder.add_service(service_name, service_config_from_dict(svc_raw))
-    for name, value in raw.get("config_params", {}).items():
-        builder.add_config_param(name, value)
-    return builder.build()

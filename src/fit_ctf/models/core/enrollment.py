@@ -20,7 +20,7 @@ from fit_ctf.components.types import (
 from fit_ctf.components.utils import get_missing_in_sequence
 from fit_ctf.models.base import Base, BaseManagerInterface
 from fit_ctf.models.core.user_progress import UserProgress, UserProgressManager
-from fit_ctf.models.infra.secret_slots import count_submittable_secret_slots
+from fit_ctf.models.infra.utils import count_submittable_secret_slots
 from fit_ctf.models.utils.exceptions import (
     ContainerPortUsageCollisionException,
     ForwardedPortUsageCollisionException,

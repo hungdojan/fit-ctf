@@ -31,7 +31,7 @@ class BaseCluster(Base):
 ClusterT = TypeVar("ClusterT", bound=BaseCluster)
 
 
-class ClusterScenarioMixin(BaseManagerInterface[ClusterT], ABC):
+class ClusterManagerMixin(BaseManagerInterface[ClusterT], ABC):
     """Template-method helpers: subclasses implement path/network hooks.
 
     Concrete managers inherit this mixin only; it extends

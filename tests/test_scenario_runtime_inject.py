@@ -11,18 +11,16 @@ from pathlib import Path
 
 import pytest
 
-from fit_ctf.models.infra.config_models import (
-    ScenarioConfig,
-    ServiceConfig,
-    VolumeConfig,
-    scenario_config_from_dict,
-    validate_canonical_scenario_yaml_dict,
-)
+from fit_ctf.models.infra.config_models import ScenarioConfig, ServiceConfig, VolumeConfig
 from fit_ctf.models.infra.scenario_compile import (
     ScenarioCompileContext,
     ScenarioCompiler,
 )
 from fit_ctf.models.infra.scenario_manager import ScenarioManager
+from fit_ctf.models.infra.utils import (
+    scenario_config_from_dict,
+    validate_canonical_scenario_yaml_dict,
+)
 from fit_ctf.models.utils.exceptions import CTFModelException, ScenarioNotExistException
 from tests import fixture_path
 

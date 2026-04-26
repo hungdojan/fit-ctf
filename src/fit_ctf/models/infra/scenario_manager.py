@@ -6,7 +6,7 @@ import shutil
 from typing import TYPE_CHECKING
 
 from fit_ctf.models.infra.config_models import ScenarioConfig
-from fit_ctf.models.infra.scenario_config_validation import (
+from fit_ctf.models.infra.utils import (
     validate_secrets_vs_templates,
     validate_service_configs_vs_scaffold,
 )

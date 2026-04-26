@@ -14,10 +14,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.components.types import ErrorCode, HealthCheckDict, UserNetworkMap
-from fit_ctf.models.infra.cluster_scenario_mixin import (
-    BaseCluster,
-    ClusterScenarioMixin,
-)
+from fit_ctf.models.infra.cluster_mgr_mixin import BaseCluster, ClusterManagerMixin
 from fit_ctf.models.infra.config_models import (
     ScenarioConfig,
     ServiceConfig,
@@ -86,7 +83,7 @@ class UserCluster(BaseCluster):
             )
 
 
-class UserClusterManager(ClusterScenarioMixin[UserCluster]):
+class UserClusterManager(ClusterManagerMixin[UserCluster]):
     """Manager for cluster operations and lifecycle."""
 
     def __init__(

@@ -1,7 +1,7 @@
 import pytest
 from dateutil import parser
 
-from fit_ctf.models.infra.secret_slots import composite_secret_id
+from fit_ctf.models.infra.utils import composite_secret_id
 from fit_ctf.models.utils.exceptions import (
     SecretAlreadySubmittedException,
     SecretNotFoundException,

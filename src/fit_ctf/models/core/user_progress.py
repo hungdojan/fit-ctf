@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from fit_ctf.components.types import SecretInfo
 from fit_ctf.models.core.secret import SecretSubmissionLogEntry, SolvedSecretRecord
-from fit_ctf.models.infra.secret_slots import (
+from fit_ctf.models.infra.utils import (
     format_composite_for_display,
     merged_submission_secret_map,
     parse_composite_secret_id,
