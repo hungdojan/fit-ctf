@@ -10,11 +10,8 @@ from fit_ctf.components.types import EnvInfo, PathDict
 from fit_ctf.path_mgmt import PathManagement
 
 if TYPE_CHECKING:
-    import fit_ctf.models.core.enrollment as enroll
-    import fit_ctf.models.core.module_manager as module_manager
-    import fit_ctf.models.core.project as prj
-    import fit_ctf.models.core.user as user
-    import fit_ctf.models.infra as clusters
+    import fit_ctf.models.core as core
+    import fit_ctf.models.infra as infra
 
 
 class CTFBase:
@@ -39,10 +36,10 @@ class CTFBase:
     def _init_managers(self):
         """Initialize all managers in linear order (no circular dependencies)."""
         from fit_ctf.models.core.enrollment import Enrollment, EnrollmentManager
-        from fit_ctf.models.core.module_manager import ModuleManager
         from fit_ctf.models.core.project import Project, ProjectManager
         from fit_ctf.models.core.user import User, UserManager
         from fit_ctf.models.infra import (
+            ModuleManager,
             ProjectCluster,
             ProjectClusterManager,
             ScenarioManager,
@@ -55,14 +52,14 @@ class CTFBase:
         self._repo = EntityRepository(db=self.ctf_db)
 
         # Leaf managers (no manager dependencies)
-        self._scenario_mgr: "clusters.ScenarioManager" = ScenarioManager(paths=self._path_mgmt)
+        self._scenario_mgr: "infra.ScenarioManager" = ScenarioManager(paths=self._path_mgmt)
 
-        self._module_mgr: "module_manager.ModuleManager" = ModuleManager(
+        self._module_mgr: "infra.ModuleManager" = ModuleManager(
             c_client=self._c_client,
             paths=self._path_mgmt,
         )
 
-        self._project_cluster_mgr: "clusters.ProjectClusterManager" = ProjectClusterManager(
+        self._project_cluster_mgr: "infra.ProjectClusterManager" = ProjectClusterManager(
             db=self.ctf_db,
             coll=self.ctf_db["project_cluster"],
             model_cls=ProjectCluster,
@@ -73,7 +70,7 @@ class CTFBase:
         )
 
         # Mid-level managers
-        self._user_cluster_mgr: "clusters.UserClusterManager" = UserClusterManager(
+        self._user_cluster_mgr: "infra.UserClusterManager" = UserClusterManager(
             db=self.ctf_db,
             coll=self.ctf_db["user_cluster"],
             model_cls=UserCluster,
@@ -84,7 +81,7 @@ class CTFBase:
             logger=self._logger,
         )
 
-        self._prj_mgr: "prj.ProjectManager" = ProjectManager(
+        self._prj_mgr: "core.ProjectManager" = ProjectManager(
             db=self.ctf_db,
             coll=self.ctf_db["project"],
             model_cls=Project,
@@ -96,7 +93,7 @@ class CTFBase:
             logger=self._logger,
         )
 
-        self._user_mgr: "user.UserManager" = UserManager(
+        self._user_mgr: "core.UserManager" = UserManager(
             db=self.ctf_db,
             coll=self.ctf_db["user"],
             model_cls=User,
@@ -108,7 +105,7 @@ class CTFBase:
         )
 
         # Top-level manager
-        self._enroll_mgr: "enroll.EnrollmentManager" = EnrollmentManager(
+        self._enroll_mgr: "core.EnrollmentManager" = EnrollmentManager(
             db=self.ctf_db,
             coll=self.ctf_db["enrollment"],
             model_cls=Enrollment,
@@ -133,7 +130,7 @@ class CTFBase:
         return self._ctf_db
 
     @property
-    def prj_mgr(self) -> "prj.ProjectManager":
+    def prj_mgr(self) -> "core.ProjectManager":
         """Returns a project manager.
 
         :return: A project manager initialized in CTFApp.
@@ -142,7 +139,7 @@ class CTFBase:
         return self._prj_mgr
 
     @property
-    def user_mgr(self) -> "user.UserManager":
+    def user_mgr(self) -> "core.UserManager":
         """Returns a user manager.
 
         :return: A user manager initialized in CTFApp.
@@ -151,7 +148,7 @@ class CTFBase:
         return self._user_mgr
 
     @property
-    def enroll_mgr(self) -> "enroll.EnrollmentManager":
+    def enroll_mgr(self) -> "core.EnrollmentManager":
         """Returns an enrollment manager.
 
         :return: An enrollment manager initialized in CTFApp.
@@ -160,7 +157,7 @@ class CTFBase:
         return self._enroll_mgr
 
     @property
-    def module_mgr(self) -> "module_manager.ModuleManager":
+    def module_mgr(self) -> "infra.ModuleManager":
         """Returns a module manager.
 
         :return: A module manager initialized in CTFApp.
@@ -169,15 +166,15 @@ class CTFBase:
         return self._module_mgr
 
     @property
-    def user_cluster_mgr(self) -> "clusters.UserClusterManager":
+    def user_cluster_mgr(self) -> "infra.UserClusterManager":
         return self._user_cluster_mgr
 
     @property
-    def project_cluster_mgr(self) -> "clusters.ProjectClusterManager":
+    def project_cluster_mgr(self) -> "infra.ProjectClusterManager":
         return self._project_cluster_mgr
 
     @property
-    def scenario_mgr(self) -> "clusters.ScenarioManager":
+    def scenario_mgr(self) -> "infra.ScenarioManager":
         return self._scenario_mgr
 
     @property

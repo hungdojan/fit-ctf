@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class DataView(ABC):
+class DataViewInterface(ABC):
     @staticmethod
     @abstractmethod
     def print_data(headers: list, values: list[list], **kw):  # pragma: no cover

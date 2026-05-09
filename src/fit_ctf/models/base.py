@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Any, Generic, Type, TypeVar
 
 from bson import ObjectId
@@ -13,7 +12,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 
 
-class Base(ABC, BaseModel):
+class Base(BaseModel):
     """A base class that all entities derive from.
 
     :param _id: Object ID.
@@ -39,7 +38,7 @@ class Base(ABC, BaseModel):
 T = TypeVar("T", bound=Base)
 
 
-class BaseManagerInterface(ABC, Generic[T]):
+class BaseManager(Generic[T]):
     """A base manager class that all CTF managers derive from."""
 
     def __init__(

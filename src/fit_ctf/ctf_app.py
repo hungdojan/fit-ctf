@@ -48,7 +48,7 @@ class CTFApp(CTFBase):
         self,
         env_info: EnvInfo,
         paths: PathDict,
-        mongo_client: pymongo.MongoClient | None = None,
+        mongo_client: pymongo.MongoClient,
     ):
         """Constructor method
 
@@ -57,8 +57,6 @@ class CTFApp(CTFBase):
         :param db_name: Name of the database that contain CTF data.
         :type db_name: str
         """
-        if mongo_client is None:
-            mongo_client = self.create_mongo_client(env_info)
 
         super().__init__(
             env_info,
@@ -67,29 +65,6 @@ class CTFApp(CTFBase):
             get_c_client_by_name(os.getenv("CONTAINER_CLIENT", "")),
         )
         self._init_paths(paths)
-
-    @staticmethod
-    def create_mongo_client(env_info: EnvInfo) -> pymongo.MongoClient:
-        """Create and initialize a MongoDB client.
-
-        :param env_info: Environment information containing DB connection details
-        :return: Initialized MongoDB client
-        """
-        db_uri = (
-            f"mongodb://{env_info['db_username']}:"
-            f"{env_info['db_password']}@{env_info['db_host']}:{env_info['db_port']}/"
-        )
-        if env_info["db_name"]:
-            db_uri += f"{env_info['db_name']}"
-        # FIX: remove hardcoded parameter
-        db_uri += "?authSource=admin"
-
-        client = pymongo.MongoClient(
-            db_uri,
-            serverSelectionTimeoutMS=int(os.getenv("DB_CONNECTION_TIMEOUT", "30")),
-            tz_aware=True,
-        )
-        return client
 
     def _init_paths(self, paths: PathDict):
         """Initialize path directories for the current session."""

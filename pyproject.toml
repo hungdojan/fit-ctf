@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "A CTF backend for an assignment of a class BIS at FIT, Brno University of Technology."
 authors = ["Hung Do <hungdojan@gmail.com>"]
 readme = "README.md"
-repository = "https://github.com/hungdojan/FIT_CTF"
+repository = "https://github.com/hungdojan/fit-ctf"
 packages = [
     { include = "fit_ctf", from = "src" },
     { include = "fit_ctf_cli", from = "src" },

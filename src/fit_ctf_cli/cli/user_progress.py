@@ -65,7 +65,7 @@ def submit_secret(ctx: click.Context, value: str):
     ctf_app: CTFApp = ctx.parent.obj["ctf_app"]  # pyright: ignore
     enrollment: Enrollment = ctx.obj["enrollment"]
     try:
-        ctf_app.enroll_mgr.submit_secret(enrollment, value, ctf_app.prj_mgr, ctf_app.enroll_mgr)
+        ctf_app.enroll_mgr.submit_secret(enrollment, value, ctf_app.prj_mgr)
         click.echo("Secret was successfully submitted.")
     except SecretNotFoundException:
         click.echo("Secret is incorrect.")

@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from fit_ctf.components.constants import get_env_info, get_paths
 from fit_ctf.components.container_client import get_c_client_by_name
 from fit_ctf.components.types import PathDict
-from fit_ctf.ctf_app import CTFApp
 from fit_ctf.ctf_base import CTFBase
+from fit_ctf.utils import CTFUtils
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
 
@@ -22,7 +22,7 @@ def main():
         }
     )
 
-    mongo_client = CTFApp.create_mongo_client(env_info)
+    mongo_client = CTFUtils.create_mongo_client(env_info)
 
     ctf_base = CTFBase(
         env_info,

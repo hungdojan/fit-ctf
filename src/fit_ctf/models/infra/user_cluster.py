@@ -56,6 +56,13 @@ class UserCluster(BaseCluster):
             self._enrollment = enrollment
             self._scenario_configs: dict[str, ScenarioConfig] = {}
 
+        @staticmethod
+        def generate_cluster_name(
+            project: "project.Project",
+            user: "user.User",
+        ):
+            return f"{project.name}_{user.username}"
+
         def add_scenario_config(self, scenario_name: str, scenario_config: ScenarioConfig) -> Self:
             """Add scenario configuration to cluster.
 
@@ -128,7 +135,9 @@ class UserClusterManager(ClusterManagerMixin[UserCluster]):
         login_node_type: str | None = None,
     ) -> UserCluster:
         return (
-            UserCluster.Builder(f"{project.name}_{user.username}", enrollment)
+            UserCluster.Builder(
+                UserCluster.Builder.generate_cluster_name(project, user), enrollment
+            )
             .add_scenario_config(
                 "login_node",
                 ScenarioConfig.Builder("login_node")
@@ -426,7 +435,7 @@ class UserClusterManager(ClusterManagerMixin[UserCluster]):
             logger_name=CLUSTER_LOGGER_NAME,
         )
         enrollment = self._repo.get_enrollment(user, project)
-        enroll_mgr.record_session(enrollment, ProgressSession.State.START, enroll_mgr)
+        enroll_mgr.record_session(enrollment, ProgressSession.State.START)
         error_code = await self.c_client.compose_up(
             project.name,
             self.get_compose_files(cluster),
@@ -469,7 +478,7 @@ class UserClusterManager(ClusterManagerMixin[UserCluster]):
             to_stdout=verbose,
         )
         if success:
-            enroll_mgr.record_session(enrollment, ProgressSession.State.STOP, enroll_mgr)
+            enroll_mgr.record_session(enrollment, ProgressSession.State.STOP)
         self.logger.info(
             f"user_cluster stop done cluster={cluster.name} user={user.username} "
             f"project={project.name} exit_code={error_code} teardown={success}",

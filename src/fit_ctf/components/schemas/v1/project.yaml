@@ -1,4 +1,4 @@
-$id: "https://github.com/hungdojan/FIT_CTF/schemas/v1/project.yaml"
+$id: "https://github.com/hungdojan/fit-ctf/schemas/v1/project.yaml"
 $schema: "https://json-schema.org/draft/2020-12/schema"
 type: object
 title: Project document schema
@@ -20,13 +20,13 @@ properties:
     type: object
     patternProperties:
       ".*":
-        $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/service.yaml"
+        $ref: "https://github.com/hungdojan/fit-ctf/schemas/v1/service.yaml"
   networks:
     type: object
     description: "Define all the networks used in the project."
     patternProperties:
       ".*":
-        $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/network.yaml"
+        $ref: "https://github.com/hungdojan/fit-ctf/schemas/v1/network.yaml"
 
 required:
   - _id

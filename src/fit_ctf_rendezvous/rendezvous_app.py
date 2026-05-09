@@ -3,7 +3,7 @@ from textual.css.query import NoMatches
 from textual.widgets import Log
 
 from fit_ctf.ctf_base import CTFBase
-from fit_ctf_rendezvous.core_manager import CoreManager
+from fit_ctf_rendezvous.rendezvous_core import RendezvousCore
 from fit_ctf_rendezvous.screens.app_screen.app_screen import AppScreen
 from fit_ctf_rendezvous.screens.login_screen.login_screen import LoginScreen
 from fit_ctf_rendezvous.tui_log_sink import TuiLogSink
@@ -13,7 +13,7 @@ class RendezvousApp(App):
     TITLE = "FIT Rendezvous"
 
     def __init__(self, ctf_base: CTFBase, **kwargs):
-        self.core_mgr = CoreManager(ctf_base)
+        self.core_mgr = RendezvousCore(ctf_base)
         self._tui_log_sink = TuiLogSink()
         super().__init__(**kwargs)
 

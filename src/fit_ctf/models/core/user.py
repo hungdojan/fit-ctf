@@ -18,8 +18,7 @@ from fit_ctf.components.container_client.container_client_interface import (
 )
 from fit_ctf.components.logger.logger_interface import LoggerInterface
 from fit_ctf.components.types import NewUserDict, UserInfoDict, UserRole
-from fit_ctf.exceptions import CTFBaseException
-from fit_ctf.models.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManager
 from fit_ctf.models.utils.exceptions import (
     PublicKeyUploadFail,
     UserExistsException,
@@ -75,7 +74,7 @@ class User(Base):
         self.sessions.append(session)
 
 
-class UserManager(BaseManagerInterface[User]):
+class UserManager(BaseManager[User]):
     """A manager class that handles operations with `User` objects."""
 
     def __init__(
@@ -370,14 +369,14 @@ class UserManager(BaseManagerInterface[User]):
         """
         user = self.get_user(username)
 
-        lof_projects = enroll_mgr.get_enrolled_projects(user.username)
-        for project in lof_projects:
-            try:
-                enrollment = enroll_mgr.get_enrollment(user, project)
-                cluster = self._user_cluster_mgr.get_cluster(enrollment)
-                await self._user_cluster_mgr.stop_cluster(cluster, enroll_mgr)
-            except CTFBaseException:  # pragma: no cover
-                pass  # Cluster doesn't exist or already stopped
+        # lof_projects = enroll_mgr.get_enrolled_projects(user.username)
+        # for project in lof_projects:
+        #     try:
+        #         enrollment = enroll_mgr.get_enrollment(user, project)
+        #         cluster = self._user_cluster_mgr.get_cluster(enrollment)
+        #         await self._user_cluster_mgr.stop_cluster(cluster, enroll_mgr)
+        #     except CTFBaseException:  # pragma: no cover
+        #         pass  # Cluster doesn't exist or already stopped
 
         await enroll_mgr.cancel_user_from_all_projects(user)
         user.active = False
@@ -419,7 +418,7 @@ class UserManager(BaseManagerInterface[User]):
 
         pairs = []
         for user in users:
-            await self._user_cluster_mgr.stop_all_clusters_of_a_user(user, enroll_mgr)
+            # await self._user_cluster_mgr.stop_all_clusters_of_a_user(user, enroll_mgr)
             pairs.extend([(user, prj) for prj in enroll_mgr.get_enrolled_projects(user)])
 
         await enroll_mgr.disable_multiple_enrollments(pairs)

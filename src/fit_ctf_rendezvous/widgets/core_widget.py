@@ -1,7 +1,7 @@
 from fit_ctf.models.core.user import User
-from fit_ctf_rendezvous.core_manager import CoreManager
 from fit_ctf_rendezvous.exceptions import UserNotLoggedIn
 from fit_ctf_rendezvous.i18n import tr
+from fit_ctf_rendezvous.rendezvous_core import RendezvousCore
 from fit_ctf_rendezvous.screens.base_screen import BaseScreen
 
 
@@ -14,7 +14,7 @@ class CoreWidget:
         return self._owner_screen
 
     @property
-    def core_mgr(self) -> CoreManager:
+    def core_mgr(self) -> RendezvousCore:
         return self._owner_screen.core_mgr
 
     @property

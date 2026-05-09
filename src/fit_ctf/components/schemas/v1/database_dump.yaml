@@ -1,4 +1,4 @@
-$id: "https://github.com/hungdojan/FIT_CTF/schemas/v1/database_dump.yaml"
+$id: "https://github.com/hungdojan/fit-ctf/schemas/v1/database_dump.yaml"
 $schema: "https://json-schema.org/draft/2020-12/schema"
 type: object
 title: Exported project database dump
@@ -154,7 +154,7 @@ $defs:
         type: object
         patternProperties:
           ".*":
-            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/setup.yaml#/$defs/scenario_configs"
+            $ref: "https://github.com/hungdojan/fit-ctf/schemas/v1/setup.yaml#/$defs/scenario_configs"
     required:
       - name
       - scenario_configs
@@ -170,7 +170,7 @@ $defs:
         type: object
         patternProperties:
           ".*":
-            $ref: "https://github.com/hungdojan/FIT_CTF/schemas/v1/setup.yaml#/$defs/scenario_configs"
+            $ref: "https://github.com/hungdojan/fit-ctf/schemas/v1/setup.yaml#/$defs/scenario_configs"
     required:
       - name
       - enrollment_ref

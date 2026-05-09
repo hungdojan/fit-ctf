@@ -15,6 +15,7 @@ from fit_ctf.components.constants import get_env_info
 from fit_ctf.components.data_parser.yaml_parser import YamlParser
 from fit_ctf.components.types import PathDict
 from fit_ctf.ctf_app import CTFApp
+from fit_ctf.utils import CTFUtils
 from fit_ctf_rendezvous import i18n as rendezvous_i18n
 from fit_ctf_rendezvous.rendezvous_app import RendezvousApp
 
@@ -42,7 +43,7 @@ def shared_mongo_client() -> Generator[pymongo.MongoClient, None, None]:
     """Create a shared MongoDB client for all tests in the session."""
     env_info = get_env_info()
     try:
-        client = CTFApp.create_mongo_client(env_info)
+        client = CTFUtils.create_mongo_client(env_info)
     except pymongo.errors.ServerSelectionTimeoutError:
         pytest.exit("DB is probably not running")
 

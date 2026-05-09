@@ -17,7 +17,7 @@ from fit_ctf.components.types import (
     RawProjectDict,
 )
 from fit_ctf.exceptions import CTFBaseException
-from fit_ctf.models.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManager
 from fit_ctf.models.utils.exceptions import (
     ProjectExistsException,
     ProjectNamingFormatException,
@@ -64,7 +64,7 @@ class Project(Base):
         return self.starting_port_bind + self.max_nof_users - 1
 
 
-class ProjectManager(BaseManagerInterface[Project]):
+class ProjectManager(BaseManager[Project]):
     """A manager class that handles operations with `Project` objects."""
 
     def __init__(
@@ -313,7 +313,7 @@ class ProjectManager(BaseManagerInterface[Project]):
             cluster = self._project_cluster_mgr.get_cluster(prj)
             await self._project_cluster_mgr.stop_cluster(cluster)
             # Stop all user clusters
-            await self._user_cluster_mgr.stop_all_user_clusters(prj, enroll_mgr)
+            # await self._user_cluster_mgr.stop_all_user_clusters(prj, enroll_mgr)
 
         except CTFBaseException:  # pragma: no cover
             pass  # No cluster exists
@@ -341,14 +341,15 @@ class ProjectManager(BaseManagerInterface[Project]):
         if prj.active:
             raise ProjectExistsException("Cannot flush files of an active project.")
 
-        path = self.paths.project_path(prj)
-        if path.exists():
-            shutil.rmtree(path)
-
         await enroll_mgr.flush_multiple_enrollments(
             [(user, prj) for user in enroll_mgr.get_enrollments_for_project(prj, True)]
         )
         await self._project_cluster_mgr.delete_cluster(self._project_cluster_mgr.get_cluster(prj))
+
+        path = self.paths.project_path(prj)
+        if path.exists():
+            shutil.rmtree(path)
+
         self.remove_doc_by_id(prj.id)
         n_map = self._project_cluster_mgr.get_network_map(prj)
         for n_name in n_map.values():

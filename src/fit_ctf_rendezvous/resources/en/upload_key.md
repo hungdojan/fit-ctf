@@ -36,7 +36,7 @@ sudo pacman -S openssh
 
 ## Generate keys
 We use utility `ssh-keygen` for generating a pair of SSH keys. More information can be found
-here: [here](https://www.ssh.com/academy/ssh/keygen). This tutorial uses a new algorithm ED25519.
+here: https://www.ssh.com/academy/ssh/keygen. This tutorial uses a new algorithm ED25519.
 
 ```sh
 ssh-keygen -t ed25519 -c "your@email.com"
@@ -49,7 +49,7 @@ File with `*.pub` suffix is a **public key** and can be shared with anyone.
 The second file is a **private key** and **MUST NOT BE SHARED WITH ANYONE**.
 
 ## Upload key
-There are two way how to upload the **public key** to the server for authentication. Either use
+There are two-way how to upload the **public key** to the server for authentication. Either use
 utility `ssh-copy-id` to copy it to server, you will be prompted to log in to your server using your existing credentials.
 Validate that the key was successfully uploaded by login to the login node. It should not ask you for you password.
 Note that your instance **MUST BE RUNNING** when you run `ssh-copy-id` command.

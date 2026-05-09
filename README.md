@@ -1,6 +1,6 @@
 # CTF Framework at FIT BUT
 
-This is a basic container-oriented CTF framework built on top of Podman and Podman-Compose. **FIT_CTF** is a tool for managing projects/competitions and users. This program consists of two parts: **CLI** tool that communicates with the back-end (logic) and the database, and **Rendezvous** tool which serves as a starting point for the users (for user authentication and starting login nodes).
+This is a basic container-oriented CTF framework built on top of Podman and Podman-Compose. **fit-ctf** is a tool for managing projects/competitions and users. This program consists of two parts: **CLI** tool that communicates with the back-end (logic) and the database, and **Rendezvous** tool which serves as a starting point for the users (for user authentication and starting login nodes).
 
 ## Requirements
 In order to run this tool there are a few tool that needs to be installed:
@@ -12,8 +12,8 @@ In order to run this tool there are a few tool that needs to be installed:
 ## Installation and Running the tool
 Pull this repository and install dependencies using `poetry`.
 ```sh
-git clone https://github.com/hungdojan/FIT_CTF.git FIT_CTF
-cd FIT_CTF
+git clone https://github.com/hungdojan/fit-ctf.git fit-ctf
+cd fit-ctf
 poetry install --only main
 ```
 
@@ -149,7 +149,7 @@ fit-ctf user module add \
 
 All project and user modules are generally generated in `./<path_to_project_config>/_modules/`. You are encouraged to edit `Containerfile` and `init_script.sh` to your needs.
 
-More information can be found [here](https://hungdojan.github.io/FIT_CTF/click-commands.html).
+More information can be found [here](https://hungdojan.github.io/fit-ctf/click-commands.html).
 
 ## Deployment
 It is expected that the CTF architecture will run inside a VM. The whole architecture can be seen in the following figure:
@@ -165,7 +165,7 @@ nodes.
 #### Rendezvous setup
 The first point requires a root permissions and is set up **inside the VM**. The idea here is to create an SSH access point with no authentication required but will only allow the *Rendezvous* script to be run. An example configuration template script is located in `./config/setup/99-ctf-rule.conf`. Fill the missing information in the template and copy it to `/etc/ssh/sshd_config.d/` directory. To apply changes, don't forget to run `sudo systemctl restart sshd`.
 
-An example configuration for the user `TheUser`, using port 5555, and the repository located in `/home/TheUser/FIT_CTF`:
+An example configuration for the user `TheUser`, using port 5555, and the repository located in `/home/TheUser/fit-ctf`:
 
 ```
 Port 22
@@ -217,7 +217,7 @@ fit-ctf project \
 ```
 
 ## Documentation
-Tool's documentation will be periodically updated on the project's [documentation page](https://hungdojan.github.io/FIT_CTF/click-commands.html).
+Tool's documentation will be periodically updated on the project's [documentation page](https://hungdojan.github.io/fit-ctf/click-commands.html).
 
 The generated man pages are located in `./docs/man/` directory.
 

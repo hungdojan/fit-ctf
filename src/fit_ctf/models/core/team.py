@@ -1,7 +1,7 @@
 from bson import ObjectId
 from pydantic import Field
 
-from fit_ctf.models.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManager
 from fit_ctf.models.core.user import User
 
 
@@ -22,7 +22,7 @@ class Team(Base):
     user_ids: list[ObjectId] = Field(default_factory=list)
 
 
-class TeamManager(BaseManagerInterface[Team]):
+class TeamManager(BaseManager[Team]):
     def get_team(self, team_or_name: str | Team) -> Team:
         if isinstance(team_or_name, Team):
             return team_or_name

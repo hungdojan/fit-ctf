@@ -57,7 +57,7 @@ class UserProgressManager:
                 project_cluster = None
         return user_cluster, project_cluster
 
-    def submit_secret(
+    def _submit_secret(
         self,
         enrollment: "enroll.Enrollment",
         value: str,
@@ -121,7 +121,7 @@ class UserProgressManager:
         user_cluster, project_cluster = self._clusters_for_submission(enrollment, prj_mgr)
         return len(merged_submission_secret_map(user_cluster, project_cluster))
 
-    def record_session(
+    def _record_session(
         self,
         enrollment: "enroll.Enrollment",
         state: ProgressSession.State,

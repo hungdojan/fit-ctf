@@ -2,7 +2,7 @@
 
 One workflow1 variant drives :class:`fit_ctf_rendezvous.rendezvous_app.RendezvousApp`
 with Textual ``run_test`` / ``pilot`` (login, select project, Project Info, Start/Stop)
-so the same :meth:`~fit_ctf_rendezvous.core_manager.CoreManager.start_user_instance`
+so the same :meth:`~fit_ctf_rendezvous.rendezvous_core.RendezvousCore.start_user_instance`
 path runs as in the real TUI.
 
 Workflow2 adds project ``template`` (Mongo) and ``proj_webserver`` on the shared net;

@@ -6,6 +6,7 @@ import pymongo.errors
 
 from fit_ctf.components.constants import get_env_info
 from fit_ctf.ctf_app import CTFApp
+from fit_ctf.utils import CTFUtils
 
 project_option = click.option(
     "-pn", "--project-name", required=True, type=str, help="Project's name."
@@ -53,9 +54,10 @@ def requires_database(f):
         # Initialize CTFApp
         paths = ctx.obj.get("paths", {}) if ctx.obj else {}  # type: ignore
         env_info = get_env_info()
+        mongo_client = CTFUtils.create_mongo_client(env_info)
 
         try:
-            ctf_app = CTFApp(env_info, paths)  # type: ignore
+            ctf_app = CTFApp(env_info, paths, mongo_client)
             if ctx.obj is None:
                 ctx.obj = {}
             ctx.obj["ctf_app"] = ctf_app

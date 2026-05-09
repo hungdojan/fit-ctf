@@ -119,22 +119,22 @@ class ContainerClientInterface(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    async def rm_networks(
-        self, logger_name: str, contains: str | list[str], to_stdout: bool = False
-    ) -> ErrorCode:  # pragma: no cover
-        """Remove container networks from the system using container engine command.
-
-        :param logger: A logger handler to write output to.
-        :type logger: Logger
-        :param contains: A substring search filter.
-        :type contains: str | list[str]
-        :param to_stdout: Pipe output to stdout as well. Defaults to False.
-        :type to_stdout: bool
-        :return: An exit code.
-        :rtype: int
-        """
-        raise NotImplementedError()
+    # @abstractmethod
+    # async def rm_networks(
+    #     self, logger_name: str, contains: str | list[str], to_stdout: bool = False
+    # ) -> ErrorCode:  # pragma: no cover
+    #     """Remove container networks from the system using container engine command.
+    #
+    #     :param logger: A logger handler to write output to.
+    #     :type logger: Logger
+    #     :param contains: A substring search filter.
+    #     :type contains: str | list[str]
+    #     :param to_stdout: Pipe output to stdout as well. Defaults to False.
+    #     :type to_stdout: bool
+    #     :return: An exit code.
+    #     :rtype: int
+    #     """
+    #     raise NotImplementedError()
 
     @abstractmethod
     async def compose_up(

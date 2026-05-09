@@ -3,7 +3,7 @@ from textual.screen import Screen
 from textual.widgets import Header
 
 import fit_ctf_rendezvous.rendezvous_app as r_app
-from fit_ctf_rendezvous.core_manager import CoreManager
+from fit_ctf_rendezvous.rendezvous_core import RendezvousCore
 
 
 class BaseScreen(Screen):
@@ -12,7 +12,7 @@ class BaseScreen(Screen):
         self._base_app = base_app
 
     @property
-    def core_mgr(self) -> CoreManager:
+    def core_mgr(self) -> RendezvousCore:
         return self._base_app.core_mgr
 
     def compose(self) -> ComposeResult:

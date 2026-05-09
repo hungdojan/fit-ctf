@@ -73,7 +73,7 @@ class _VariableRegistry:
             callbacks.pop(name)
 
 
-class CoreManager(_VariableRegistry):
+class RendezvousCore(_VariableRegistry):
     def __init__(self, ctf_base: CTFBase, auth_client: AuthInterface | None = None):
         self._ctf_base = ctf_base
         # TODO: config
@@ -159,7 +159,7 @@ class CoreManager(_VariableRegistry):
             raise InvalidAction(e)
 
         try:
-            self.ctf_base.enroll_mgr.submit_secret(enrollment, value)
+            self.ctf_base.enroll_mgr.submit_secret(enrollment, value, self.ctf_base.prj_mgr)
         except SecretAlreadySubmittedException as e:
             raise SecretSubmitFail(e)
         except SecretNotFoundException:
@@ -218,7 +218,7 @@ class CoreManager(_VariableRegistry):
             raise InvalidAction(str(e)) from e
 
         try:
-            await self.ctf_base.user_cluster_mgr.start_cluster(cluster)
+            await self.ctf_base.user_cluster_mgr.start_cluster(cluster, self.ctf_base.enroll_mgr)
         except Exception as e:
             raise InvalidAction(str(e)) from e
         return enrollment
@@ -241,7 +241,7 @@ class CoreManager(_VariableRegistry):
             return
 
         try:
-            await self.ctf_base.user_cluster_mgr.stop_cluster(cluster)
+            await self.ctf_base.user_cluster_mgr.stop_cluster(cluster, self.ctf_base.enroll_mgr)
         except Exception as e:
             raise InvalidAction(str(e)) from e
 
@@ -260,4 +260,6 @@ class CoreManager(_VariableRegistry):
     async def cleanup(self):
         if self.active_user is None:
             return
-        await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(self.active_user)
+        await self.ctf_base.user_cluster_mgr.stop_all_clusters_of_a_user(
+            self.active_user, self.ctf_base.enroll_mgr
+        )

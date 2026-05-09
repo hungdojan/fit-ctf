@@ -9,7 +9,7 @@ from typing import Any, TypeVar, cast
 
 from pydantic import Field
 
-from fit_ctf.models.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManager
 from fit_ctf.models.infra.config_models import ScenarioConfig
 from fit_ctf.models.infra.constants import CLUSTER_LOGGER_NAME
 from fit_ctf.models.infra.scenario_compile import (
@@ -31,7 +31,7 @@ class BaseCluster(Base):
 ClusterT = TypeVar("ClusterT", bound=BaseCluster)
 
 
-class ClusterManagerMixin(BaseManagerInterface[ClusterT], ABC):
+class ClusterManagerMixin(BaseManager[ClusterT], ABC):
     """Template-method helpers: subclasses implement path/network hooks.
 
     Concrete managers inherit this mixin only; it extends

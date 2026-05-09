@@ -3,7 +3,7 @@ from tabulate import tabulate
 import fit_ctf.components.data_view.data_view as data_view
 
 
-class TabulateView(data_view.DataView):
+class TabulateView(data_view.DataViewInterface):
     @staticmethod
     def print_data(headers: list, values: list[list], **kw):  # pragma: no cover
         print(

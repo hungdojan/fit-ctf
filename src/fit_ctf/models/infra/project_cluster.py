@@ -156,12 +156,6 @@ class ProjectClusterManager(ClusterManagerMixin[ProjectCluster]):
                 )
         return cluster
 
-    @overload
-    def get_network_map(self, cluster_or_project: ProjectCluster) -> ProjectNetworkMap: ...
-
-    @overload
-    def get_network_map(self, cluster_or_project: "project.Project") -> ProjectNetworkMap: ...
-
     def get_network_map(
         self, cluster_or_project: "ProjectCluster | project.Project"
     ) -> ProjectNetworkMap:

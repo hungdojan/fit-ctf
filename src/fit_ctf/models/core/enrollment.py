@@ -18,7 +18,7 @@ from fit_ctf.components.types import (
     RawEnrolledProjectsDict,
 )
 from fit_ctf.components.utils import get_missing_in_sequence
-from fit_ctf.models.base import Base, BaseManagerInterface
+from fit_ctf.models.base import Base, BaseManager
 from fit_ctf.models.core.user_progress import UserProgress, UserProgressManager
 from fit_ctf.models.infra.utils import count_submittable_secret_slots
 from fit_ctf.models.utils.exceptions import (
@@ -34,6 +34,7 @@ from fit_ctf.models.utils.exceptions import (
 )
 from fit_ctf.models.utils.mongo_queries import MongoQueries
 from fit_ctf.models.utils.repository import EntityRepository
+from fit_ctf.models.utils.sessions import ProgressSession
 from fit_ctf.path_mgmt import PathManagement
 
 
@@ -66,7 +67,7 @@ class Enrollment(Base):
     # team_id: DBRef | None = None
 
 
-class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
+class EnrollmentManager(BaseManager[Enrollment], UserProgressManager):
     """A manager class that handles operations with `Enrollment` objects."""
 
     def __init__(
@@ -102,7 +103,7 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         :param logger: Logger interface.
         :type logger: LoggerInterface
         """
-        BaseManagerInterface.__init__(self, db, coll, model_cls, c_client, paths, logger)
+        BaseManager.__init__(self, db, coll, model_cls, c_client, paths, logger)
         UserProgressManager.__init__(self, user_cluster_mgr, project_cluster_mgr)
         self._repo = repo
         self._user_cluster_mgr = user_cluster_mgr
@@ -328,6 +329,13 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                     project, user, enrollment, login_node_type=login_node_type
                 )
             )
+        else:
+            self._user_cluster_mgr.create_cluster(
+                user_cluster.UserCluster.Builder(
+                    user_cluster.UserCluster.Builder.generate_cluster_name(project, user),
+                    enrollment,
+                ).build()
+            )
         n_map = self._user_cluster_mgr.get_network_map((user, project))
         self.c_client.create_networks(project.name, [n_map["private"]])
 
@@ -400,6 +408,13 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
                     self._user_cluster_mgr.create_base_user_cluster(
                         project, user, enrollment, login_node_type=login_node_type
                     )
+                )
+            else:
+                self._user_cluster_mgr.create_cluster(
+                    user_cluster.UserCluster.Builder(
+                        user_cluster.UserCluster.Builder.generate_cluster_name(project, user),
+                        enrollment,
+                    ).build()
                 )
             n_map = self._user_cluster_mgr.get_network_map((user, project))
             self.c_client.create_networks(project.name, [n_map["private"]])
@@ -664,9 +679,6 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
 
         cluster = self._user_cluster_mgr.get_cluster(enrollment)
         await self._user_cluster_mgr.stop_cluster(cluster, self)
-        # self.c_client.rm_network(
-        #     project.name, self._user_cluster_mgr.get_network_map(cluster)["private"]
-        # )
 
         enrollment.active = False
         self.update_doc(enrollment)
@@ -847,3 +859,11 @@ class EnrollmentManager(BaseManagerInterface[Enrollment], UserProgressManager):
         """
         for prj in prj_mgr.get_docs():
             await self.cancel_all_project_enrollments(prj)
+
+    def submit_secret(self, enrollment: Enrollment, value: str, prj_mgr: "_project.ProjectManager"):
+        return super()._submit_secret(enrollment, value, prj_mgr, self)
+
+    def record_session(
+        self, enrollment: Enrollment, state: ProgressSession.State, info: dict[str, Any] = {}
+    ):
+        return super()._record_session(enrollment, state, self, info)

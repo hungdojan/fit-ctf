@@ -4,7 +4,7 @@ import sys
 import fit_ctf.components.data_view.data_view as data_view
 
 
-class CSVView(data_view.DataView):
+class CSVView(data_view.DataViewInterface):
     @staticmethod
     def print_data(headers: list, values: list[list], **kw):
         csv_writer = csv.writer(sys.stdout)
