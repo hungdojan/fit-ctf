@@ -9,7 +9,7 @@ class ViewEnum(str, Enum):
     TABULATE = "tabulate"
 
 
-def get_view(name: str | ViewEnum) -> Type[data_view.DataView]:
+def get_view(name: str | ViewEnum) -> Type[data_view.DataViewInterface]:
     if name == "csv":
         return csv_view.CSVView
     elif name == "tabulate":
