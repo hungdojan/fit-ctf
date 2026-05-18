@@ -25,6 +25,10 @@ properties:
     type: array
     items:
       $ref: "#/$defs/cluster_item"
+  scenarios:
+    type: array
+    items:
+      $ref: "#/$defs/scenario_export_item"
 
 required:
   - project
@@ -175,3 +179,10 @@ $defs:
       - name
       - enrollment_ref
       - scenario_configs
+  scenario_export_item:
+    type: object
+    properties:
+      name:
+        type: string
+    required:
+      - name

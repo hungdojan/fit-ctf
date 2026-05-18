@@ -109,6 +109,7 @@ class CTFApp(CTFBase):
 
         # Per enrollment: normalize secrets for YAML, attach optional UserCluster export
         clusters = []
+        scenario_names: set[str] = set()
 
         for enrollment in enrollments:
             enrollment_ref = f"{enrollment['user']}@{enrollment['project']}"
@@ -142,6 +143,7 @@ class CTFApp(CTFBase):
                     "enrollment_ref": enrollment_ref,
                 }
                 clusters.append(cluster_dict)
+                scenario_names.update(cluster.scenario_names)
 
             enrollment.pop("_id", None)
             enrollment["enrollment_id"] = enrollment_ref
@@ -157,12 +159,15 @@ class CTFApp(CTFBase):
                 "scenario_names": pc.scenario_names,
                 "scenario_configs": {n: c.model_dump() for n, c in pc.scenario_configs.items()},
             }
+            scenario_names.update(pc.scenario_names)
         else:
             data["project_cluster"] = None
 
         # Module names referenced by this project (for ZIP module tree)
         module_count = self.module_mgr.reference_count(project.name, self.prj_mgr, self.enroll_mgr)
         data["modules"] = [k for k, v in module_count.items() if v > 0]
+        data["scenarios"] = [{"name": n} for n in sorted(scenario_names)]
+
         return data
 
     def _add_user_files_to_zipfile(self, zf: zipfile.ZipFile, data: dict):

@@ -54,10 +54,14 @@ def test_export_project(connected_data: FixtureData):
             assert set(data["modules"]) == {"ssh_ubi"}
             assert len(data["users"]) == 2
             assert data["project"]["name"] == "prj2"
+            assert {s["name"] for s in data["scenarios"]} == {"login_node"}
 
             assert len(list((pathlib.Path(tmp_dir) / "user").iterdir())) == 2
             mod_path = pathlib.Path(tmp_dir) / "module"
             assert mod_path.exists() and len(list(mod_path.iterdir())) >= 1
+            scenario_path = pathlib.Path(tmp_dir) / "scenario" / "login_node"
+            assert scenario_path.is_dir()
+            assert (scenario_path / "scenario_compose.yaml.j2").is_file()
 
 
 def test_import_project(empty_data: FixtureData):
