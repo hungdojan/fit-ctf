@@ -32,7 +32,7 @@ termcolor = "^3.1.0"
 argon2-cffi = "^25.1.0"
 invoke = "^2.2.1"
 [tool.poetry.group.test.dependencies]
-pytest = "^8.0.2"
+pytest = ">=8.0.2,<10.0.0"
 coverage = "^7.4.3"
 hypothesis = "^6.98.11"
 pytest-cov = "^4.1.0"
