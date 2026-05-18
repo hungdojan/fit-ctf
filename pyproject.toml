@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fit-ctf"
-version = "0.1.0"
+version = "1.0.0"
 description = "A CTF backend for an assignment of a class BIS at FIT, Brno University of Technology."
 authors = ["Hung Do <hungdojan@gmail.com>"]
 readme = "README.md"
